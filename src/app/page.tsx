@@ -3,12 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkout } from '@/lib/supabase'
 import { announceToScreenReader, generateId } from '@/lib/accessibility'
-<<<<<<< HEAD
-import { Play, Pause, Save, Info } from 'lucide-react'
-=======
 import { Play, Pause, Save, Info, Settings } from 'lucide-react'
 import Link from 'next/link'
->>>>>>> 4cf7aec (Initial commit from work machine)
 
 export default function Home() {
   const [user, setUser] = useState<any>(null)
@@ -207,13 +203,8 @@ export default function Home() {
       .select('*')
       .eq('user_id', user.id)
       .eq('workout_type', workoutType)
-<<<<<<< HEAD
-      .neq('workout_date', today)
-      .order('workout_date', { ascending: false })
-=======
       .neq('workout_time', today)
       .order('workout_time', { ascending: false })
->>>>>>> 4cf7aec (Initial commit from work machine)
       .limit(4)
     
     console.log('Previous workout data:', previousData)
@@ -235,11 +226,7 @@ export default function Home() {
           full_reps: previous.full_reps,
           partial_reps: previous.partial_reps,
           band_color: previous.band_color,
-<<<<<<< HEAD
-          workout_date: previous.workout_date
-=======
-          workout_time: previous.workout_time
->>>>>>> 4cf7aec (Initial commit from work machine)
+workout_time: previous.workout_time
         } : null,
         workout_time: null
       }
@@ -249,11 +236,7 @@ export default function Home() {
     setExercises(exerciseData)
     
     if (previousData && previousData.length > 0) {
-<<<<<<< HEAD
-      const lastWorkoutDate = new Date(previousData[0].workout_date).toLocaleDateString()
-=======
-      const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateString()
->>>>>>> 4cf7aec (Initial commit from work machine)
+const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateString()
       announceToScreenReader(`Previous ${workoutType} workout data loaded from ${lastWorkoutDate}`)
     }
   }
@@ -428,16 +411,12 @@ export default function Home() {
     return exerciseUrls[exerciseName] || 'https://www.jaquishbiomedical.com/x3-program/'
   }
 
-<<<<<<< HEAD
-  const toggleHighContrast = () => {
-    const newValue = !highContrast
-    setHighContrast(newValue)
-    localStorage.setItem('highContrast', newValue.toString())
-    announceToScreenReader(`High contrast mode ${newValue ? 'enabled' : 'disabled'}`)
-  }
-
-=======
->>>>>>> 4cf7aec (Initial commit from work machine)
+const toggleHighContrast = () => {
+  const newValue = !highContrast
+  setHighContrast(newValue)
+  localStorage.setItem('highContrast', newValue.toString())
+  announceToScreenReader(`High contrast mode ${newValue ? 'enabled' : 'disabled'}`)
+}
   const signIn = async () => {
     announceToScreenReader('Redirecting to sign in...')
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' })
@@ -477,17 +456,7 @@ export default function Home() {
             <h1 className="text-4xl font-bold mb-4">X3 Tracker</h1>
             <p className="mb-6 opacity-80">Track your X3 workouts with AI coaching</p>
             
-<<<<<<< HEAD
-            <button 
-              onClick={toggleHighContrast}
-              className="mb-6 px-4 py-2 text-sm border rounded-lg hover:bg-opacity-20 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label={`${highContrast ? 'Disable' : 'Enable'} high contrast mode`}
-            >
-              {highContrast ? '🌞 Normal Contrast' : '🌗 High Contrast'}
-            </button>
-            
-=======
->>>>>>> 4cf7aec (Initial commit from work machine)
+
             <form onSubmit={signInWithEmail} className="space-y-4 mb-4">
               <input
                 type="email"
@@ -550,56 +519,33 @@ export default function Home() {
     )
   }
 
-  if (todaysWorkout.workoutType === 'Rest') {
-    return (
-<<<<<<< HEAD
-      <div className={highContrast ? 'min-h-screen bg-black text-white' : 'min-h-screen bg-gradient-to-br from-green-800 to-teal-900'}>
-        <div className="container mx-auto px-4 py-8">
-          <header className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">X3 Tracker</h1>
-            <nav>
-              <button 
-                onClick={toggleHighContrast}
-                className="mr-4 px-3 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                aria-label={`${highContrast ? 'Disable' : 'Enable'} high contrast mode`}
-              >
-                {highContrast ? '🌞' : '🌗'}
-              </button>
-              <button 
-                onClick={signOut} 
-                className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
-              >
-                Sign Out
-              </button>
-            </nav>
-=======
-      <div className={bgClass}>
-        <div className="container mx-auto px-4 py-8">
-          <header className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">X3 Tracker</h1>
-            <button 
-              onClick={signOut} 
-              className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
-            >
-              Sign Out
-            </button>
->>>>>>> 4cf7aec (Initial commit from work machine)
-          </header>
-          
-          <main>
-            <div className="max-w-2xl mx-auto text-center">
-              <div className={`${cardClass} rounded-2xl p-8`}>
-                <h2 className="text-4xl font-bold mb-4">Rest Day</h2>
-                <p className="text-lg mb-8 opacity-80">Focus on recovery, hydration, and nutrition.</p>
-                <div className="text-6xl mb-8" role="img" aria-label="Rest day relaxation emoji">🛋️</div>
-                <p className="opacity-60">Week {todaysWorkout.week} • Day {todaysWorkout.dayInWeek + 1}</p>
-              </div>
+ if (todaysWorkout.workoutType === 'Rest') {
+  return (
+    <div className={bgClass}>
+      <div className="container mx-auto px-4 py-8">
+        <header className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">X3 Tracker</h1>
+          <button 
+            onClick={signOut} 
+            className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+          >
+            Sign Out
+          </button>
+        </header>
+        <main>
+          <div className="max-w-2xl mx-auto text-center">
+            <div className={`${cardClass} rounded-2xl p-8`}>
+              <h2 className="text-4xl font-bold mb-4">Rest Day</h2>
+              <p className="text-lg mb-8 opacity-80">Focus on recovery, hydration, and nutrition.</p>
+              <div className="text-6xl mb-8" role="img" aria-label="Rest day relaxation emoji">🛋️</div>
+              <p className="opacity-60">Week {todaysWorkout.week} • Day {todaysWorkout.dayInWeek + 1}</p>
             </div>
-          </main>
-        </div>
+          </div>
+        </main>
       </div>
-    )
-  }
+    </div>
+  );
+}
 
   return (
     <div className={bgClass}>
@@ -608,31 +554,15 @@ export default function Home() {
           <h1 className="text-3xl font-bold">
             Today's {todaysWorkout.workoutType} Workout
           </h1>
-<<<<<<< HEAD
-          <nav className="flex items-center space-x-4">
-            <button 
-              onClick={toggleHighContrast}
-              className="px-3 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label={`${highContrast ? 'Disable' : 'Enable'} high contrast mode`}
-            >
-              {highContrast ? '🌞' : '🌗'}
-            </button>
-            <button 
-              onClick={signOut} 
-              className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
-            >
-              Sign Out
-            </button>
-          </nav>
-=======
-          <button 
-            onClick={signOut} 
-            className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
-          >
-            Sign Out
-          </button>
-          <Link href="/settings" className="p-2 rounded hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Settings"><Settings size={22} /></Link>
->>>>>>> 4cf7aec (Initial commit from work machine)
+<button 
+  onClick={signOut} 
+  className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+>
+  Sign Out
+</button>
+<Link href="/settings" className="p-2 rounded hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Settings">
+  <Settings size={22} />
+</Link>
         </header>
 
         <div className="mb-8 text-center">
@@ -658,46 +588,7 @@ export default function Home() {
           <p id="cadence-description" className="text-sm opacity-60">
             Audio metronome to help maintain proper exercise timing
           </p>
-<<<<<<< HEAD
-          
-          <div className="flex gap-2 justify-center">
-            <button
-              onClick={testDatabaseConnection}
-              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-500"
-            >
-              Test Database Connection
-            </button>
-            <button
-              onClick={() => {
-                const newExercises = exercises.map(ex => ({ ...ex, saved: false }))
-                setExercises(newExercises)
-                console.log('🔄 Reset all exercise saved states')
-              }}
-              className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
-            >
-              Reset Save States
-            </button>
-            <button
-              onClick={async () => {
-                if (!user) return
-                const today = new Date().toISOString().split('T')[0]
-                console.log('🧹 Cleaning up workouts table for today...')
-                
-                const { error } = await supabase
-                  .from('workouts')
-                  .delete()
-                  .eq('user_id', user.id)
-                  .eq('workout_date', today)
-                
-                console.log('🧹 Cleanup result:', error ? 'Error: ' + error.message : 'Success')
-              }}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-            >
-              Clean Workouts Table
-            </button>
-          </div>
-=======
->>>>>>> 4cf7aec (Initial commit from work machine)
+
         </div>
 
         <main>
@@ -784,11 +675,7 @@ export default function Home() {
                 {exercise.previousData && (
                   <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/10">
                     <p className="text-sm text-white/80 mb-1">
-<<<<<<< HEAD
-                      Last time ({new Date(exercise.previousData.workout_date).toLocaleDateString()}):
-=======
-                      Last time ({new Date(exercise.previousData.workout_time).toLocaleDateString()}):
->>>>>>> 4cf7aec (Initial commit from work machine)
+Last time ({new Date(exercise.previousData.workout_time).toLocaleDateString()}):
                     </p>
                     <p className="text-sm text-white/60">
                       {exercise.previousData.full_reps}+{exercise.previousData.partial_reps} reps with {exercise.previousData.band_color} band
