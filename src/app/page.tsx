@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkout } from '@/lib/supabase'
 import { announceToScreenReader, generateId } from '@/lib/accessibility'
-import { Play, Pause, Save, Info, Settings, BarChart3, Calendar, Flame, Target, Trophy, TrendingUp, Sun, Moon, Monitor } from 'lucide-react'
+import { Play, Pause, Save, Info, Settings, BarChart3, Calendar, Flame, Target, Trophy, TrendingUp, Sun, Moon, Monitor, Ruler } from 'lucide-react'
 import Link from 'next/link'
 import React from 'react'
 import { useRouter } from 'next/navigation'
@@ -624,6 +624,7 @@ export default function HomePage() {
   // Responsive navigation: sidebar on desktop, top bar on mobile
   const navItems = [
     { icon: <BarChart3 size={20} />, label: 'Stats', tooltip: 'Stats', route: '/stats' },
+    { icon: <Ruler size={20} />, label: 'Measurements', tooltip: 'Body Measurements', route: '/measurements' },
     { icon: <Calendar size={20} />, label: 'Calendar', tooltip: 'Calendar', route: '/calendar' },
     { icon: <Target size={20} />, label: 'Goals', tooltip: 'Goals', route: '/goals' },
     { icon: <Settings size={20} />, label: 'Settings', tooltip: 'Settings', route: '/settings', highlight: true },
