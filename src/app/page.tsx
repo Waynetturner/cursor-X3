@@ -93,6 +93,7 @@ interface Exercise {
   fullReps: number;
   partialReps: number;
   lastWorkout: string;
+  lastWorkoutDate: string;
 }
 
 export default function HomePage() {
@@ -315,7 +316,8 @@ export default function HomePage() {
         band: previous?.band_color || 'White',
         fullReps: previous?.full_reps || 0,
         partialReps: previous?.partial_reps || 0,
-        lastWorkout: previous ? `${previous.full_reps}+${previous.partial_reps} reps with ${previous.band_color} band` : ''
+        lastWorkout: previous ? `${previous.full_reps}+${previous.partial_reps} reps with ${previous.band_color} band` : '',
+        lastWorkoutDate: previous ? new Date(previous.workout_local_date_time).toLocaleDateString() : ''
       };
     });
     
@@ -363,8 +365,11 @@ export default function HomePage() {
     }
 
     const exercise = exercises[index]
-    // Use workout_local_date_time, fallback to now if not set
-    const workoutLocalDateTime = exercise.workout_local_date_time || getLocalISODateTime()
+    console.log('🔍 Exercise object:', exercise)
+    
+    // Always use current timestamp to avoid duplicates
+    const workoutLocalDateTime = getLocalISODateTime()
+    console.log('🕒 Using fresh timestamp:', workoutLocalDateTime)
     
     console.log('📊 Exercise data to save:', exercise)
     console.log('🕒 Workout time:', workoutLocalDateTime)
@@ -388,13 +393,26 @@ export default function HomePage() {
     
     console.log('💾 Data being sent to Supabase:', dataToSave)
 
-    console.log('🎯 About to insert into workout_exercises table...')
+    console.log('🎯 About to upsert into workout_exercises table...')
     
+    // First, let's see what records already exist for this user/exercise
+    const { data: existingRecords, error: checkError } = await supabase
+      .from('workout_exercises')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('exercise_name', exercise.name)
+      .order('workout_local_date_time', { ascending: false })
+      .limit(3)
+    
+    console.log('🔍 Existing records for this exercise:', existingRecords)
+    console.log('🔍 Check error:', checkError)
+    
+    // Try a simple insert with fresh timestamp
+    console.log('🚀 Attempting insert operation with fresh timestamp...')
     const { data, error } = await supabase
       .from('workout_exercises')
-      .upsert(dataToSave, { 
-        onConflict: 'user_id,exercise_name,workout_local_date_time' 
-      })
+      .insert(dataToSave)
+      .select()
 
     console.log('📤 Supabase response data:', data)
     console.log('❌ Supabase error:', error)
@@ -408,7 +426,6 @@ export default function HomePage() {
         .eq('user_id', user.id)
         .eq('workout_local_date_time', workoutLocalDateTime)
         .eq('exercise_name', exercise.name)
-        .order('created_at', { ascending: false })
         .limit(5)
       
       console.log('📋 Recent records in workout_exercises:', checkData)
@@ -419,8 +436,6 @@ export default function HomePage() {
         .from('workouts')
         .select('*')
         .eq('user_id', user.id)
-        .eq('workout_local_date_time', workoutLocalDateTime)
-        .order('created_at', { ascending: false })
         .limit(5)
       
       console.log('📋 Recent records in workouts table:', workoutsCheck)
@@ -442,7 +457,18 @@ export default function HomePage() {
       announceToScreenReader(`${exercise.name} saved successfully!`, 'assertive')
     } else {
       console.error('❌ Error saving exercise:', error)
-      announceToScreenReader('Error saving exercise. Please try again.', 'assertive')
+      if (error) {
+        console.error('❌ Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        announceToScreenReader(`Error saving exercise: ${error.message || 'Unknown error'}. Please try again.`, 'assertive')
+      } else {
+        console.error('❌ Unknown error occurred')
+        announceToScreenReader('Unknown error saving exercise. Please try again.', 'assertive')
+      }
     }
   }
 
@@ -636,12 +662,20 @@ export default function HomePage() {
             <h1 className="text-3xl font-bold">
               Today's {todaysWorkout.workoutType} Workout
             </h1>
-            <button 
-              onClick={signOut} 
-              className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
-            >
-              Sign Out
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={testDatabaseConnection}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                Test DB
+              </button>
+              <button 
+                onClick={signOut} 
+                className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+              >
+                Sign Out
+              </button>
+            </div>
           </header>
 
           <div className="mb-8 text-center">
@@ -661,14 +695,14 @@ export default function HomePage() {
             <h2 className="sr-only">Exercise tracking cards</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {exercises.map((exercise, index) => (
-                <article key={exercise.name} className="bg-white/10 backdrop-blur-lg text-white border border-white/20 rounded-2xl p-6">
+                <article key={exercise.name} className="bg-white text-gray-800 border border-gray-200 rounded-2xl p-6 shadow-lg">
                   <header className="flex justify-between items-start mb-4">
-                    <h3 className="text-xl font-semibold">{exercise.name}</h3>
+                    <h3 className="text-xl font-semibold text-gray-800">{exercise.name}</h3>
                     <a
                       href={getExerciseInfoUrl(exercise.name)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-2 hover:bg-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="p-2 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600 hover:text-gray-800"
                       aria-label={`Learn more about ${exercise.name} on Jaquish Biomedical website`}
                     >
                       <Info size={16} aria-hidden="true" />
@@ -676,17 +710,17 @@ export default function HomePage() {
                   </header>
                   
                   <div className="mb-4">
-                    <label htmlFor={`band-${exercise.name}`} className="block text-sm font-medium mb-2 opacity-80">
+                    <label htmlFor={`band-${exercise.name}`} className="block text-sm font-medium mb-2 text-gray-700">
                       Band Color
                     </label>
                     <select
                       id={`band-${exercise.name}`}
                       value={exercise.band}
                       onChange={(e) => updateExercise(index, 'band', e.target.value)}
-                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
                     >
                       {BAND_COLORS.map(color => (
-                        <option key={color} value={color} className="bg-gray-800 text-white">
+                        <option key={color} value={color} className="bg-white text-gray-800">
                           {color} Band
                         </option>
                       ))}
@@ -695,7 +729,7 @@ export default function HomePage() {
 
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     <div>
-                      <label htmlFor={`full-reps-${exercise.name}`} className="block text-sm font-medium mb-1 opacity-80">
+                      <label htmlFor={`full-reps-${exercise.name}`} className="block text-sm font-medium mb-1 text-gray-700">
                         Full Reps
                       </label>
                       <input
@@ -703,13 +737,13 @@ export default function HomePage() {
                         type="number"
                         value={exercise.fullReps || ''}
                         onChange={(e) => updateExercise(index, 'fullReps', parseInt(e.target.value) || 0)}
-                        className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
                         min="0"
                         max="999"
                       />
                     </div>
                     <div>
-                      <label htmlFor={`partial-reps-${exercise.name}`} className="block text-sm font-medium mb-1 opacity-80">
+                      <label htmlFor={`partial-reps-${exercise.name}`} className="block text-sm font-medium mb-1 text-gray-700">
                         Partial Reps
                       </label>
                       <input
@@ -717,7 +751,7 @@ export default function HomePage() {
                         type="number"
                         value={exercise.partialReps || ''}
                         onChange={(e) => updateExercise(index, 'partialReps', parseInt(e.target.value) || 0)}
-                        className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
                         min="0"
                         max="999"
                       />
@@ -725,24 +759,29 @@ export default function HomePage() {
                   </div>
 
                   <div className="mb-4">
-                    <label htmlFor={`notes-${exercise.name}`} className="block text-sm font-medium mb-1 opacity-80">
-                      Notes
+                    <label htmlFor={`notes-${exercise.name}`} className="block text-sm font-medium mb-1 text-gray-700">
+                      Notes & AI Coach Prompts
                     </label>
                     <textarea
                       id={`notes-${exercise.name}`}
                       value={exercise.notes}
                       onChange={(e) => updateExercise(index, 'notes', e.target.value)}
-                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
                       rows={2}
-                      placeholder="Add notes about form, difficulty, etc."
+                      placeholder="Add notes about form, difficulty, or questions for the AI coach..."
                     />
                   </div>
 
                   {exercise.lastWorkout && (
-                    <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/10">
-                      <p className="text-sm text-white/80 mb-1">
-                        {exercise.lastWorkout}
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-sm text-gray-700 font-medium mb-1">
+                        Last Workout: {exercise.lastWorkout}
                       </p>
+                      {exercise.lastWorkoutDate && (
+                        <p className="text-xs text-gray-500">
+                          Date: {exercise.lastWorkoutDate}
+                        </p>
+                      )}
                     </div>
                   )}
 
