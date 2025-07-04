@@ -3,9 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+const userTier = 2; // 1 = Foundation, 2 = Momentum, 3 = Mastery (replace with real user tier logic)
+
+const tabs = [
+  { label: "Profile", value: "profile" },
+  { label: "Preferences", value: "preferences" },
+  ...(userTier > 1 ? [{ label: "Advanced", value: "advanced" }] : []),
+];
+
 export default function Settings() {
   const [highContrast, setHighContrast] = useState(false);
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState(tabs[0].value);
 
   useEffect(() => {
     const highContrastPreference = localStorage.getItem('highContrast') === 'true';
@@ -28,19 +37,34 @@ export default function Settings() {
           <h1 className="text-3xl font-bold">Settings</h1>
         </header>
         <main>
-          <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-2">Accessibility</h2>
-            <div className="flex items-center space-x-4">
+          <div className="flex border-b border-[#FF6B35] mb-6">
+            {tabs.map((tab) => (
               <button
-                onClick={toggleHighContrast}
-                className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                aria-label={`${highContrast ? 'Disable' : 'Enable'} high contrast mode`}
+                key={tab.value}
+                className={`px-4 py-2 font-semibold focus:outline-none transition-colors duration-200 ${
+                  activeTab === tab.value
+                    ? "border-b-4 border-[#FF6B35] text-[#FF6B35]"
+                    : "text-gray-500 hover:text-[#FF6B35]"
+                }`}
+                onClick={() => setActiveTab(tab.value)}
+                aria-selected={activeTab === tab.value}
+                role="tab"
               >
-                {highContrast ? '🌞 Normal Contrast' : '🌗 High Contrast'}
+                {tab.label}
               </button>
-              <span className="text-sm opacity-80">For users with low vision or those who prefer extra visual clarity.</span>
-            </div>
-          </section>
+            ))}
+          </div>
+          <div className="bg-white rounded-xl shadow p-6 min-h-[200px]">
+            {activeTab === "profile" && (
+              <div>{/* Profile form goes here */}Profile settings coming soon.</div>
+            )}
+            {activeTab === "preferences" && (
+              <div>{/* Preferences form goes here */}Preferences coming soon.</div>
+            )}
+            {activeTab === "advanced" && userTier > 1 && (
+              <div>{/* Advanced settings go here */}Advanced features for Momentum/Mastery users.</div>
+            )}
+          </div>
         </main>
       </div>
     </div>

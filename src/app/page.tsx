@@ -3,34 +3,125 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkout } from '@/lib/supabase'
 import { announceToScreenReader, generateId } from '@/lib/accessibility'
-import { Play, Pause, Save, Info, Settings } from 'lucide-react'
+import { Play, Pause, Save, Info, Settings, BarChart3, Calendar, Flame, Target, Trophy, TrendingUp, Sun, Moon, Monitor } from 'lucide-react'
 import Link from 'next/link'
+import React from 'react'
+import { useRouter } from 'next/navigation'
 
-export default function Home() {
-  const [user, setUser] = useState<any>(null)
-  const [todaysWorkout, setTodaysWorkout] = useState<any>(null)
-  const [exercises, setExercises] = useState<any[]>([])
-  const [cadenceActive, setCadenceActive] = useState(false)
-  const [highContrast, setHighContrast] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [cadenceInterval, setCadenceInterval] = useState<NodeJS.Timeout | null>(null)
-  const cadenceButtonRef = useRef<HTMLButtonElement>(null)
+// Helper to get local ISO string with timezone offset
+function getLocalISODateTime() {
+  const now = new Date();
+  const tzo = -now.getTimezoneOffset(),
+    dif = tzo >= 0 ? '+' : '-',
+    pad = function(num: number) {
+      const norm = Math.floor(Math.abs(num));
+      return (norm < 10 ? '0' : '') + norm;
+    };
+  return now.getFullYear() +
+    '-' + pad(now.getMonth() + 1) +
+    '-' + pad(now.getDate()) +
+    'T' + pad(now.getHours()) +
+    ':' + pad(now.getMinutes()) +
+    ':' + pad(now.getSeconds()) +
+    dif + pad(tzo / 60) + ':' + pad(tzo % 60);
+}
 
-  // Theme classes
-  const bgClass = highContrast 
-    ? 'min-h-screen bg-black text-white' 
-    : 'min-h-screen bg-gradient-to-br from-purple-900 to-blue-900'
-  
-  const cardClass = highContrast
-    ? 'bg-white text-black border-2 border-white'
-    : 'bg-white/10 backdrop-blur-lg text-white border border-white/20'
+const bandColors = ["White", "Light Gray", "Dark Gray", "Black"];
+
+interface StatsCardProps {
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+  sublabel: string;
+  gradient: string;
+}
+
+const StatsCard = ({ icon, value, label, sublabel, gradient }: StatsCardProps) => (
+  <div className={`rounded-2xl p-6 shadow-md border border-[#212121] hover:shadow-lg transition-all duration-200 hover:-translate-y-1 bg-[#303030] text-white`}>
+    <div className="flex items-center justify-between">
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${gradient}`}>{icon}</div>
+      <span className="text-3xl font-bold text-white">{value}</span>
+    </div>
+    <div className="mt-4">
+      <p className="text-[#FFC107] font-medium">{label}</p>
+      <p className="text-sm text-gray-300">{sublabel}</p>
+    </div>
+  </div>
+);
+
+function CadenceButton({ cadenceActive, setCadenceActive }: { cadenceActive: boolean; setCadenceActive: React.Dispatch<React.SetStateAction<boolean>> }) {
+  return (
+    <button
+      onClick={() => setCadenceActive((prev) => !prev)}
+      className="w-full px-8 py-4 rounded-xl font-semibold flex items-center justify-center space-x-3 transition-all duration-200 shadow-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35] focus:ring-offset-2 bg-[#FF6B35] text-white transform hover:scale-105"
+      aria-pressed={cadenceActive}
+      aria-label={cadenceActive ? 'Stop Cadence' : 'Start Cadence'}
+    >
+      {cadenceActive ? <Pause size={20} /> : <Play size={20} />}
+      <span>{cadenceActive ? 'Stop Cadence' : 'Start Cadence (1s)'}</span>
+    </button>
+  );
+}
+
+function playBeep() {
+  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+  const ctx = new AudioCtx();
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.type = 'sine';
+  oscillator.frequency.value = 880; // Hz
+  gain.gain.value = 0.1;
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+  oscillator.start();
+  oscillator.stop(ctx.currentTime + 0.1); // short beep
+  oscillator.onended = () => ctx.close();
+}
+
+interface Exercise {
+  id?: string;
+  exercise_name: string;
+  band_color: string;
+  full_reps: number;
+  partial_reps: number;
+  notes: string;
+  saved: boolean;
+  previousData?: any;
+  workout_local_date_time: string;
+  name: string;
+  band: string;
+  fullReps: number;
+  partialReps: number;
+  lastWorkout: string;
+}
+
+export default function HomePage() {
+  // All hooks must be called at the top level, in the same order, every render
+  const [user, setUser] = useState<any>(null);
+  const [todaysWorkout, setTodaysWorkout] = useState<any>(null);
+  const [cadenceActive, setCadenceActive] = useState(false);
+  const [theme, setTheme] = useState('system');
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [cadenceInterval, setCadenceInterval] = useState<NodeJS.Timeout | null>(null);
+  const router = useRouter();
+  const cadenceButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Metronome beep effect: always call useEffect at the top level
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (cadenceActive) {
+      playBeep(); // play immediately
+      interval = setInterval(() => {
+        playBeep();
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [cadenceActive]);
 
   useEffect(() => {
-    // Check for high contrast preference
-    const highContrastPreference = localStorage.getItem('highContrast') === 'true'
-    setHighContrast(highContrastPreference)
+    console.log('useEffect running, setting mounted to true')
     
     // Get user and setup
     const getUser = async () => {
@@ -136,7 +227,7 @@ export default function Home() {
       .from('workout_exercises')
       .insert({
         user_id: 'test-user-id',
-        workout_date: new Date().toISOString().split('T')[0],
+        workout_local_date_time: new Date().toISOString(),
         workout_type: 'Push',
         week_number: 1,
         exercise_name: 'RLS_TEST',
@@ -152,7 +243,7 @@ export default function Home() {
     // Test 4: Try to insert a test record with proper auth
     const testData = {
       user_id: user.id,
-      workout_date: new Date().toISOString().split('T')[0],
+      workout_local_date_time: new Date().toISOString(),
       workout_type: 'Push',
       week_number: 1,
       exercise_name: 'TEST_EXERCISE',
@@ -192,51 +283,47 @@ export default function Home() {
     console.log('Setting up exercises for:', workoutType, 'User ID:', user.id)
     
     const exerciseNames = X3_EXERCISES[workoutType]
-    const today = new Date().toISOString().split('T')[0]
     
-    console.log('Today is:', today)
     console.log('Looking for exercises:', exerciseNames)
     
-    // Get the most recent workout data for this workout type
+    // Get the most recent workout data for this workout type (no date filter)
     const { data: previousData, error } = await supabase
       .from('workout_exercises')
       .select('*')
       .eq('user_id', user.id)
       .eq('workout_type', workoutType)
-      .neq('workout_time', today)
-      .order('workout_time', { ascending: false })
-      .limit(4)
+      .order('workout_local_date_time', { ascending: false })
+      .limit(16) // get more history in case of duplicates
     
     console.log('Previous workout data:', previousData)
     console.log('Query error:', error)
     
     const exerciseData = exerciseNames.map(name => {
-      const previous = previousData?.find(p => p.exercise_name === name)
-      console.log(`${name} previous data:`, previous)
-      
+      const previous = previousData?.find(p => p.exercise_name === name);
       return {
-        id: generateId('exercise'),
+        id: previous?.id || '',
         exercise_name: name,
         band_color: previous?.band_color || 'White',
         full_reps: previous?.full_reps || 0,
         partial_reps: previous?.partial_reps || 0,
         notes: '',
         saved: false,
-        previousData: previous ? {
-          full_reps: previous.full_reps,
-          partial_reps: previous.partial_reps,
-          band_color: previous.band_color,
-workout_time: previous.workout_time
-        } : null,
-        workout_time: null
-      }
-    })
+        previousData: previous || null,
+        workout_local_date_time: previous?.workout_local_date_time || '',
+        // UI fields
+        name: name,
+        band: previous?.band_color || 'White',
+        fullReps: previous?.full_reps || 0,
+        partialReps: previous?.partial_reps || 0,
+        lastWorkout: previous ? `${previous.full_reps}+${previous.partial_reps} reps with ${previous.band_color} band` : ''
+      };
+    });
     
     console.log('Final exercise data:', exerciseData)
     setExercises(exerciseData)
     
     if (previousData && previousData.length > 0) {
-const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateString()
+      const lastWorkoutDate = new Date(previousData[0].workout_local_date_time).toLocaleDateString()
       announceToScreenReader(`Previous ${workoutType} workout data loaded from ${lastWorkoutDate}`)
     }
   }
@@ -244,8 +331,8 @@ const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateStrin
   const updateExercise = (index: number, field: string, value: any) => {
     const newExercises = [...exercises]
     newExercises[index] = { ...newExercises[index], [field]: value, saved: false }
-    if (!newExercises[index].workout_time) {
-      newExercises[index].workout_time = new Date().toISOString()
+    if (!newExercises[index].workout_local_date_time) {
+      newExercises[index].workout_local_date_time = getLocalISODateTime()
     }
     setExercises(newExercises)
     
@@ -260,10 +347,10 @@ const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateStrin
     }
 
     // Announce changes to screen readers
-    if (field === 'band_color') {
-      announceToScreenReader(`${newExercises[index].exercise_name} band changed to ${value}`)
-    } else if (field === 'full_reps' || field === 'partial_reps') {
-      announceToScreenReader(`${newExercises[index].exercise_name} ${field.replace('_', ' ')} set to ${value}`)
+    if (field === 'band') {
+      announceToScreenReader(`${newExercises[index].name} band changed to ${value}`)
+    } else if (field === 'fullReps' || field === 'partialReps') {
+      announceToScreenReader(`${newExercises[index].name} ${field.replace('_', ' ')} set to ${value}`)
     }
   }
 
@@ -276,11 +363,11 @@ const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateStrin
     }
 
     const exercise = exercises[index]
-    // Use workout_time, fallback to now if not set
-    const workoutTime = exercise.workout_time || new Date().toISOString()
+    // Use workout_local_date_time, fallback to now if not set
+    const workoutLocalDateTime = exercise.workout_local_date_time || getLocalISODateTime()
     
     console.log('📊 Exercise data to save:', exercise)
-    console.log('🕒 Workout time:', workoutTime)
+    console.log('🕒 Workout time:', workoutLocalDateTime)
     console.log('👤 User ID:', user.id)
     console.log('🏋️ Workout type:', todaysWorkout.workoutType)
     console.log('📈 Week number:', todaysWorkout.week)
@@ -289,13 +376,13 @@ const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateStrin
 
     const dataToSave = {
       user_id: user.id,
-      workout_time: workoutTime,
+      workout_local_date_time: workoutLocalDateTime,
       workout_type: todaysWorkout.workoutType,
       week_number: todaysWorkout.week,
-      exercise_name: exercise.exercise_name,
-      band_color: exercise.band_color,
-      full_reps: exercise.full_reps,
-      partial_reps: exercise.partial_reps,
+      exercise_name: exercise.name,
+      band_color: exercise.band,
+      full_reps: exercise.fullReps,
+      partial_reps: exercise.partialReps,
       notes: exercise.notes
     }
     
@@ -306,7 +393,7 @@ const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateStrin
     const { data, error } = await supabase
       .from('workout_exercises')
       .upsert(dataToSave, { 
-        onConflict: 'user_id,exercise_name,workout_time' 
+        onConflict: 'user_id,exercise_name,workout_local_date_time' 
       })
 
     console.log('📤 Supabase response data:', data)
@@ -319,8 +406,8 @@ const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateStrin
         .from('workout_exercises')
         .select('*')
         .eq('user_id', user.id)
-        .eq('workout_time', workoutTime)
-        .eq('exercise_name', exercise.exercise_name)
+        .eq('workout_local_date_time', workoutLocalDateTime)
+        .eq('exercise_name', exercise.name)
         .order('created_at', { ascending: false })
         .limit(5)
       
@@ -332,7 +419,7 @@ const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateStrin
         .from('workouts')
         .select('*')
         .eq('user_id', user.id)
-        .eq('workout_time', workoutTime)
+        .eq('workout_local_date_time', workoutLocalDateTime)
         .order('created_at', { ascending: false })
         .limit(5)
       
@@ -352,7 +439,7 @@ const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateStrin
       newExercises[index].saved = true
       setExercises(newExercises)
       console.log('✅ Exercise saved successfully!')
-      announceToScreenReader(`${exercise.exercise_name} saved successfully!`, 'assertive')
+      announceToScreenReader(`${exercise.name} saved successfully!`, 'assertive')
     } else {
       console.error('❌ Error saving exercise:', error)
       announceToScreenReader('Error saving exercise. Please try again.', 'assertive')
@@ -411,12 +498,6 @@ const lastWorkoutDate = new Date(previousData[0].workout_time).toLocaleDateStrin
     return exerciseUrls[exerciseName] || 'https://www.jaquishbiomedical.com/x3-program/'
   }
 
-const toggleHighContrast = () => {
-  const newValue = !highContrast
-  setHighContrast(newValue)
-  localStorage.setItem('highContrast', newValue.toString())
-  announceToScreenReader(`High contrast mode ${newValue ? 'enabled' : 'disabled'}`)
-}
   const signIn = async () => {
     announceToScreenReader('Redirecting to sign in...')
     const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' })
@@ -432,56 +513,18 @@ const toggleHighContrast = () => {
     setUser(null)
   }
 
-  const signInWithEmail = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-    
-    if (error) {
-      console.error('Login error:', error)
-      announceToScreenReader('Login failed. Please check your credentials.', 'assertive')
-    }
-    setLoading(false)
-  }
+
 
   if (!user) {
     return (
-      <div className={bgClass}>
+      <div className="min-h-screen bg-gradient-to-br from-[#D32F2F] via-[#FF6B35] to-[#FFC107]">
         <div className="flex items-center justify-center min-h-screen">
-          <div className={`${cardClass} rounded-2xl p-8 text-center max-w-md mx-4`}>
+          <div className="bg-white/10 backdrop-blur-lg text-white border border-white/20 rounded-2xl p-8 text-center max-w-md mx-4">
             <h1 className="text-4xl font-bold mb-4">X3 Tracker</h1>
             <p className="mb-6 opacity-80">Track your X3 workouts with AI coaching</p>
             
 
-            <form onSubmit={signInWithEmail} className="space-y-4 mb-4">
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/60"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/60"
-                required
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold disabled:opacity-50"
-              >
-                {loading ? 'Signing in...' : 'Sign In'}
-              </button>
-            </form>
+            
             
             <div className="text-white/60 mb-4">or</div>
             
@@ -499,9 +542,9 @@ const toggleHighContrast = () => {
 
   if (!todaysWorkout) {
     return (
-      <div className={bgClass}>
+      <div className="min-h-screen bg-gradient-to-br from-[#D32F2F] via-[#FF6B35] to-[#FFC107]">
         <div className="flex items-center justify-center min-h-screen">
-          <div className={`${cardClass} rounded-2xl p-8 text-center max-w-md mx-4`}>
+          <div className="bg-white/10 backdrop-blur-lg text-white border border-white/20 rounded-2xl p-8 text-center max-w-md mx-4">
             <h2 className="text-2xl font-bold mb-4">Loading...</h2>
             <div className="text-lg mb-4" role="status" aria-live="polite">
               {user ? 'Loading your workout...' : 'Please sign in to continue'}
@@ -521,7 +564,7 @@ const toggleHighContrast = () => {
 
  if (todaysWorkout.workoutType === 'Rest') {
   return (
-    <div className={bgClass}>
+    <div className="min-h-screen bg-gradient-to-br from-[#D32F2F] via-[#FF6B35] to-[#FFC107]">
       <div className="container mx-auto px-4 py-8">
         <header className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">X3 Tracker</h1>
@@ -534,7 +577,7 @@ const toggleHighContrast = () => {
         </header>
         <main>
           <div className="max-w-2xl mx-auto text-center">
-            <div className={`${cardClass} rounded-2xl p-8`}>
+            <div className="bg-white/10 backdrop-blur-lg text-white border border-white/20 rounded-2xl p-8">
               <h2 className="text-4xl font-bold mb-4">Rest Day</h2>
               <p className="text-lg mb-8 opacity-80">Focus on recovery, hydration, and nutrition.</p>
               <div className="text-6xl mb-8" role="img" aria-label="Rest day relaxation emoji">🛋️</div>
@@ -547,157 +590,178 @@ const toggleHighContrast = () => {
   );
 }
 
+  // Cadence Button Component
+  const CadenceButtonComponent = (
+    <CadenceButton cadenceActive={cadenceActive} setCadenceActive={setCadenceActive} />
+  );
+
+  // Responsive navigation: sidebar on desktop, top bar on mobile
+  const navItems = [
+    { icon: <BarChart3 size={20} />, label: 'Stats', tooltip: 'Stats', route: '/stats' },
+    { icon: <Calendar size={20} />, label: 'Calendar', tooltip: 'Calendar', route: '/calendar' },
+    { icon: <Target size={20} />, label: 'Goals', tooltip: 'Goals', route: '/goals' },
+    { icon: <Settings size={20} />, label: 'Settings', tooltip: 'Settings', route: '/settings', highlight: true },
+  ];
+
   return (
-    <div className={bgClass}>
-      <div className="container mx-auto px-4 py-8">
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">
-            Today's {todaysWorkout.workoutType} Workout
-          </h1>
-<button 
-  onClick={signOut} 
-  className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
->
-  Sign Out
-</button>
-<Link href="/settings" className="p-2 rounded hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500" aria-label="Settings">
-  <Settings size={22} />
-</Link>
-        </header>
-
-        <div className="mb-8 text-center">
-          <div className={`${cardClass} rounded-2xl p-6 inline-block`}>
-            <p className="text-lg">Week {todaysWorkout.week} • "Train to failure, not to a number"</p>
-          </div>
-        </div>
-
-        <div className="text-center mb-8 space-y-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#D32F2F] via-[#FF6B35] to-[#FFC107]">
+      <div className="flex md:flex-row flex-col h-screen">
+        {/* Navigation: sidebar on desktop, top bar on mobile */}
+        <nav className="md:w-20 w-full md:h-full h-16 bg-gradient-to-b md:bg-gradient-to-b bg-gradient-to-r from-[#D32F2F] via-[#FF6B35] to-[#FFC107] flex md:flex-col flex-row items-center justify-center md:py-6 md:space-y-4 space-x-4 md:space-x-0 shadow-lg z-10">
+          {/* Home/Dashboard button (Flame) */}
           <button
-            ref={cadenceButtonRef}
-            onClick={toggleCadence}
-            className={`px-8 py-4 rounded-2xl font-semibold text-lg focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              cadenceActive 
-                ? 'bg-red-500 hover:bg-red-600 text-white focus:ring-red-500' 
-                : 'bg-blue-500 hover:bg-blue-600 text-white focus:ring-blue-500'
-            }`}
-            aria-describedby="cadence-description"
+            onClick={() => router.push('/')}
+            className="w-12 h-12 bg-white bg-opacity-40 rounded-xl flex flex-col items-center justify-center text-[#D32F2F] cursor-pointer hover:bg-opacity-60 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#FFC107] drop-shadow-md"
+            title="Dashboard"
+            aria-label="Dashboard"
           >
-            {cadenceActive ? <Pause className="inline mr-2" size={20} aria-hidden="true" /> : <Play className="inline mr-2" size={20} aria-hidden="true" />}
-            {cadenceActive ? 'Stop Cadence' : 'Start Cadence (1s)'}
+            <Flame size={28} />
+            <span className="text-xs mt-1 hidden md:block">Home</span>
           </button>
-          <p id="cadence-description" className="text-sm opacity-60">
-            Audio metronome to help maintain proper exercise timing
-          </p>
+          {navItems.map((item, idx) => (
+            <button
+              key={item.label}
+              onClick={() => router.push(item.route)}
+              className={`w-12 h-12 bg-white bg-opacity-40 rounded-xl flex flex-col items-center justify-center text-[#D32F2F] cursor-pointer hover:bg-opacity-60 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#FFC107] drop-shadow-md ${item.highlight ? 'border-2 border-[#FFC107] text-[#FFC107] font-bold' : ''}`}
+              title={item.tooltip}
+              aria-label={item.label}
+            >
+              {item.icon}
+              <span className="text-xs mt-1 hidden md:block">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+        <main className="flex-1 p-8">
+          <header className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold">
+              Today's {todaysWorkout.workoutType} Workout
+            </h1>
+            <button 
+              onClick={signOut} 
+              className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+            >
+              Sign Out
+            </button>
+          </header>
 
-        </div>
-
-        <main>
-          <h2 className="sr-only">Exercise tracking cards</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {exercises.map((exercise, index) => (
-              <article key={exercise.id} className={`${cardClass} rounded-2xl p-6`}>
-                <header className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-semibold">{exercise.exercise_name}</h3>
-                  <a
-                    href={getExerciseInfoUrl(exercise.exercise_name)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 hover:bg-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    aria-label={`Learn more about ${exercise.exercise_name} on Jaquish Biomedical website`}
-                  >
-                    <Info size={16} aria-hidden="true" />
-                  </a>
-                </header>
-                
-                <div className="mb-4">
-                  <label htmlFor={`band-${exercise.id}`} className="block text-sm font-medium mb-2 opacity-80">
-                    Band Color
-                  </label>
-                  <select
-                    id={`band-${exercise.id}`}
-                    value={exercise.band_color}
-                    onChange={(e) => updateExercise(index, 'band_color', e.target.value)}
-                    className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {BAND_COLORS.map(color => (
-                      <option key={color} value={color} className="bg-gray-800 text-white">
-                        {color} Band
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div>
-                    <label htmlFor={`full-reps-${exercise.id}`} className="block text-sm font-medium mb-1 opacity-80">
-                      Full Reps
-                    </label>
-                    <input
-                      id={`full-reps-${exercise.id}`}
-                      type="number"
-                      value={exercise.full_reps || ''}
-                      onChange={(e) => updateExercise(index, 'full_reps', parseInt(e.target.value) || 0)}
-                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      min="0"
-                      max="999"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor={`partial-reps-${exercise.id}`} className="block text-sm font-medium mb-1 opacity-80">
-                      Partial Reps
-                    </label>
-                    <input
-                      id={`partial-reps-${exercise.id}`}
-                      type="number"
-                      value={exercise.partial_reps || ''}
-                      onChange={(e) => updateExercise(index, 'partial_reps', parseInt(e.target.value) || 0)}
-                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      min="0"
-                      max="999"
-                    />
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <label htmlFor={`notes-${exercise.id}`} className="block text-sm font-medium mb-1 opacity-80">
-                    Notes
-                  </label>
-                  <textarea
-                    id={`notes-${exercise.id}`}
-                    value={exercise.notes}
-                    onChange={(e) => updateExercise(index, 'notes', e.target.value)}
-                    className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={2}
-                    placeholder="Add notes about form, difficulty, etc."
-                  />
-                </div>
-
-                {exercise.previousData && (
-                  <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/10">
-                    <p className="text-sm text-white/80 mb-1">
-Last time ({new Date(exercise.previousData.workout_time).toLocaleDateString()}):
-                    </p>
-                    <p className="text-sm text-white/60">
-                      {exercise.previousData.full_reps}+{exercise.previousData.partial_reps} reps with {exercise.previousData.band_color} band
-                    </p>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => saveExercise(index)}
-                  disabled={exercise.saved}
-                  className={`w-full py-3 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                    exercise.saved
-                      ? 'bg-white text-orange-500 border border-orange-500 cursor-default focus:ring-orange-500'
-                      : 'bg-orange-500 hover:bg-orange-600 text-white focus:ring-orange-500'
-                  }`}
-                >
-                  <Save className="inline mr-2" size={16} aria-hidden="true" />
-                  {exercise.saved ? 'Saved!' : 'Save Exercise'}
-                </button>
-              </article>
-            ))}
+          <div className="mb-8 text-center">
+            <div className="bg-white/10 backdrop-blur-lg text-white border border-white/20 rounded-2xl p-6 inline-block">
+              <p className="text-lg">Week {todaysWorkout.week} • "Train to failure, not to a number"</p>
+            </div>
           </div>
+
+          <div className="text-center mb-8 space-y-4">
+            {CadenceButtonComponent}
+            <p id="cadence-description" className="text-sm opacity-60">
+              Audio metronome to help maintain proper exercise timing
+            </p>
+          </div>
+
+          <main>
+            <h2 className="sr-only">Exercise tracking cards</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {exercises.map((exercise, index) => (
+                <article key={exercise.name} className="bg-white/10 backdrop-blur-lg text-white border border-white/20 rounded-2xl p-6">
+                  <header className="flex justify-between items-start mb-4">
+                    <h3 className="text-xl font-semibold">{exercise.name}</h3>
+                    <a
+                      href={getExerciseInfoUrl(exercise.name)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 hover:bg-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      aria-label={`Learn more about ${exercise.name} on Jaquish Biomedical website`}
+                    >
+                      <Info size={16} aria-hidden="true" />
+                    </a>
+                  </header>
+                  
+                  <div className="mb-4">
+                    <label htmlFor={`band-${exercise.name}`} className="block text-sm font-medium mb-2 opacity-80">
+                      Band Color
+                    </label>
+                    <select
+                      id={`band-${exercise.name}`}
+                      value={exercise.band}
+                      onChange={(e) => updateExercise(index, 'band', e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {BAND_COLORS.map(color => (
+                        <option key={color} value={color} className="bg-gray-800 text-white">
+                          {color} Band
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <label htmlFor={`full-reps-${exercise.name}`} className="block text-sm font-medium mb-1 opacity-80">
+                        Full Reps
+                      </label>
+                      <input
+                        id={`full-reps-${exercise.name}`}
+                        type="number"
+                        value={exercise.fullReps || ''}
+                        onChange={(e) => updateExercise(index, 'fullReps', parseInt(e.target.value) || 0)}
+                        className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        min="0"
+                        max="999"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor={`partial-reps-${exercise.name}`} className="block text-sm font-medium mb-1 opacity-80">
+                        Partial Reps
+                      </label>
+                      <input
+                        id={`partial-reps-${exercise.name}`}
+                        type="number"
+                        value={exercise.partialReps || ''}
+                        onChange={(e) => updateExercise(index, 'partialReps', parseInt(e.target.value) || 0)}
+                        className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        min="0"
+                        max="999"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <label htmlFor={`notes-${exercise.name}`} className="block text-sm font-medium mb-1 opacity-80">
+                      Notes
+                    </label>
+                    <textarea
+                      id={`notes-${exercise.name}`}
+                      value={exercise.notes}
+                      onChange={(e) => updateExercise(index, 'notes', e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={2}
+                      placeholder="Add notes about form, difficulty, etc."
+                    />
+                  </div>
+
+                  {exercise.lastWorkout && (
+                    <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/10">
+                      <p className="text-sm text-white/80 mb-1">
+                        {exercise.lastWorkout}
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => saveExercise(index)}
+                    disabled={exercise.saved}
+                    className={`w-full py-3 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      exercise.saved
+                        ? 'bg-white text-orange-500 border border-orange-500 cursor-default focus:ring-orange-500'
+                        : 'bg-orange-500 hover:bg-orange-600 text-white focus:ring-orange-500'
+                    }`}
+                  >
+                    <Save className="inline mr-2" size={16} aria-hidden="true" />
+                    {exercise.saved ? 'Saved!' : 'Save Exercise'}
+                  </button>
+                </article>
+              ))}
+            </div>
+          </main>
         </main>
       </div>
     </div>
