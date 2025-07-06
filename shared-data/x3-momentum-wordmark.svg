@@ -1,0 +1,22 @@
+<svg width="400" height="80" viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .wordmark-text {
+        font-family: 'Gotham', 'Montserrat', 'Inter', sans-serif;
+        font-weight: 900;
+        font-size: 48px;
+        letter-spacing: -1px;
+        text-anchor: start;
+        dominant-baseline: central;
+      }
+      .x3-color { fill: #FF6B35; }
+      .momentum-color { fill: #D32F2F; }
+    </style>
+  </defs>
+  
+  <!-- X3 in Fire Orange -->
+  <text x="20" y="40" class="wordmark-text x3-color">X3</text>
+  
+  <!-- MOMENTUM in Ember Red -->
+  <text x="100" y="40" class="wordmark-text momentum-color">MOMENTUM</text>
+</svg>
