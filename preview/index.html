@@ -1,0 +1,186 @@
+<\!DOCTYPE html>
+<html>
+<head>
+    <title>X3 Momentum Pro - Brand Preview</title>
+    <style>
+        :root {
+            --fire-orange: #FF6B35;
+            --ember-red: #D32F2F;
+            --flame-gold: #FFC107;
+            --charcoal: #212121;
+            --pure-white: #FFFFFF;
+            --background-primary: #FAFAFA;
+            --text-primary: #212121;
+            --text-secondary: #666666;
+            --border-subtle: #E5E5E5;
+        }
+        body {
+            background: var(--background-primary);
+            color: var(--text-primary);
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .hero-banner {
+            background: linear-gradient(135deg, var(--ember-red) 0%, var(--fire-orange) 50%, var(--flame-gold) 100%);
+            color: var(--pure-white);
+            padding: 24px;
+            border-radius: 16px;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+        .brand-card {
+            background: var(--pure-white);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 20px;
+        }
+        .text-headline { font-size: 32px; font-weight: 700; line-height: 1.2; }
+        .text-subhead { font-size: 24px; font-weight: 600; line-height: 1.3; }
+        .text-body { font-size: 16px; font-weight: 400; line-height: 1.5; }
+        .brand-fire { color: var(--fire-orange); }
+        .brand-gold { color: var(--flame-gold); }
+        .text-secondary { color: var(--text-secondary); }
+        .btn-primary {
+            background: var(--fire-orange);
+            color: var(--pure-white);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-weight: 600;
+            margin: 8px;
+        }
+        .btn-secondary {
+            background: var(--pure-white);
+            color: var(--fire-orange);
+            border: 2px solid var(--fire-orange);
+            border-radius: 12px;
+            padding: 10px 22px;
+            font-weight: 600;
+            margin: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="hero-banner">
+        <h1 class="text-headline">🔥 X3 MOMENTUM</h1>
+        <p class="text-subhead">AI-Powered Resistance Band Tracking</p>
+    </div>
+    
+    <nav style="text-align: center; margin-bottom: 32px;">
+        <button class="btn-primary">🔥 Workout</button>
+        <button class="btn-secondary">📊 Stats</button>
+        <button class="btn-secondary">📅 Calendar</button>
+        <button class="btn-secondary">🎯 Goals</button>
+        <button class="btn-secondary">⚙️ Settings</button>
+    </nav>
+    
+    <div class="brand-card" style="text-align: center;">
+        <h1 class="text-headline">
+            Today's <span class="brand-fire">Pull</span> Workout
+        </h1>
+        <p class="text-body">Week <span class="brand-gold">6</span> • <em>"Train to failure, not to a number"</em></p>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="brand-card stat-card">
+            <div style="font-size: 32px; margin-bottom: 8px;">🔥</div>
+            <div style="font-size: 28px; font-weight: 700; margin-bottom: 4px;">7</div>
+            <div class="brand-gold" style="font-weight: 500;">Fire Streak</div>
+            <div class="text-secondary" style="font-size: 14px;">days</div>
+        </div>
+        <div class="brand-card stat-card">
+            <div style="font-size: 32px; margin-bottom: 8px;">📊</div>
+            <div style="font-size: 28px; font-weight: 700; margin-bottom: 4px;">65%</div>
+            <div class="brand-gold" style="font-weight: 500;">Week Progress</div>
+            <div class="text-secondary" style="font-size: 14px;">4/6 workouts</div>
+        </div>
+        <div class="brand-card stat-card">
+            <div style="font-size: 32px; margin-bottom: 8px;">🏆</div>
+            <div style="font-size: 28px; font-weight: 700; margin-bottom: 4px;">23</div>
+            <div class="brand-gold" style="font-weight: 500;">Total Workouts</div>
+            <div class="text-secondary" style="font-size: 14px;">this month</div>
+        </div>
+        <div class="brand-card stat-card">
+            <div style="font-size: 32px; margin-bottom: 8px;">📈</div>
+            <div style="font-size: 28px; font-weight: 700; margin-bottom: 4px;">+12%</div>
+            <div class="brand-gold" style="font-weight: 500;">Strength Gain</div>
+            <div class="text-secondary" style="font-size: 14px;">this month</div>
+        </div>
+    </div>
+    
+    <div class="brand-card" style="text-align: center;">
+        <h3 style="color: var(--fire-orange); margin-bottom: 16px;">🎵 Workout Cadence</h3>
+        <button class="btn-primary" style="width: 100%; padding: 16px;">
+            ▶️ Start Cadence (1s)
+        </button>
+        <p class="text-secondary" style="font-size: 14px; margin-top: 8px;">
+            Audio metronome to help maintain proper exercise timing
+        </p>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+        <div class="brand-card">
+            <h3 class="brand-fire" style="font-size: 18px; margin-bottom: 16px;">Deadlift</h3>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 12px; color: var(--text-secondary);">Band Color</label>
+                <select style="width: 100%; padding: 8px; border: 1px solid var(--border-subtle); border-radius: 8px;">
+                    <option>Dark Gray Band</option>
+                </select>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div>
+                    <label style="font-size: 12px; color: var(--text-secondary);">Full Reps</label>
+                    <input type="number" value="26" style="width: 100%; padding: 8px; border: 1px solid var(--border-subtle); border-radius: 8px; text-align: center;">
+                </div>
+                <div>
+                    <label style="font-size: 12px; color: var(--text-secondary);">Partial Reps</label>
+                    <input type="number" value="0" style="width: 100%; padding: 8px; border: 1px solid var(--border-subtle); border-radius: 8px; text-align: center;">
+                </div>
+            </div>
+            <button class="btn-primary" style="width: 100%;">💾 Save Exercise</button>
+        </div>
+        
+        <div class="brand-card">
+            <h3 class="brand-fire" style="font-size: 18px; margin-bottom: 16px;">Bent Row</h3>
+            <div style="margin-bottom: 12px;">
+                <label style="font-size: 12px; color: var(--text-secondary);">Band Color</label>
+                <select style="width: 100%; padding: 8px; border: 1px solid var(--border-subtle); border-radius: 8px;">
+                    <option>White Band</option>
+                </select>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div>
+                    <label style="font-size: 12px; color: var(--text-secondary);">Full Reps</label>
+                    <input type="number" value="27" style="width: 100%; padding: 8px; border: 1px solid var(--border-subtle); border-radius: 8px; text-align: center;">
+                </div>
+                <div>
+                    <label style="font-size: 12px; color: var(--text-secondary);">Partial Reps</label>
+                    <input type="number" value="3" style="width: 100%; padding: 8px; border: 1px solid var(--border-subtle); border-radius: 8px; text-align: center;">
+                </div>
+            </div>
+            <button style="background: white; color: #4CAF50; border: 2px solid #4CAF50; border-radius: 12px; padding: 10px 22px; width: 100%;">✅ Saved\!</button>
+        </div>
+    </div>
+    
+    <div class="brand-card" style="text-align: center; margin-top: 32px;">
+        <h2 class="brand-gold" style="margin-bottom: 8px;">Brand Transformation Complete\! 🎉</h2>
+        <p class="text-body text-secondary">
+            ✅ Fire theme colors • ✅ Bento grid layout • ✅ Material Design cards<br>
+            ✅ Typography system • ✅ Solid color design • ✅ Accessibility features
+        </p>
+    </div>
+</body>
+</html>

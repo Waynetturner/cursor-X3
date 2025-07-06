@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
-import { supabase, getTodaysWorkout, X3_EXERCISES } from '@/lib/supabase'
+import { supabase, getTodaysWorkout, getWorkoutForDate, X3_EXERCISES } from '@/lib/supabase'
 import { ChevronLeft, ChevronRight, Calendar, Flame, Dumbbell, Coffee, CheckCircle } from 'lucide-react'
 
 interface WorkoutDay {
@@ -91,7 +91,7 @@ export default function CalendarPage() {
     for (let i = startDayOfWeek - 1; i >= 0; i--) {
       const date = new Date(year, month - 1, prevMonth.getDate() - i)
       const dateStr = date.toISOString().split('T')[0]
-      const workout = getTodaysWorkout(userStartDate, dateStr)
+      const workout = getWorkoutForDate(userStartDate, dateStr)
       
       calendarDays.push({
         date: dateStr,
@@ -108,7 +108,7 @@ export default function CalendarPage() {
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day)
       const dateStr = date.toISOString().split('T')[0]
-      const workout = getTodaysWorkout(userStartDate, dateStr)
+      const workout = getWorkoutForDate(userStartDate, dateStr)
       const today = new Date().toISOString().split('T')[0]
       
       calendarDays.push({
@@ -127,7 +127,7 @@ export default function CalendarPage() {
     for (let day = 1; day <= remainingDays; day++) {
       const date = new Date(year, month + 1, day)
       const dateStr = date.toISOString().split('T')[0]
-      const workout = getTodaysWorkout(userStartDate, dateStr)
+      const workout = getWorkoutForDate(userStartDate, dateStr)
       
       calendarDays.push({
         date: dateStr,

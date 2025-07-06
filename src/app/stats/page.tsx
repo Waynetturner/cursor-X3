@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import AppLayout from '@/components/layout/AppLayout'
 import { supabase, getTodaysWorkout } from '@/lib/supabase'
-import { BarChart3, TrendingUp, Calendar, Target, Flame, Trophy } from 'lucide-react'
+import { BarChart3, TrendingUp, Calendar, Target, Flame, Trophy, Settings } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import X3MomentumWordmark from '@/components/X3MomentumWordmark'
 
 interface WorkoutStats {
   totalWorkouts: number
@@ -28,6 +29,19 @@ export default function StatsPage() {
   const [user, setUser] = useState<any>(null)
   const [stats, setStats] = useState<WorkoutStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  const navItems = [
+    { icon: <BarChart3 size={20} />, label: 'Stats', tooltip: 'Stats', route: '/stats' },
+    { icon: <Calendar size={20} />, label: 'Calendar', tooltip: 'Calendar', route: '/calendar' },
+    { icon: <Target size={20} />, label: 'Goals', tooltip: 'Goals', route: '/goals' },
+    { icon: <Settings size={20} />, label: 'Settings', tooltip: 'Settings', route: '/settings' },
+  ]
+
+  const signOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
 
   useEffect(() => {
     const getUser = async () => {
@@ -152,154 +166,190 @@ export default function StatsPage() {
 
   if (loading) {
     return (
-      <AppLayout title="Stats">
-        <div className="p-8">
-          <div className="brand-card text-gray-100 rounded-2xl p-8 text-center">
-            <h2 className="text-2xl font-bold brand-yellow mb-4">Loading Stats...</h2>
+      <div className="min-h-screen brand-gradient">
+        <div className="container mx-auto px-4 py-8">
+          <div className="hero-banner text-center mb-8">
+            <X3MomentumWordmark size="lg" className="mx-auto mb-4" />
+            <h2 className="text-subhead mb-2">AI-Powered Resistance Band Tracking</h2>
+          </div>
+          <div className="brand-card text-center">
+            <h2 className="text-subhead brand-gold mb-4">Loading Stats...</h2>
           </div>
         </div>
-      </AppLayout>
+      </div>
     )
   }
 
   if (!user) {
     return (
-      <AppLayout title="Stats">
-        <div className="p-8">
-          <div className="brand-card text-gray-100 rounded-2xl p-8 text-center">
-            <h2 className="text-2xl font-bold brand-yellow mb-4">Please Sign In</h2>
-            <p className="text-gray-300">Sign in to view your workout statistics</p>
+      <div className="min-h-screen brand-gradient">
+        <div className="container mx-auto px-4 py-8">
+          <div className="hero-banner text-center mb-8">
+            <X3MomentumWordmark size="lg" className="mx-auto mb-4" />
+            <h2 className="text-subhead mb-2">AI-Powered Resistance Band Tracking</h2>
+          </div>
+          <div className="brand-card text-center">
+            <h2 className="text-subhead brand-gold mb-4">Please Sign In</h2>
+            <p className="text-body text-secondary">Sign in to view your workout statistics</p>
           </div>
         </div>
-      </AppLayout>
+      </div>
     )
   }
 
   return (
-    <AppLayout title="Stats">
-      <div className="p-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-100">Workout <span className="brand-yellow">Statistics</span></h1>
-          <p className="text-gray-400 mt-2">Track your X3 progress and achievements</p>
-        </header>
+    <div className="min-h-screen brand-gradient">
+      <div className="container mx-auto px-4 py-8">
+        {/* Hero Banner - White background with fire orange wordmark */}
+        <div className="hero-banner text-center mb-8">
+          <X3MomentumWordmark size="lg" className="mx-auto mb-4" />
+          <h2 className="text-subhead mb-2 text-secondary">AI-Powered Resistance Band Tracking</h2>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex justify-center gap-4 mb-8 flex-wrap">
+          <button
+            onClick={() => router.push('/')}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <Flame size={20} />
+            <span>Workout</span>
+          </button>
+          {navItems.map((item) => (
+            <button
+              key={item.label}
+              onClick={() => router.push(item.route)}
+              className={item.label === 'Stats' ? 'btn-primary flex items-center gap-2' : 'btn-secondary flex items-center gap-2'}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          ))}
+          <button 
+            onClick={signOut} 
+            className="btn-secondary"
+          >
+            Sign Out
+          </button>
+        </nav>
+
+        {/* Page Header */}
+        <div className="brand-card text-center mb-8">
+          <h1 className="text-headline mb-2">
+            Workout <span className="brand-gold">Statistics</span>
+          </h1>
+          <p className="text-body text-secondary">Track your X3 progress and achievements</p>
+        </div>
         
         <main className="max-w-6xl mx-auto">
-          {/* Key Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="brand-card text-gray-100 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-yellow-400/20 rounded-xl flex items-center justify-center">
-                  <BarChart3 className="text-yellow-400" size={24} />
-                </div>
-                <span className="text-3xl font-bold brand-yellow">{stats?.totalWorkouts || 0}</span>
+          {/* Key Stats Bento Grid */}
+          <div className="stats-grid mb-8">
+            <div className="brand-card text-center">
+              <div className="flex items-center justify-center mb-4">
+                <BarChart3 className="brand-fire" size={32} />
               </div>
-              <h3 className="font-semibold text-yellow-400">Total Workouts</h3>
-              <p className="text-sm text-gray-400">Sessions completed</p>
+              <div className="text-3xl font-bold text-primary mb-2">{stats?.totalWorkouts || 0}</div>
+              <div className="text-body-large brand-gold font-medium mb-1">Total Workouts</div>
+              <div className="text-body-small text-secondary">Sessions completed</div>
             </div>
 
-            <div className="brand-card text-gray-100 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-orange-400/20 rounded-xl flex items-center justify-center">
-                  <Calendar className="text-orange-400" size={24} />
-                </div>
-                <span className="text-3xl font-bold text-orange-400">{stats?.currentWeek || 1}</span>
+            <div className="brand-card text-center">
+              <div className="flex items-center justify-center mb-4">
+                <Calendar className="brand-fire" size={32} />
               </div>
-              <h3 className="font-semibold text-orange-400">Current Week</h3>
-              <p className="text-sm text-gray-400">X3 program week</p>
+              <div className="text-3xl font-bold text-primary mb-2">{stats?.currentWeek || 1}</div>
+              <div className="text-body-large brand-gold font-medium mb-1">Current Week</div>
+              <div className="text-body-small text-secondary">X3 program week</div>
             </div>
 
-            <div className="brand-card text-gray-100 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-green-400/20 rounded-xl flex items-center justify-center">
-                  <Flame className="text-green-400" size={24} />
-                </div>
-                <span className="text-3xl font-bold text-green-400">{stats?.currentStreak || 0}</span>
+            <div className="brand-card text-center">
+              <div className="flex items-center justify-center mb-4">
+                <Flame className="brand-fire" size={32} />
               </div>
-              <h3 className="font-semibold text-green-400">Current Streak</h3>
-              <p className="text-sm text-gray-400">Days in a row</p>
+              <div className="text-3xl font-bold text-primary mb-2">{stats?.currentStreak || 0}</div>
+              <div className="text-body-large brand-gold font-medium mb-1">Fire Streak</div>
+              <div className="text-body-small text-secondary">Days in a row</div>
             </div>
 
-            <div className="brand-card text-gray-100 rounded-2xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-purple-400/20 rounded-xl flex items-center justify-center">
-                  <Trophy className="text-purple-400" size={24} />
-                </div>
-                <span className="text-3xl font-bold text-purple-400">{stats?.longestStreak || 0}</span>
+            <div className="brand-card text-center">
+              <div className="flex items-center justify-center mb-4">
+                <Trophy className="brand-gold" size={32} />
               </div>
-              <h3 className="font-semibold text-purple-400">Best Streak</h3>
-              <p className="text-sm text-gray-400">Personal record</p>
+              <div className="text-3xl font-bold text-primary mb-2">{stats?.longestStreak || 0}</div>
+              <div className="text-body-large brand-gold font-medium mb-1">Best Streak</div>
+              <div className="text-body-small text-secondary">Personal record</div>
             </div>
           </div>
 
           {/* Detailed Stats */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Workout Breakdown */}
-            <div className="brand-card text-gray-100 rounded-2xl p-6">
-              <h2 className="text-xl font-bold brand-yellow mb-4">Workout Breakdown</h2>
+            <div className="brand-card">
+              <h2 className="text-body-large font-bold brand-gold mb-4">Workout Breakdown</h2>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-300">Push Workouts:</span>
+                  <span className="text-secondary">Push Workouts:</span>
                   <span className="font-bold brand-fire">{stats?.workoutsByType.Push || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-300">Pull Workouts:</span>
+                  <span className="text-secondary">Pull Workouts:</span>
                   <span className="font-bold brand-ember">{stats?.workoutsByType.Pull || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-300">Total Exercises:</span>
-                  <span className="font-bold text-gray-100">{stats?.totalExercises || 0}</span>
+                  <span className="text-secondary">Total Exercises:</span>
+                  <span className="font-bold text-primary">{stats?.totalExercises || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-300">Avg Reps/Exercise:</span>
-                  <span className="font-bold text-gray-100">{stats?.averageRepsPerExercise || 0}</span>
+                  <span className="text-secondary">Avg Reps/Exercise:</span>
+                  <span className="font-bold text-primary">{stats?.averageRepsPerExercise || 0}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-300">Most Used Band:</span>
-                  <span className="font-bold brand-yellow">{stats?.mostUsedBand || 'White'}</span>
+                  <span className="text-secondary">Most Used Band:</span>
+                  <span className="font-bold brand-gold">{stats?.mostUsedBand || 'White'}</span>
                 </div>
               </div>
             </div>
 
             {/* Recent Activity */}
-            <div className="brand-card text-gray-100 rounded-2xl p-6">
-              <h2 className="text-xl font-bold brand-yellow mb-4">Recent Activity</h2>
+            <div className="brand-card">
+              <h2 className="text-body-large font-bold brand-gold mb-4">Recent Activity</h2>
               <div className="space-y-3">
                 {stats?.recentWorkouts.map((workout, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 bg-gray-700/30 rounded-lg">
+                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-subtle">
                     <div>
-                      <p className="font-medium text-gray-100">
+                      <p className="font-medium text-primary">
                         {workout.type} Workout
                       </p>
-                      <p className="text-sm text-gray-400">
+                      <p className="text-body-small text-secondary">
                         {new Date(workout.date).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold brand-yellow">{workout.exercises}</p>
-                      <p className="text-xs text-gray-400">exercises</p>
+                      <p className="font-bold brand-gold">{workout.exercises}</p>
+                      <p className="text-label text-secondary">exercises</p>
                     </div>
                   </div>
                 )) || (
-                  <p className="text-gray-400 italic">No recent workouts found</p>
+                  <p className="text-secondary italic">No recent workouts found</p>
                 )}
               </div>
             </div>
           </div>
 
           {/* Motivational Message */}
-          <div className="mt-8 brand-card text-gray-100 rounded-2xl p-6 text-center">
-            <h2 className="text-xl font-bold brand-yellow mb-2">Keep Going!</h2>
-            <p className="text-gray-300">
+          <div className="mt-8 brand-card text-center">
+            <h2 className="text-body-large font-bold brand-gold mb-2">Keep Going!</h2>
+            <p className="text-body text-secondary">
               {stats?.totalWorkouts === 0 
                 ? "Start your first workout to see your progress here!"
                 : stats?.currentStreak === 0
                 ? "Get back on track - consistency is key to X3 success!"
-                : `Great job maintaining a ${stats.currentStreak}-day streak! Keep building momentum.`
+                : `Great job maintaining a ${stats?.currentStreak || 0}-day streak! Keep building momentum.`
               }
             </p>
           </div>
         </main>
       </div>
-    </AppLayout>
+    </div>
   )
 }

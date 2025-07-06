@@ -23,12 +23,34 @@ export function getTodaysWorkout(startDate: string) {
   // Week 1-4: Push/Pull/Rest/Push/Pull/Rest/Rest
   // Week 5+: Push/Pull/Push/Pull/Push/Pull/Rest
   const schedule = week <= 4 
-    ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest']
-    : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest']
+    ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
+    : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
   
   return {
     week,
-    workoutType: schedule[dayInWeek],
+    workoutType: schedule[dayInWeek] as 'Push' | 'Pull' | 'Rest',
+    dayInWeek
+  }
+}
+
+// Calculate workout for a specific date
+export function getWorkoutForDate(startDate: string, targetDate: string) {
+  const start = new Date(startDate)
+  const target = new Date(targetDate)
+  const daysSinceStart = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  
+  const week = Math.floor(daysSinceStart / 7) + 1
+  const dayInWeek = daysSinceStart % 7
+  
+  // Week 1-4: Push/Pull/Rest/Push/Pull/Rest/Rest
+  // Week 5+: Push/Pull/Push/Pull/Push/Pull/Rest
+  const schedule = week <= 4 
+    ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
+    : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
+  
+  return {
+    week,
+    workoutType: schedule[dayInWeek] as 'Push' | 'Pull' | 'Rest',
     dayInWeek
   }
 }

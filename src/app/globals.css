@@ -2,18 +2,45 @@
 @import "tailwindcss";
 
 :root {
-  /* X3 Momentum Pro Brand Colors */
+  /* X3 Momentum Pro Brand Colors - v2.0 */
   --fire-orange: #FF6B35;
   --ember-red: #D32F2F;
-  --momentum-yellow: #FDE047;
-  --momentum-yellow-200: #FEF3C7;
-  --momentum-yellow-300: #FCD34D;
-  --dark-bg: #111827;
-  --dark-card: #1F2937;
-  --dark-border: #374151;
+  --flame-gold: #FFC107;
   
-  --background: var(--dark-bg);
-  --foreground: #F3F4F6;
+  /* Supporting Colors */
+  --charcoal: #212121;
+  --dark-gray: #303030;
+  --pure-white: #FFFFFF;
+  --success-green: #4CAF50;
+  --warning-amber: #FF9800;
+  
+  /* Background & Text */
+  --background-primary: #FAFAFA;
+  --background-card: #FFFFFF;
+  --border-subtle: #E5E5E5;
+  --text-primary: #212121;
+  --text-secondary: #666666;
+  
+  /* Spacing */
+  --space-micro: 4px;
+  --space-small: 8px;
+  --space-medium: 16px;
+  --space-large: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  
+  /* Border Radius */
+  --radius-tight: 4px;
+  --radius-standard: 8px;
+  --radius-medium: 12px;
+  --radius-large: 16px;
+  --radius-xl: 20px;
+  
+  /* Typography */
+  --font-family: 'Gotham', 'Montserrat', 'Inter', sans-serif;
+  
+  --background: var(--background-primary);
+  --foreground: var(--text-primary);
 }
 
 @theme inline {
@@ -24,32 +51,45 @@
 }
 
 body {
-  background: linear-gradient(135deg, var(--ember-red) 0%, var(--fire-orange) 50%, var(--momentum-yellow) 100%) no-repeat;
-  background-size: 100% 100%;
-  background-attachment: fixed;
-  color: #333;
-  font-family: var(--font-sans);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family);
   min-height: 100vh;
 }
 
-.brand-gradient {
-  background: linear-gradient(135deg, var(--ember-red) 0%, var(--fire-orange) 50%, var(--momentum-yellow) 100%) no-repeat;
-  background-size: 100% 100%;
-  background-attachment: fixed;
-}
-
+/* Material Design Cards - Solid white backgrounds only */
 .brand-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  color: #333;
+  background: var(--pure-white);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-large);
+  padding: var(--space-large);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
 }
 
-.dark .brand-card {
-  background: #1f2937;
-  border: 1px solid #374151;
-  color: white;
+.brand-card:hover {
+  border-color: var(--fire-orange);
+  transform: translateY(-1px);
 }
 
+/* Clean page background - no gradients */
+.brand-gradient {
+  background: var(--background-primary);
+}
+
+/* Hero banner - WHITE background with fire orange wordmark */
+.hero-banner {
+  background: var(--pure-white);
+  color: var(--text-primary);
+  padding: var(--space-large);
+  border-radius: var(--radius-large);
+  margin-bottom: var(--space-xl);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Brand Color Utilities */
 .brand-orange {
   color: var(--fire-orange);
 }
@@ -60,4 +100,119 @@ body {
 
 .brand-ember {
   color: var(--ember-red);
+}
+
+.brand-gold {
+  color: var(--flame-gold);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.border-subtle {
+  border-color: var(--border-subtle);
+}
+
+/* Typography System */
+.text-headline {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.text-subhead {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.text-body-large {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.text-body {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.text-body-small {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.text-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.3;
+}
+
+/* Bento Grid System */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-medium);
+}
+
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Button System */
+.btn-primary {
+  background: var(--fire-orange);
+  color: var(--pure-white);
+  border: none;
+  border-radius: var(--radius-medium);
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: #E55A2B;
+  transform: scale(1.02);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background: var(--background-card);
+  color: var(--fire-orange);
+  border: 2px solid var(--fire-orange);
+  border-radius: var(--radius-medium);
+  padding: 10px 22px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 107, 53, 0.1);
+}
+
+.btn-success {
+  background: var(--background-card);
+  color: var(--success-green);
+  border: 2px solid var(--success-green);
+  border-radius: var(--radius-medium);
+  padding: 10px 22px;
+  font-weight: 600;
+  cursor: pointer;
 }
