@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkout } from '@/lib/supabase'
-import { announceToScreenReader, generateId } from '@/lib/accessibility'
-import { Play, Pause, Save, Info, Settings, BarChart3, Calendar, Flame, Target, Trophy, TrendingUp, Sun, Moon, Monitor, Ruler } from 'lucide-react'
+import { announceToScreenReader } from '@/lib/accessibility'
+import { Play, Pause, Save, Info, Settings, BarChart3, Calendar, Flame, Target, Trophy, TrendingUp, Sun, Moon, Monitor } from 'lucide-react'
 import Link from 'next/link'
 import React from 'react'
 import { useRouter } from 'next/navigation'
+import X3MomentumWordmark from '@/components/X3MomentumWordmark'
 
 // Helper to get local ISO string with timezone offset
 function getLocalISODateTime() {
@@ -53,7 +54,11 @@ function CadenceButton({ cadenceActive, setCadenceActive }: { cadenceActive: boo
   return (
     <button
       onClick={() => setCadenceActive((prev) => !prev)}
-      className="w-full px-8 py-4 rounded-xl font-semibold flex items-center justify-center space-x-3 transition-all duration-200 shadow-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35] focus:ring-offset-2 bg-[#FF6B35] text-white transform hover:scale-105"
+      className={`px-8 py-4 rounded-xl font-bold flex items-center justify-center space-x-3 transition-all duration-200 shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transform hover:scale-105 ${
+        cadenceActive 
+          ? 'bg-red-500 hover:bg-red-600 text-white' 
+          : 'bg-orange-500 hover:bg-orange-600 text-white'
+      }`}
       aria-pressed={cadenceActive}
       aria-label={cadenceActive ? 'Stop Cadence' : 'Start Cadence'}
     >
@@ -199,35 +204,37 @@ export default function HomePage() {
   }, [user, todaysWorkout])
 
   // Test database connection and table structure
+
   const testDatabaseConnection = async () => {
     if (!user) return
     
-    console.log('🔍 Testing database connection...')
-    
-    // Test 1: Check if workout_exercises table exists and is accessible
-    const { data: tableTest, error: tableError } = await supabase
-      .from('workout_exercises')
-      .select('*')
-      .limit(1)
-    
-    console.log('📋 Table test result:', tableTest)
-    console.log('❌ Table test error:', tableError)
-    
-    // Test 2: Check if workouts table exists (this might be the old table)
-    const { data: workoutsTest, error: workoutsError } = await supabase
-      .from('workouts')
-      .select('*')
-      .limit(1)
-    
-    console.log('📋 Workouts table test result:', workoutsTest)
-    console.log('❌ Workouts table test error:', workoutsError)
+    try {
+      console.log('🔍 Testing database connection...')
+      
+      // Test 1: Check if workout_exercises table exists and is accessible
+      const { data: tableTest, error: tableError } = await supabase
+        .from('workout_exercises')
+        .select('*')
+        .limit(1)
+      
+      console.log('📋 Table test result:', tableTest)
+      console.log('❌ Table test error:', tableError)
+      
+      // Test 2: Check user profile table
+      const { data: profileTest, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .limit(1)
+      
+      console.log('📋 Profile table test result:', profileTest)
+      console.log('❌ Profile table test error:', profileError)
     
     // Test 3: Check RLS status by trying to insert without auth context
     console.log('🔒 Testing RLS policies...')
     const { data: rlsTest, error: rlsError } = await supabase
       .from('workout_exercises')
       .insert({
-        user_id: 'test-user-id',
+        user_id: '00000000-0000-0000-0000-000000000000',
         workout_local_date_time: new Date().toISOString(),
         workout_type: 'Push',
         week_number: 1,
@@ -272,6 +279,9 @@ export default function HomePage() {
         .eq('user_id', user.id)
       
       console.log('🧹 Cleanup error:', deleteError)
+    }
+    } catch (error) {
+      console.error('❌ Test DB function crashed:', error)
     }
   }
 
@@ -431,21 +441,22 @@ export default function HomePage() {
       console.log('📋 Recent records in workout_exercises:', checkData)
       console.log('❌ Check error:', checkError)
       
-      // Also check if anything was added to the workouts table
-      const { data: workoutsCheck, error: workoutsCheckError } = await supabase
-        .from('workouts')
+      // Also check user profile
+      const { data: profileCheck, error: profileCheckError } = await supabase
+        .from('profiles')
         .select('*')
         .eq('user_id', user.id)
-        .limit(5)
+        .limit(1)
       
-      console.log('📋 Recent records in workouts table:', workoutsCheck)
-      console.log('❌ Workouts check error:', workoutsCheckError)
+      console.log('📋 User profile:', profileCheck)
+      console.log('❌ Profile check error:', profileCheckError)
       
-      // Check if there are any database triggers by looking at the timestamps
-      if (checkData && checkData.length > 0 && workoutsCheck && workoutsCheck.length > 0) {
-        console.log('🕐 Timestamp comparison:')
-        console.log('   workout_exercises created_at:', checkData[0].created_at)
-        console.log('   workouts created_at:', workoutsCheck[0].created_at)
+      // Check the most recent workout data
+      if (checkData && checkData.length > 0) {
+        console.log('🕐 Most recent workout:')
+        console.log('  Exercise:', checkData[0].exercise_name)
+        console.log('  Date:', checkData[0].workout_local_date_time)
+        console.log('  Type:', checkData[0].workout_type)
       }
     }
 
@@ -543,23 +554,40 @@ export default function HomePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#D32F2F] via-[#FF6B35] to-[#FFC107]">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="bg-white/10 backdrop-blur-lg text-white border border-white/20 rounded-2xl p-8 text-center max-w-md mx-4">
-            <h1 className="text-4xl font-bold mb-4">X3 Tracker</h1>
-            <p className="mb-6 opacity-80">Track your X3 workouts with AI coaching</p>
+      <div className="min-h-screen brand-gradient">
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="brand-card rounded-2xl p-8 text-center max-w-md mx-4 shadow-2xl">
+            <div className="mb-6">
+              <h1 className="mb-4">
+                <X3MomentumWordmark size="md" className="mx-auto" />
+              </h1>
+            </div>
+            <h2 className="text-xl mb-2 text-gray-900 font-semibold">AI-Powered X3 Resistance Band Tracker</h2>
+            <p className="mb-4 text-gray-600 italic">Motivation. Progress. Results.</p>
             
-
-            
-            
-            <div className="text-white/60 mb-4">or</div>
+            <div className="mb-6 text-sm text-gray-700 space-y-2">
+              <div className="flex items-center justify-center space-x-2">
+                <span className="text-orange-500">🤖</span>
+                <span>Smart AI coaching & insights</span>
+              </div>
+              <div className="flex items-center justify-center space-x-2">
+                <span className="text-orange-500">📊</span>
+                <span>Advanced progress analytics</span>
+              </div>
+              <div className="flex items-center justify-center space-x-2">
+                <span className="text-orange-500">🎯</span>
+                <span>Personalized goal tracking</span>
+              </div>
+            </div>
             
             <button 
               onClick={signIn}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200 shadow-lg"
             >
               Sign In with Google
             </button>
+            
+            <p className="text-xs text-gray-500 mt-4">Get started with your X3 journey today</p>
           </div>
         </div>
       </div>
@@ -568,15 +596,15 @@ export default function HomePage() {
 
   if (!todaysWorkout) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#D32F2F] via-[#FF6B35] to-[#FFC107]">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="bg-white/10 backdrop-blur-lg text-white border border-white/20 rounded-2xl p-8 text-center max-w-md mx-4">
-            <h2 className="text-2xl font-bold mb-4">Loading...</h2>
+      <div className="min-h-screen brand-gradient">
+        <div className="flex items-center justify-center min-h-screen p-4">
+          <div className="brand-card text-gray-100 rounded-2xl p-8 text-center max-w-md mx-4">
+            <h2 className="text-2xl font-bold mb-4 brand-yellow">Loading...</h2>
             <div className="text-lg mb-4" role="status" aria-live="polite">
               {user ? 'Loading your workout...' : 'Please sign in to continue'}
             </div>
             {user && (
-              <div className="text-sm opacity-60">
+              <div className="text-sm text-gray-400">
                 <p>User ID: {user.id}</p>
                 <p>Email: {user.email}</p>
                 <p>Exercises loaded: {exercises.length}</p>
@@ -590,24 +618,24 @@ export default function HomePage() {
 
  if (todaysWorkout.workoutType === 'Rest') {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#D32F2F] via-[#FF6B35] to-[#FFC107]">
+    <div className="min-h-screen brand-gradient">
       <div className="container mx-auto px-4 py-8">
         <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">X3 Tracker</h1>
+          <X3MomentumWordmark size="sm" />
           <button 
             onClick={signOut} 
-            className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+            className="text-gray-300 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 rounded px-3 py-2 transition-colors"
           >
             Sign Out
           </button>
         </header>
         <main>
           <div className="max-w-2xl mx-auto text-center">
-            <div className="bg-white/10 backdrop-blur-lg text-white border border-white/20 rounded-2xl p-8">
-              <h2 className="text-4xl font-bold mb-4">Rest Day</h2>
-              <p className="text-lg mb-8 opacity-80">Focus on recovery, hydration, and nutrition.</p>
+            <div className="brand-card text-gray-100 rounded-2xl p-8">
+              <h2 className="text-4xl font-bold mb-4 brand-yellow">Rest Day</h2>
+              <p className="text-lg mb-8 text-gray-300">Focus on recovery, hydration, and nutrition.</p>
               <div className="text-6xl mb-8" role="img" aria-label="Rest day relaxation emoji">🛋️</div>
-              <p className="opacity-60">Week {todaysWorkout.week} • Day {todaysWorkout.dayInWeek + 1}</p>
+              <p className="text-gray-400">Week {todaysWorkout.week} • Day {todaysWorkout.dayInWeek + 1}</p>
             </div>
           </div>
         </main>
@@ -624,55 +652,64 @@ export default function HomePage() {
   // Responsive navigation: sidebar on desktop, top bar on mobile
   const navItems = [
     { icon: <BarChart3 size={20} />, label: 'Stats', tooltip: 'Stats', route: '/stats' },
-    { icon: <Ruler size={20} />, label: 'Measurements', tooltip: 'Body Measurements', route: '/measurements' },
     { icon: <Calendar size={20} />, label: 'Calendar', tooltip: 'Calendar', route: '/calendar' },
     { icon: <Target size={20} />, label: 'Goals', tooltip: 'Goals', route: '/goals' },
     { icon: <Settings size={20} />, label: 'Settings', tooltip: 'Settings', route: '/settings', highlight: true },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#D32F2F] via-[#FF6B35] to-[#FFC107]">
+    <div className="min-h-screen brand-gradient">
       <div className="flex md:flex-row flex-col h-screen">
-        {/* Navigation: sidebar on desktop, top bar on mobile */}
-        <nav className="md:w-20 w-full md:h-full h-16 bg-gradient-to-b md:bg-gradient-to-b bg-gradient-to-r from-[#D32F2F] via-[#FF6B35] to-[#FFC107] flex md:flex-col flex-row items-center justify-center md:py-6 md:space-y-4 space-x-4 md:space-x-0 shadow-lg z-10">
+        {/* Top header with wordmark on mobile */}
+        <div className="md:hidden w-full bg-gray-800/90 backdrop-blur-lg border-b border-gray-600 p-4 flex items-center justify-center">
+          <X3MomentumWordmark size="sm" />
+        </div>
+        
+        {/* Navigation: sidebar on desktop, bottom bar on mobile */}
+        <nav className="md:w-20 w-full md:h-full h-16 bg-gray-800/90 backdrop-blur-lg flex md:flex-col flex-row items-center justify-center md:py-6 md:space-y-4 space-x-4 md:space-x-0 shadow-lg z-10 border-r border-gray-600 md:border-r md:border-b-0 border-b order-2 md:order-1">
+          {/* Desktop wordmark */}
+          <div className="hidden md:block mb-4">
+            <X3MomentumWordmark size="sm" />
+          </div>
+          
           {/* Home/Dashboard button (Flame) */}
           <button
             onClick={() => router.push('/')}
-            className="w-12 h-12 bg-white bg-opacity-40 rounded-xl flex flex-col items-center justify-center text-[#D32F2F] cursor-pointer hover:bg-opacity-60 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#FFC107] drop-shadow-md"
+            className="w-12 h-12 bg-yellow-400/20 hover:bg-yellow-400/30 rounded-xl flex flex-col items-center justify-center text-yellow-400 cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-lg"
             title="Dashboard"
             aria-label="Dashboard"
           >
-            <Flame size={28} />
-            <span className="text-xs mt-1 hidden md:block">Home</span>
+            <Flame size={24} />
+            <span className="text-xs mt-1 hidden md:block font-medium">Home</span>
           </button>
           {navItems.map((item, idx) => (
             <button
               key={item.label}
               onClick={() => router.push(item.route)}
-              className={`w-12 h-12 bg-white bg-opacity-40 rounded-xl flex flex-col items-center justify-center text-[#D32F2F] cursor-pointer hover:bg-opacity-60 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#FFC107] drop-shadow-md ${item.highlight ? 'border-2 border-[#FFC107] text-[#FFC107] font-bold' : ''}`}
+              className="w-12 h-12 bg-gray-700/50 hover:bg-gray-600/50 rounded-xl flex flex-col items-center justify-center text-gray-300 hover:text-yellow-400 cursor-pointer transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-400 shadow-lg"
               title={item.tooltip}
               aria-label={item.label}
             >
               {item.icon}
-              <span className="text-xs mt-1 hidden md:block">{item.label}</span>
+              <span className="text-xs mt-1 hidden md:block font-medium">{item.label}</span>
             </button>
           ))}
         </nav>
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-8 order-1 md:order-2">
           <header className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">
-              Today's {todaysWorkout.workoutType} Workout
+            <h1 className="text-3xl font-bold text-gray-100">
+              Today's <span className="brand-yellow">{todaysWorkout.workoutType}</span> Workout
             </h1>
             <div className="flex gap-2">
               <button 
                 onClick={testDatabaseConnection}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="bg-gray-700 hover:bg-gray-600 text-gray-100 px-3 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-colors"
               >
                 Test DB
               </button>
               <button 
                 onClick={signOut} 
-                className="hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+                className="text-gray-300 hover:text-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-400 rounded px-3 py-2 transition-colors"
               >
                 Sign Out
               </button>
@@ -680,14 +717,14 @@ export default function HomePage() {
           </header>
 
           <div className="mb-8 text-center">
-            <div className="bg-white/10 backdrop-blur-lg text-white border border-white/20 rounded-2xl p-6 inline-block">
-              <p className="text-lg">Week {todaysWorkout.week} • "Train to failure, not to a number"</p>
+            <div className="brand-card text-gray-100 rounded-2xl p-6 inline-block">
+              <p className="text-lg">Week <span className="brand-yellow font-bold">{todaysWorkout.week}</span> • <span className="italic text-gray-300">"Train to failure, not to a number"</span></p>
             </div>
           </div>
 
           <div className="text-center mb-8 space-y-4">
             {CadenceButtonComponent}
-            <p id="cadence-description" className="text-sm opacity-60">
+            <p id="cadence-description" className="text-sm text-gray-400">
               Audio metronome to help maintain proper exercise timing
             </p>
           </div>
@@ -696,14 +733,14 @@ export default function HomePage() {
             <h2 className="sr-only">Exercise tracking cards</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {exercises.map((exercise, index) => (
-                <article key={exercise.name} className="bg-white text-gray-800 border border-gray-200 rounded-2xl p-6 shadow-lg">
+                <article key={exercise.name} className="brand-card rounded-2xl p-6 shadow-lg hover:shadow-xl transition-shadow">
                   <header className="flex justify-between items-start mb-4">
-                    <h3 className="text-xl font-semibold text-gray-800">{exercise.name}</h3>
+                    <h3 className="text-xl font-semibold text-orange-600">{exercise.name}</h3>
                     <a
                       href={getExerciseInfoUrl(exercise.name)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="p-2 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600 hover:text-gray-800"
+                      className="p-2 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-500 hover:text-orange-600 transition-colors"
                       aria-label={`Learn more about ${exercise.name} on Jaquish Biomedical website`}
                     >
                       <Info size={16} aria-hidden="true" />
@@ -718,10 +755,10 @@ export default function HomePage() {
                       id={`band-${exercise.name}`}
                       value={exercise.band}
                       onChange={(e) => updateExercise(index, 'band', e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
+                      className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900"
                     >
                       {BAND_COLORS.map(color => (
-                        <option key={color} value={color} className="bg-white text-gray-800">
+                        <option key={color} value={color} className="bg-white text-gray-900">
                           {color} Band
                         </option>
                       ))}
@@ -738,7 +775,7 @@ export default function HomePage() {
                         type="number"
                         value={exercise.fullReps || ''}
                         onChange={(e) => updateExercise(index, 'fullReps', parseInt(e.target.value) || 0)}
-                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
+                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900"
                         min="0"
                         max="999"
                       />
@@ -752,7 +789,7 @@ export default function HomePage() {
                         type="number"
                         value={exercise.partialReps || ''}
                         onChange={(e) => updateExercise(index, 'partialReps', parseInt(e.target.value) || 0)}
-                        className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
+                        className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900"
                         min="0"
                         max="999"
                       />
@@ -767,7 +804,7 @@ export default function HomePage() {
                       id={`notes-${exercise.name}`}
                       value={exercise.notes}
                       onChange={(e) => updateExercise(index, 'notes', e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
+                      className="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 placeholder-gray-500"
                       rows={2}
                       placeholder="Add notes about form, difficulty, or questions for the AI coach..."
                     />
@@ -789,10 +826,10 @@ export default function HomePage() {
                   <button
                     onClick={() => saveExercise(index)}
                     disabled={exercise.saved}
-                    className={`w-full py-3 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    className={`w-full py-3 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ${
                       exercise.saved
-                        ? 'bg-white text-orange-500 border border-orange-500 cursor-default focus:ring-orange-500'
-                        : 'bg-orange-500 hover:bg-orange-600 text-white focus:ring-orange-500'
+                        ? 'bg-green-600 text-white cursor-default focus:ring-green-500 shadow-lg'
+                        : 'bg-orange-500 hover:bg-orange-600 text-white focus:ring-orange-500 shadow-lg hover:shadow-xl transform hover:scale-105'
                     }`}
                   >
                     <Save className="inline mr-2" size={16} aria-hidden="true" />

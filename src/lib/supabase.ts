@@ -22,7 +22,7 @@ export function getTodaysWorkout(startDate: string) {
   
   // Week 1-4: Push/Pull/Rest/Push/Pull/Rest/Rest
   // Week 5+: Push/Pull/Push/Pull/Push/Pull/Rest
-  let schedule = week <= 4 
+  const schedule = week <= 4 
     ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest']
     : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest']
   

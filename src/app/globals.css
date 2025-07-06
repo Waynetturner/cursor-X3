@@ -1,26 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* X3 Momentum Pro Brand Colors */
+  --fire-orange: #FF6B35;
+  --ember-red: #D32F2F;
+  --momentum-yellow: #FDE047;
+  --momentum-yellow-200: #FEF3C7;
+  --momentum-yellow-300: #FCD34D;
+  --dark-bg: #111827;
+  --dark-card: #1F2937;
+  --dark-border: #374151;
+  
+  --background: var(--dark-bg);
+  --foreground: #F3F4F6;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: linear-gradient(135deg, var(--ember-red) 0%, var(--fire-orange) 50%, var(--momentum-yellow) 100%) no-repeat;
+  background-size: 100% 100%;
+  background-attachment: fixed;
+  color: #333;
+  font-family: var(--font-sans);
+  min-height: 100vh;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.brand-gradient {
+  background: linear-gradient(135deg, var(--ember-red) 0%, var(--fire-orange) 50%, var(--momentum-yellow) 100%) no-repeat;
+  background-size: 100% 100%;
+  background-attachment: fixed;
+}
+
+.brand-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  color: #333;
+}
+
+.dark .brand-card {
+  background: #1f2937;
+  border: 1px solid #374151;
+  color: white;
+}
+
+.brand-orange {
+  color: var(--fire-orange);
+}
+
+.brand-fire {
+  color: var(--fire-orange);
+}
+
+.brand-ember {
+  color: var(--ember-red);
 }
