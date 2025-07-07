@@ -185,7 +185,11 @@ export default function HomePage() {
           // If profile doesn't exist, create one with today's date
           if (profileError.code === 'PGRST116') {
             console.log('🆕 Creating new profile with today as start date...')
-            const today = new Date().toISOString().split('T')[0]
+            // Use local date to avoid timezone issues
+            const today = (() => {
+              const now = new Date();
+              return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            })()
             const { error: insertError } = await supabase
               .from('profiles')
               .insert({

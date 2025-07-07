@@ -63,12 +63,8 @@ export default function CalendarPage() {
       if (exercises) {
         const completed = new Set(
           exercises.map(e => {
-            // Convert stored timestamp to local date properly
-            const date = new Date(e.workout_local_date_time);
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
+            // Extract date portion directly from stored timestamp to avoid timezone conversion
+            return e.workout_local_date_time.split('T')[0];
           })
         )
         setCompletedWorkouts(completed)

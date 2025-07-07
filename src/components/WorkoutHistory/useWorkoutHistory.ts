@@ -7,14 +7,11 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Helper function to convert stored datetime to local date string
-  // Handles DST transitions automatically
+  // Helper function to extract date portion from stored timestamp
+  // Since workout_local_date_time already stores in correct timezone, just extract date part
   const getLocalDateFromStoredTime = (storedTimestamp: string): string => {
-    const date = new Date(storedTimestamp); // JavaScript automatically converts to local time
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    // Extract date portion directly without conversion to avoid timezone shifts
+    return storedTimestamp.split('T')[0];
   };
 
   const getDateFilter = (range: TimeRange): string | null => {
