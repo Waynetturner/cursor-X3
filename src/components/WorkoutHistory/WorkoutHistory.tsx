@@ -19,10 +19,10 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
 
   // Refetch when refreshTrigger changes
   useEffect(() => {
-    if (refreshTrigger !== undefined) {
+    if (refreshTrigger !== undefined && refreshTrigger > 0) {
       refetch();
     }
-  }, [refreshTrigger, refetch]);
+  }, [refreshTrigger]);
 
   const handleRangeChange = (range: TimeRange) => {
     setSelectedRange(range);

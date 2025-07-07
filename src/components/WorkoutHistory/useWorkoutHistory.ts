@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, X3_EXERCISES } from '@/lib/supabase';
 import { TimeRange, Workout, UseWorkoutHistoryReturn } from './types';
 
 export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): UseWorkoutHistoryReturn => {
@@ -34,6 +34,8 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
   };
 
   const fetchWorkouts = useCallback(async () => {
+    if (isLoading) return; // Prevent multiple simultaneous fetches
+    
     setIsLoading(true);
     setError(null);
     
@@ -41,6 +43,7 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
       // Get current user
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
+        setIsLoading(false);
         throw new Error('User not authenticated');
       }
 
@@ -90,6 +93,19 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
           band_color: exercise.band_color,
           full_reps: exercise.full_reps || 0,
           partial_reps: exercise.partial_reps || 0
+        });
+      });
+
+      // Sort exercises within each workout according to X3_EXERCISES order
+      Object.values(groupedWorkouts).forEach(workout => {
+        const exerciseOrder = X3_EXERCISES[workout.workout_type as 'Push' | 'Pull'] || [];
+        workout.exercises.sort((a, b) => {
+          const indexA = exerciseOrder.indexOf(a.exercise_name);
+          const indexB = exerciseOrder.indexOf(b.exercise_name);
+          // If exercise not found in order, put it at the end
+          const orderA = indexA === -1 ? 999 : indexA;
+          const orderB = indexB === -1 ? 999 : indexB;
+          return orderA - orderB;
         });
       });
 

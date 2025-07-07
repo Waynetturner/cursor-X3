@@ -157,34 +157,27 @@ export default function StatsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen brand-gradient">
+      <AppLayout>
         <div className="container mx-auto px-4 py-8">
-          <div className="hero-banner text-center mb-8">
-            <X3MomentumWordmark size="lg" className="mx-auto mb-4" />
-            <h2 className="text-subhead mb-2">AI-Powered Resistance Band Tracking</h2>
-          </div>
           <div className="brand-card text-center">
             <h2 className="text-subhead brand-gold mb-4">Loading Stats...</h2>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
           </div>
         </div>
-      </div>
+      </AppLayout>
     )
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen brand-gradient">
+      <AppLayout>
         <div className="container mx-auto px-4 py-8">
-          <div className="hero-banner text-center mb-8">
-            <X3MomentumWordmark size="lg" className="mx-auto mb-4" />
-            <h2 className="text-subhead mb-2">AI-Powered Resistance Band Tracking</h2>
-          </div>
           <div className="brand-card text-center">
             <h2 className="text-subhead brand-gold mb-4">Please Sign In</h2>
             <p className="text-body text-secondary">Sign in to view your workout statistics</p>
           </div>
         </div>
-      </div>
+      </AppLayout>
     )
   }
 
