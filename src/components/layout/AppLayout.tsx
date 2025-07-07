@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { BarChart3, Calendar, Target, Settings, Flame } from 'lucide-react'
 import { ReactNode } from 'react'
 import X3MomentumWordmark from '../X3MomentumWordmark'
@@ -10,10 +10,12 @@ interface AppLayoutProps {
   title?: string
 }
 
-export default function AppLayout({ children, title }: AppLayoutProps) {
+export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter()
+  const pathname = usePathname()
 
   const navItems = [
+    { icon: <Flame size={20} />, label: 'Workout', tooltip: 'Workout', route: '/' },
     { icon: <BarChart3 size={20} />, label: 'Stats', tooltip: 'Stats', route: '/stats' },
     { icon: <Calendar size={20} />, label: 'Calendar', tooltip: 'Calendar', route: '/calendar' },
     { icon: <Target size={20} />, label: 'Goals', tooltip: 'Goals', route: '/goals' },
@@ -23,65 +25,45 @@ export default function AppLayout({ children, title }: AppLayoutProps) {
   return (
     <div className="min-h-screen brand-gradient">
       <div className="flex flex-col h-screen">
-        {/* Mobile navigation at top */}
-        <nav className="md:hidden w-full bg-white/90 backdrop-blur-lg border-b border-gray-200 p-4 shadow-lg">
-          <div className="flex justify-around space-x-2">
-            <button
-              onClick={() => router.push('/')}
-              className="flex items-center space-x-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow"
-            >
-              <Flame size={20} />
-              <span>Home</span>
-            </button>
-            
-            {navItems.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => router.push(item.route)}
-                className="flex items-center space-x-2 bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-orange-600 px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow"
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </nav>
-
         {/* Hero banner with prominent X3 MOMENTUM branding as H1 */}
         <header className="w-full bg-white/90 backdrop-blur-lg border-b border-gray-200 p-8 text-center shadow-lg">
-          <h1 className="mb-0">
-            <X3MomentumWordmark size="lg" />
-          </h1>
+          <div className="max-w-6xl mx-auto">
+            <h1 className="mb-4 flex justify-center">
+              <X3MomentumWordmark size="lg" />
+            </h1>
+            <h2 className="text-subhead mb-2 text-secondary">AI-Powered Resistance Band Tracking</h2>
+          </div>
         </header>
-        
-        <div className="flex md:flex-row flex-col flex-1">
-          {/* Desktop sidebar navigation */}
-          <nav className="hidden md:flex w-48 bg-white/90 backdrop-blur-lg border-r border-gray-200 p-4 shadow-lg flex-col space-y-3">
-            <button
-              onClick={() => router.push('/')}
-              className="flex items-center space-x-3 bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow"
-            >
-              <Flame size={20} />
-              <span>Home</span>
-            </button>
-            
-            {navItems.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => router.push(item.route)}
-                className="flex items-center space-x-3 bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-orange-600 px-4 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow"
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </nav>
 
-          {/* Main content area */}
-          <main className="flex-1 overflow-auto order-1 md:order-2">
-            {children}
-          </main>
-        </div>
+        {/* Navigation - moved under hero banner */}
+        <nav className="w-full bg-white/90 backdrop-blur-lg border-b border-gray-200 p-4 shadow-lg">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="flex justify-center space-x-2 flex-wrap gap-y-2">
+            {navItems.map((item) => {
+              const isActive = pathname === item.route
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => router.push(item.route)}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow text-sm md:text-base md:px-4 ${
+                    isActive 
+                      ? 'bg-orange-500 text-white' 
+                      : 'bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-orange-600'
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </button>
+              )
+            })}
+            </div>
+          </div>
+        </nav>
+        
+        {/* Main content area */}
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
       </div>
     </div>
   )

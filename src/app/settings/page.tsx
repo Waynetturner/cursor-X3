@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { supabase } from '@/lib/supabase';
-import { useSubscription, TIER_NAMES, TIER_DESCRIPTIONS, TIER_PRICING } from '@/contexts/SubscriptionContext';
+import { useSubscription, TIER_NAMES, TIER_DESCRIPTIONS, TIER_PRICING, TIER_PRICING_ANNUAL } from '@/contexts/SubscriptionContext';
 import { Crown, Star, Zap, CheckCircle, Lock } from 'lucide-react';
 
 const tabs = [
@@ -19,6 +19,7 @@ export default function Settings() {
   const [darkMode, setDarkMode] = useState(false);
   const [activeTab, setActiveTab] = useState(tabs[0].value);
   const [user, setUser] = useState<any>(null);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
   
   // Measurement preferences
   const [measurementTrackingEnabled, setMeasurementTrackingEnabled] = useState(false);
@@ -37,7 +38,7 @@ export default function Settings() {
     
     // Load user and measurement preferences
     const loadUserData = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
         
@@ -55,11 +56,6 @@ export default function Settings() {
     loadUserData();
   }, []);
 
-  const toggleDarkMode = () => {
-    const newValue = !darkMode;
-    setDarkMode(newValue);
-    localStorage.setItem('darkMode', newValue.toString());
-  };
 
   const saveMeasurementPreferences = () => {
     localStorage.setItem('measurementTrackingEnabled', measurementTrackingEnabled.toString());
@@ -98,18 +94,21 @@ export default function Settings() {
     <AppLayout title="Settings">
       <div className="p-8">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-100">App <span className="brand-yellow">Settings</span></h1>
+          <h1 className="text-3xl font-bold text-gray-100">App <span className="brand-fire">Settings</span></h1>
           <p className="text-gray-400 mt-2">Customize your X3 Momentum Pro experience</p>
         </header>
         <main>
-          <div className="flex border-b border-yellow-400 mb-6">
-            {tabs.map((tab) => (
+          <div className="flex border-b border-orange-400 mb-6">
+            {tabs.filter(tab => 
+              // Hide Advanced tab for Foundation and Momentum users
+              tab.value === 'advanced' ? tier === 'mastery' : true
+            ).map((tab) => (
               <button
                 key={tab.value}
                 className={`px-4 py-2 font-semibold focus:outline-none transition-colors duration-200 ${
                   activeTab === tab.value
-                    ? "border-b-4 border-yellow-400 text-yellow-400"
-                    : "text-gray-400 hover:text-yellow-400"
+                    ? "border-b-4 border-orange-400 text-orange-400"
+                    : "text-gray-400 hover:text-orange-400"
                 }`}
                 onClick={() => setActiveTab(tab.value)}
                 aria-selected={activeTab === tab.value}
@@ -123,7 +122,93 @@ export default function Settings() {
             {activeTab === "profile" && (
               <div>
                 <h2 className="text-xl font-semibold mb-4 brand-fire">Profile Settings</h2>
-                <p className="text-gray-600">Profile settings coming soon.</p>
+                
+                <div className="space-y-6">
+                  {/* Basic Information */}
+                  <div>
+                    <h3 className="font-medium text-gray-700 mb-3">Basic Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
+                        <input
+                          type="text"
+                          placeholder="Enter your name"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input
+                          type="email"
+                          value={user?.email || ''}
+                          disabled
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* X3 Journey Details */}
+                  <div>
+                    <h3 className="font-medium text-gray-700 mb-3">X3 Journey</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">X3 Start Date</label>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Fitness Experience</label>
+                        <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                          <option value="">Select experience level</option>
+                          <option value="beginner">Beginner (0-1 years)</option>
+                          <option value="intermediate">Intermediate (1-3 years)</option>
+                          <option value="advanced">Advanced (3+ years)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Goals & Preferences */}
+                  <div>
+                    <h3 className="font-medium text-gray-700 mb-3">Goals & Motivation</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Primary Goal</label>
+                        <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                          <option value="">Select your primary goal</option>
+                          <option value="strength">Build Strength</option>
+                          <option value="muscle">Build Muscle</option>
+                          <option value="endurance">Improve Endurance</option>
+                          <option value="general">General Fitness</option>
+                          <option value="weight-loss">Weight Loss</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Workout Days</label>
+                        <div className="flex flex-wrap gap-2">
+                          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                            <button
+                              key={day}
+                              className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:border-orange-500 hover:text-orange-600 transition-colors"
+                            >
+                              {day}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <button className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
+                      Save Profile Changes
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -144,7 +229,7 @@ export default function Settings() {
                       {TIER_DESCRIPTIONS[tier]}
                     </p>
                     <p className="text-sm text-orange-300">
-                      {TIER_PRICING[tier] === 0 ? 'Free' : `$${TIER_PRICING[tier]}/month`}
+                      ${TIER_PRICING[tier]}/month • ${TIER_PRICING_ANNUAL[tier]}/year
                     </p>
                   </div>
 
@@ -211,80 +296,123 @@ export default function Settings() {
                     </div>
                   </div>
 
-                  {/* Upgrade Options */}
-                  {tier !== 'mastery' && (
-                    <div>
-                      <h3 className="font-medium text-gray-700 mb-3">Upgrade Your Plan</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {tier === 'foundation' && (
-                          <>
-                            <div className="border border-gray-300 rounded-lg p-4 hover:shadow-md transition-shadow">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Star size={20} className="text-orange-400" />
-                                <h4 className="font-medium text-gray-800">Momentum</h4>
-                              </div>
-                              <p className="text-sm text-gray-600 mb-2">
-                                AI coaching, advanced analytics, and measurement tracking
-                              </p>
-                              <p className="text-sm font-medium text-gray-800 mb-3">
-                                $9.99/month
-                              </p>
-                              <button
-                                onClick={() => upgradeTo('momentum')}
-                                className="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                              >
-                                Upgrade to Momentum
-                              </button>
-                            </div>
-                            <div className="border border-gray-300 rounded-lg p-4 hover:shadow-md transition-shadow">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Crown size={20} className="text-orange-400" />
-                                <h4 className="font-medium text-gray-800">Mastery</h4>
-                              </div>
-                              <p className="text-sm text-gray-600 mb-2">
-                                Everything in Momentum plus social features and API access
-                              </p>
-                              <p className="text-sm font-medium text-gray-800 mb-3">
-                                $19.99/month
-                              </p>
-                              <button
-                                onClick={() => upgradeTo('mastery')}
-                                className="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                              >
-                                Upgrade to Mastery
-                              </button>
-                            </div>
-                          </>
+                  {/* Plan Management */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-medium text-gray-700">Plan Management</h3>
+                      {/* Billing Period Toggle */}
+                      <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                        <button
+                          onClick={() => setBillingPeriod('monthly')}
+                          className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                            billingPeriod === 'monthly'
+                              ? 'bg-white text-orange-600 shadow-sm'
+                              : 'text-gray-600 hover:text-gray-800'
+                          }`}
+                        >
+                          Monthly
+                        </button>
+                        <button
+                          onClick={() => setBillingPeriod('annual')}
+                          className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                            billingPeriod === 'annual'
+                              ? 'bg-white text-orange-600 shadow-sm'
+                              : 'text-gray-600 hover:text-gray-800'
+                          }`}
+                        >
+                          Annual
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Foundation Plan */}
+                      <div className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                        tier === 'foundation' ? 'border-orange-500 bg-orange-50' : 'border-gray-300'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Zap size={20} className="text-orange-400" />
+                          <h4 className="font-medium text-gray-800">Foundation</h4>
+                          {tier === 'foundation' && <span className="text-xs bg-orange-500 text-white px-2 py-1 rounded">Current</span>}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">Essential X3 tracking features</p>
+                        <p className="text-lg font-bold text-gray-800 mb-3">
+                          ${billingPeriod === 'monthly' ? TIER_PRICING.foundation : TIER_PRICING_ANNUAL.foundation}
+                          <span className="text-sm font-normal text-gray-600">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
+                        </p>
+                        {tier !== 'foundation' && (
+                          <button
+                            onClick={() => upgradeTo('foundation')}
+                            className="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            Downgrade to Foundation
+                          </button>
                         )}
-                        {tier === 'momentum' && (
-                          <div className="border border-gray-300 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Crown size={20} className="text-orange-400" />
-                              <h4 className="font-medium text-gray-800">Mastery</h4>
-                            </div>
-                            <p className="text-sm text-gray-600 mb-2">
-                              Everything in Momentum plus social features and API access
-                            </p>
-                            <p className="text-sm font-medium text-gray-800 mb-3">
-                              $19.99/month
-                            </p>
-                            <button
-                              onClick={() => upgradeTo('mastery')}
-                              className="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                            >
-                              Upgrade to Mastery
-                            </button>
-                          </div>
+                      </div>
+
+                      {/* Momentum Plan */}
+                      <div className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                        tier === 'momentum' ? 'border-orange-500 bg-orange-50' : 'border-gray-300'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Star size={20} className="text-orange-400" />
+                          <h4 className="font-medium text-gray-800">Momentum</h4>
+                          {tier === 'momentum' && <span className="text-xs bg-orange-500 text-white px-2 py-1 rounded">Current</span>}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">AI coaching, analytics, and tracking</p>
+                        <p className="text-lg font-bold text-gray-800 mb-3">
+                          ${billingPeriod === 'monthly' ? TIER_PRICING.momentum : TIER_PRICING_ANNUAL.momentum}
+                          <span className="text-sm font-normal text-gray-600">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
+                        </p>
+                        {tier === 'foundation' && (
+                          <button
+                            onClick={() => upgradeTo('momentum')}
+                            className="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            Upgrade to Momentum
+                          </button>
+                        )}
+                        {tier === 'mastery' && (
+                          <button
+                            onClick={() => upgradeTo('momentum')}
+                            className="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            Downgrade to Momentum
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Mastery Plan */}
+                      <div className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
+                        tier === 'mastery' ? 'border-orange-500 bg-orange-50' : 'border-gray-300'
+                      }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Crown size={20} className="text-orange-400" />
+                          <h4 className="font-medium text-gray-800">Mastery</h4>
+                          {tier === 'mastery' && <span className="text-xs bg-orange-500 text-white px-2 py-1 rounded">Current</span>}
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">Complete X3 experience with premium features</p>
+                        <p className="text-lg font-bold text-gray-800 mb-3">
+                          ${billingPeriod === 'monthly' ? TIER_PRICING.mastery : TIER_PRICING_ANNUAL.mastery}
+                          <span className="text-sm font-normal text-gray-600">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
+                        </p>
+                        {tier !== 'mastery' && (
+                          <button
+                            onClick={() => upgradeTo('mastery')}
+                            className="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            Upgrade to Mastery
+                          </button>
                         )}
                       </div>
                     </div>
-                  )}
+                  </div>
 
                   {/* MVP Testing Notice */}
                   <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
                     <h3 className="font-medium text-blue-400 mb-2">🚀 MVP Testing</h3>
                     <p className="text-sm text-blue-300">
-                      You're helping us test our subscription tiers! Changes are saved locally and will sync when payments are integrated.
+                      You&apos;re helping us test our subscription tiers! Changes are saved locally and will sync when payments are integrated.
                     </p>
                   </div>
                 </div>
@@ -293,17 +421,50 @@ export default function Settings() {
             
             {activeTab === "preferences" && (
               <div>
-                <h2 className="text-xl font-semibold mb-4 brand-yellow">App Preferences</h2>
+                <h2 className="text-xl font-semibold mb-4 brand-fire">App Preferences</h2>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border border-gray-600 bg-gray-700/50 rounded-lg">
+                  <div className="flex items-center justify-between p-4 border border-gray-300 bg-gray-50 rounded-lg">
                     <div>
-                      <label className="text-sm font-medium text-gray-200">Dark Mode</label>
-                      <p className="text-xs text-gray-400">Always enabled in X3 Momentum Pro</p>
+                      <label className="text-sm font-medium text-gray-700">Dark Mode</label>
+                      <p className="text-xs text-gray-500">Toggle between light and dark themes</p>
                     </div>
-                    <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-yellow-400">
-                      <span className="inline-block h-4 w-4 transform rounded-full bg-gray-900 translate-x-6" />
+                    <button
+                      onClick={() => setDarkMode(!darkMode)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        darkMode ? 'bg-orange-500' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span 
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          darkMode ? 'translate-x-6' : 'translate-x-1'
+                        }`} 
+                      />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 border border-gray-300 bg-gray-50 rounded-lg">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Notification Sounds</label>
+                      <p className="text-xs text-gray-500">Play sounds for workout notifications</p>
                     </div>
+                    <button
+                      className="relative inline-flex h-6 w-11 items-center rounded-full bg-orange-500"
+                    >
+                      <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 border border-gray-300 bg-gray-50 rounded-lg">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Auto-save Workouts</label>
+                      <p className="text-xs text-gray-500">Automatically save workout data</p>
+                    </div>
+                    <button
+                      className="relative inline-flex h-6 w-11 items-center rounded-full bg-orange-500"
+                    >
+                      <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -349,7 +510,7 @@ export default function Settings() {
                     <button
                       onClick={toggleMeasurementTracking}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        measurementTrackingEnabled ? 'bg-yellow-400' : 'bg-gray-600'
+                        measurementTrackingEnabled ? 'bg-orange-500' : 'bg-gray-600'
                       }`}
                     >
                       <span
@@ -372,7 +533,7 @@ export default function Settings() {
                               value="imperial"
                               checked={unitSystem === 'imperial'}
                               onChange={(e) => setUnitSystem(e.target.value)}
-                              className="mr-2 text-yellow-400"
+                              className="mr-2 text-orange-400"
                             />
                             <span className="text-sm text-gray-300">Imperial (lbs, inches)</span>
                           </label>
@@ -382,7 +543,7 @@ export default function Settings() {
                               value="metric"
                               checked={unitSystem === 'metric'}
                               onChange={(e) => setUnitSystem(e.target.value)}
-                              className="mr-2 text-yellow-400"
+                              className="mr-2 text-orange-400"
                             />
                             <span className="text-sm text-gray-300">Metric (kg, cm)</span>
                           </label>
@@ -403,7 +564,7 @@ export default function Settings() {
                               <button
                                 onClick={() => toggleMeasurement(key as keyof typeof enabledMeasurements)}
                                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                                  enabled ? 'bg-yellow-400' : 'bg-gray-600'
+                                  enabled ? 'bg-orange-500' : 'bg-gray-600'
                                 }`}
                               >
                                 <span
@@ -417,14 +578,58 @@ export default function Settings() {
                         </div>
                       </div>
 
+                      {/* Current Measurements */}
+                      {Object.values(enabledMeasurements).some(enabled => enabled) && (
+                        <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
+                          <h3 className="text-sm font-medium text-gray-700 mb-4">Record Your Measurements</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {Object.entries(enabledMeasurements).map(([key, enabled]) => 
+                              enabled && (
+                                <div key={key}>
+                                  <label className="block text-sm font-medium text-gray-600 mb-1 capitalize">
+                                    {key === 'bodyFat' ? 'Body Fat %' : key}
+                                    {key === 'weight' && ` (${unitSystem === 'imperial' ? 'lbs' : 'kg'})`}
+                                    {['chest', 'waist', 'arms'].includes(key) && ` (${unitSystem === 'imperial' ? 'inches' : 'cm'})`}
+                                  </label>
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder={`Enter ${key} measurement`}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                  />
+                                </div>
+                              )
+                            )}
+                          </div>
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                              Save Measurements
+                            </button>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Measurements are saved with today&apos;s date. You can track changes over time in your progress charts.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Measurement History */}
+                      {Object.values(enabledMeasurements).some(enabled => enabled) && (
+                        <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
+                          <h3 className="text-sm font-medium text-gray-700 mb-3">Recent Measurements</h3>
+                          <div className="text-sm text-gray-500 text-center py-4">
+                            No measurements recorded yet. Add your first measurement above.
+                          </div>
+                        </div>
+                      )}
+
                       {/* Data Control */}
-                      <div className="p-4 border border-gray-600 bg-gray-700/50 rounded-lg">
-                        <h3 className="text-sm font-medium text-gray-200 mb-2">Data Control</h3>
+                      <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">Data Control</h3>
                         <div className="space-y-2">
-                          <button className="text-sm text-blue-400 hover:text-blue-300 underline">
+                          <button className="text-sm text-blue-600 hover:text-blue-500 underline">
                             Export My Data
                           </button>
-                          <button className="text-sm text-red-400 hover:text-red-300 underline block">
+                          <button className="text-sm text-red-600 hover:text-red-500 underline block">
                             Delete All Measurement Data
                           </button>
                         </div>

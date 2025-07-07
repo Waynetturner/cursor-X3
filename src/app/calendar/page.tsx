@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
-import { supabase, getTodaysWorkout, getWorkoutForDate, X3_EXERCISES } from '@/lib/supabase'
-import { ChevronLeft, ChevronRight, Calendar, Flame, Dumbbell, Coffee, CheckCircle } from 'lucide-react'
+import { supabase, getWorkoutForDate, X3_EXERCISES } from '@/lib/supabase'
+import { ChevronLeft, ChevronRight, Flame, Dumbbell, Coffee, CheckCircle } from 'lucide-react'
 
 interface WorkoutDay {
   date: string
@@ -25,7 +25,7 @@ export default function CalendarPage() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUser(user)
         await loadUserData(user.id)
@@ -184,7 +184,7 @@ export default function CalendarPage() {
       <AppLayout title="Calendar">
         <div className="p-8">
           <div className="brand-card text-gray-100 rounded-2xl p-8 text-center">
-            <h2 className="text-2xl font-bold brand-yellow mb-4">Loading Calendar...</h2>
+            <h2 className="text-2xl font-bold brand-fire mb-4">Loading Calendar...</h2>
           </div>
         </div>
       </AppLayout>
@@ -196,7 +196,7 @@ export default function CalendarPage() {
       <AppLayout title="Calendar">
         <div className="p-8">
           <div className="brand-card text-gray-100 rounded-2xl p-8 text-center">
-            <h2 className="text-2xl font-bold brand-yellow mb-4">Please Sign In</h2>
+            <h2 className="text-2xl font-bold brand-fire mb-4">Please Sign In</h2>
             <p className="text-gray-300">Sign in to view your workout calendar</p>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function CalendarPage() {
       <AppLayout title="Calendar">
         <div className="p-8">
           <div className="brand-card text-gray-100 rounded-2xl p-8 text-center">
-            <h2 className="text-2xl font-bold brand-yellow mb-4">Set Your Start Date</h2>
+            <h2 className="text-2xl font-bold brand-fire mb-4">Set Your Start Date</h2>
             <p className="text-gray-300">Complete your first workout to initialize your X3 calendar</p>
           </div>
         </div>
@@ -224,7 +224,7 @@ export default function CalendarPage() {
     <AppLayout title="Calendar">
       <div className="p-8">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-100">Workout <span className="brand-yellow">Calendar</span></h1>
+          <h1 className="text-3xl font-bold text-gray-100">Workout <span className="brand-fire">Calendar</span></h1>
           <p className="text-gray-400 mt-2">Track your X3 program schedule and progress</p>
         </header>
 
@@ -239,7 +239,7 @@ export default function CalendarPage() {
                 <ChevronLeft size={20} />
               </button>
               
-              <h2 className="text-2xl font-bold brand-yellow">{monthName}</h2>
+              <h2 className="text-2xl font-bold brand-fire">{monthName}</h2>
               
               <button
                 onClick={() => navigateMonth('next')}
@@ -286,7 +286,7 @@ export default function CalendarPage() {
                   className={`
                     relative p-3 rounded-lg border-2 transition-all duration-200 min-h-[80px]
                     ${day.isThisMonth ? '' : 'opacity-50'}
-                    ${day.isToday ? 'ring-2 ring-yellow-400 ring-offset-2 ring-offset-gray-800' : ''}
+                    ${day.isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-gray-800' : ''}
                     ${getWorkoutTypeColor(day.workoutType, day.isCompleted)}
                     hover:scale-105 cursor-pointer
                   `}
@@ -317,7 +317,7 @@ export default function CalendarPage() {
 
             return (
               <div className="brand-card text-gray-100 rounded-2xl p-6">
-                <h3 className="text-xl font-bold brand-yellow mb-4">Today's Workout</h3>
+                <h3 className="text-xl font-bold brand-fire mb-4">Today&apos;s Workout</h3>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     {getWorkoutIcon(today.workoutType)}

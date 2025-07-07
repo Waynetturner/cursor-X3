@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkout } from '@/lib/supabase'
 import { announceToScreenReader } from '@/lib/accessibility'
-import { Play, Pause, Save, Info, Settings, BarChart3, Calendar, Flame, Target, Trophy, TrendingUp, Sun, Moon, Monitor } from 'lucide-react'
-import Link from 'next/link'
+import { Play, Pause, Save, Info, BarChart3, Flame, Target } from 'lucide-react'
 import React from 'react'
-import { useRouter } from 'next/navigation'
 import X3MomentumWordmark from '@/components/X3MomentumWordmark'
+import AppLayout from '@/components/layout/AppLayout'
+import { useSubscription } from '@/contexts/SubscriptionContext'
+import { WorkoutHistory } from '@/components/WorkoutHistory'
 
 // Helper to get local ISO string with timezone offset
 function getLocalISODateTime() {
@@ -27,26 +28,7 @@ function getLocalISODateTime() {
     dif + pad(tzo / 60) + ':' + pad(tzo % 60);
 }
 
-const bandColors = ["White", "Light Gray", "Dark Gray", "Black"];
 
-interface StatsCardProps {
-  icon: React.ReactNode;
-  value: string;
-  label: string;
-  sublabel: string;
-  gradient: string;
-}
-
-const StatsCard = ({ icon, value, label, sublabel, gradient }: StatsCardProps) => (
-  <div className="brand-card text-center">
-    <div className="flex items-center justify-center mb-4">
-      {icon}
-    </div>
-    <div className="text-3xl font-bold text-primary mb-2">{value}</div>
-    <div className="text-body-large brand-gold font-medium mb-1">{label}</div>
-    <div className="text-body-small text-secondary">{sublabel}</div>
-  </div>
-);
 
 function CadenceButton({ cadenceActive, setCadenceActive }: { cadenceActive: boolean; setCadenceActive: React.Dispatch<React.SetStateAction<boolean>> }) {
   return (
@@ -82,6 +64,18 @@ function playBeep() {
   oscillator.onended = () => ctx.close();
 }
 
+// TTS function for audio cues
+function speakText(text: string, hasFeature: boolean) {
+  if (!hasFeature || !('speechSynthesis' in window)) return;
+  
+  window.speechSynthesis.cancel(); // Cancel any existing speech
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 0.9;
+  utterance.pitch = 1.0;
+  utterance.volume = 0.8;
+  window.speechSynthesis.speak(utterance);
+}
+
 interface Exercise {
   id?: string;
   exercise_name: string;
@@ -105,25 +99,20 @@ export default function HomePage() {
   const [user, setUser] = useState<any>(null);
   const [todaysWorkout, setTodaysWorkout] = useState<any>(null);
   const [cadenceActive, setCadenceActive] = useState(false);
-  const [theme, setTheme] = useState('system');
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [cadenceInterval, setCadenceInterval] = useState<NodeJS.Timeout | null>(null);
-  const router = useRouter();
-  const cadenceButtonRef = useRef<HTMLButtonElement>(null);
+  const [restTimer, setRestTimer] = useState<{ isActive: boolean; timeLeft: number; exerciseIndex: number } | null>(null);
+  const [restTimerInterval, setRestTimerInterval] = useState<NodeJS.Timeout | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const { hasFeature } = useSubscription();
 
-  // Navigation items
-  const navItems = [
-    { icon: <BarChart3 size={20} />, label: 'Stats', tooltip: 'Stats', route: '/stats' },
-    { icon: <Calendar size={20} />, label: 'Calendar', tooltip: 'Calendar', route: '/calendar' },
-    { icon: <Target size={20} />, label: 'Goals', tooltip: 'Goals', route: '/goals' },
-    { icon: <Settings size={20} />, label: 'Settings', tooltip: 'Settings', route: '/settings', highlight: true },
-  ];
 
   // Metronome beep effect: always call useEffect at the top level
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (cadenceActive) {
       playBeep(); // play immediately
+      speakText("Cadence started. 1 second intervals for proper form", hasFeature('ttsAudioCues'));
       interval = setInterval(() => {
         playBeep();
       }, 1000);
@@ -131,7 +120,35 @@ export default function HomePage() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [cadenceActive]);
+  }, [cadenceActive, hasFeature]);
+
+  // Rest timer effect
+  useEffect(() => {
+    if (restTimer?.isActive && restTimer.timeLeft > 0) {
+      const interval = setInterval(() => {
+        setRestTimer(prev => {
+          if (!prev || prev.timeLeft <= 1) {
+            // Timer finished
+            speakText("Rest period complete. Ready for your next exercise", hasFeature('ttsAudioCues'));
+            return null;
+          }
+          return { ...prev, timeLeft: prev.timeLeft - 1 };
+        });
+      }, 1000);
+      setRestTimerInterval(interval);
+    } else {
+      if (restTimerInterval) {
+        clearInterval(restTimerInterval);
+        setRestTimerInterval(null);
+      }
+    }
+
+    return () => {
+      if (restTimerInterval) {
+        clearInterval(restTimerInterval);
+      }
+    };
+  }, [restTimer, hasFeature, restTimerInterval]);
 
   useEffect(() => {
     console.log('useEffect running, setting mounted to true')
@@ -210,87 +227,6 @@ export default function HomePage() {
     }
   }, [user, todaysWorkout])
 
-  // Test database connection and table structure
-
-  const testDatabaseConnection = async () => {
-    if (!user) return
-    
-    try {
-      console.log('🔍 Testing database connection...')
-      
-      // Test 1: Check if workout_exercises table exists and is accessible
-      const { data: tableTest, error: tableError } = await supabase
-        .from('workout_exercises')
-        .select('*')
-        .limit(1)
-      
-      console.log('📋 Table test result:', tableTest)
-      console.log('❌ Table test error:', tableError)
-      
-      // Test 2: Check user profile table
-      const { data: profileTest, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .limit(1)
-      
-      console.log('📋 Profile table test result:', profileTest)
-      console.log('❌ Profile table test error:', profileError)
-    
-    // Test 3: Check RLS status by trying to insert without auth context
-    console.log('🔒 Testing RLS policies...')
-    const { data: rlsTest, error: rlsError } = await supabase
-      .from('workout_exercises')
-      .insert({
-        user_id: '00000000-0000-0000-0000-000000000000',
-        workout_local_date_time: new Date().toISOString(),
-        workout_type: 'Push',
-        week_number: 1,
-        exercise_name: 'RLS_TEST',
-        band_color: 'White',
-        full_reps: 0,
-        partial_reps: 0,
-        notes: 'RLS test - should fail'
-      })
-    
-    console.log('🔒 RLS test result:', rlsTest)
-    console.log('🔒 RLS test error:', rlsError)
-    
-    // Test 4: Try to insert a test record with proper auth
-    const testData = {
-      user_id: user.id,
-      workout_local_date_time: new Date().toISOString(),
-      workout_type: 'Push',
-      week_number: 1,
-      exercise_name: 'TEST_EXERCISE',
-      band_color: 'White',
-      full_reps: 0,
-      partial_reps: 0,
-      notes: 'Test record - delete this'
-    }
-    
-    console.log('🧪 Test data to insert:', testData)
-    
-    const { data: insertTest, error: insertError } = await supabase
-      .from('workout_exercises')
-      .insert(testData)
-    
-    console.log('📤 Insert test result:', insertTest)
-    console.log('❌ Insert test error:', insertError)
-    
-    // Clean up test record
-    if (!insertError) {
-      const { error: deleteError } = await supabase
-        .from('workout_exercises')
-        .delete()
-        .eq('exercise_name', 'TEST_EXERCISE')
-        .eq('user_id', user.id)
-      
-      console.log('🧹 Cleanup error:', deleteError)
-    }
-    } catch (error) {
-      console.error('❌ Test DB function crashed:', error)
-    }
-  }
 
   const setupExercises = async (workoutType: 'Push' | 'Pull') => {
     if (!user?.id) {
@@ -471,8 +407,38 @@ export default function HomePage() {
       const newExercises = [...exercises]
       newExercises[index].saved = true
       setExercises(newExercises)
+      setRefreshTrigger(prev => prev + 1) // Trigger workout history refresh
       console.log('✅ Exercise saved successfully!')
       announceToScreenReader(`${exercise.name} saved successfully!`, 'assertive')
+      
+      // Add TTS audio cue for exercise completion
+      const nextIndex = index + 1
+      const isLastExercise = nextIndex >= exercises.length
+      
+      if (hasFeature('ttsAudioCues')) {
+        if (isLastExercise) {
+          // Final exercise variations
+          const motivationalMessages = [
+            "Great job! How are you doing?",
+            "Excellent work! Tell me about your energy level",
+            "Outstanding! You've completed your workout!"
+          ]
+          const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)]
+          speakText(randomMessage, true)
+        } else {
+          const nextExercise = exercises[nextIndex]?.name || "your next exercise"
+          speakText(`${exercise.name} saved and recorded. Catch your breath and get set up for ${nextExercise}`, true)
+        }
+      }
+      
+      // Start 90-second rest timer for Momentum/Mastery users (but not for last exercise)
+      if (hasFeature('restTimer') && !isLastExercise) {
+        setRestTimer({
+          isActive: true,
+          timeLeft: 90,
+          exerciseIndex: index
+        })
+      }
     } else {
       console.error('❌ Error saving exercise:', error)
       if (error) {
@@ -490,43 +456,6 @@ export default function HomePage() {
     }
   }
 
-  const toggleCadence = () => {
-    if (cadenceActive) {
-      setCadenceActive(false)
-      if (cadenceInterval) {
-        clearInterval(cadenceInterval)
-        setCadenceInterval(null)
-      }
-      announceToScreenReader('Cadence stopped')
-    } else {
-      setCadenceActive(true)
-      announceToScreenReader('Cadence started. 1 second interval.')
-      
-      // Create audio context and play initial beep
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
-      
-      const playBeep = () => {
-        const oscillator = audioCtx.createOscillator()
-        const gainNode = audioCtx.createGain()
-        
-        oscillator.connect(gainNode)
-        gainNode.connect(audioCtx.destination)
-        
-        oscillator.frequency.value = 800
-        oscillator.type = 'sine'
-        
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime)
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1)
-        
-        oscillator.start(audioCtx.currentTime)
-        oscillator.stop(audioCtx.currentTime + 0.1)
-      }
-      
-      playBeep()
-      const interval = setInterval(playBeep, 1000)
-      setCadenceInterval(interval)
-    }
-  }
 
   const getExerciseInfoUrl = (exerciseName: string) => {
     const exerciseUrls: { [key: string]: string } = {
@@ -551,11 +480,6 @@ export default function HomePage() {
     }
   }
 
-  const signOut = async () => {
-    announceToScreenReader('Signing out...')
-    await supabase.auth.signOut()
-    setUser(null)
-  }
 
 
 
@@ -626,46 +550,13 @@ export default function HomePage() {
 
  if (todaysWorkout.workoutType === 'Rest') {
   return (
-    <div className="min-h-screen brand-gradient">
+    <AppLayout>
       <div className="container mx-auto px-4 py-8">
-        {/* Hero Banner - White background with fire orange wordmark */}
-        <div className="hero-banner text-center mb-8">
-          <X3MomentumWordmark size="lg" className="mx-auto mb-4" />
-          <h2 className="text-subhead mb-2 text-secondary">AI-Powered Resistance Band Tracking</h2>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex justify-center gap-4 mb-8 flex-wrap">
-          <button
-            onClick={() => router.push('/')}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Flame size={20} />
-            <span>Workout</span>
-          </button>
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => router.push(item.route)}
-              className="btn-secondary flex items-center gap-2"
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
-          ))}
-          <button 
-            onClick={signOut} 
-            className="btn-secondary"
-          >
-            Sign Out
-          </button>
-        </nav>
-
         <main>
           <div className="max-w-2xl mx-auto">
             <div className="brand-card text-center">
               <div className="text-6xl mb-6" role="img" aria-label="Rest day relaxation emoji">🛋️</div>
-              <h1 className="text-headline mb-4 brand-gold">Today's Rest Day</h1>
+              <h1 className="text-headline mb-4 brand-gold">Today&apos;s Rest Day</h1>
               <p className="text-body mb-8">Focus on recovery, hydration, and nutrition</p>
               
               <div className="text-left space-y-3 mb-6">
@@ -700,7 +591,7 @@ export default function HomePage() {
           </div>
         </main>
       </div>
-    </div>
+    </AppLayout>
   );
 }
 
@@ -711,84 +602,17 @@ export default function HomePage() {
 
 
   return (
-    <div className="min-h-screen brand-gradient">
+    <AppLayout>
       <div className="container mx-auto px-4 py-8">
-        {/* Hero Banner - White background with fire orange wordmark */}
-        <div className="hero-banner text-center mb-8">
-          <X3MomentumWordmark size="lg" className="mx-auto mb-4" />
-          <h2 className="text-subhead mb-2 text-secondary">AI-Powered Resistance Band Tracking</h2>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex justify-center gap-4 mb-8 flex-wrap">
-          <button
-            onClick={() => router.push('/')}
-            className="btn-primary flex items-center gap-2"
-            title="Dashboard"
-            aria-label="Dashboard"
-          >
-            <Flame size={20} />
-            <span>Workout</span>
-          </button>
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => router.push(item.route)}
-              className="btn-secondary flex items-center gap-2"
-              title={item.tooltip}
-              aria-label={item.label}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </button>
-          ))}
-          <button 
-            onClick={signOut} 
-            className="btn-secondary"
-          >
-            Sign Out
-          </button>
-        </nav>
 
         {/* Motivational Greeting */}
         <div className="brand-card text-center mb-8">
           <h1 className="text-headline mb-2">
-            Today's <span className="brand-fire">{todaysWorkout.workoutType}</span> Workout
+            Today&apos;s <span className="brand-fire">{todaysWorkout.workoutType}</span> Workout
           </h1>
-          <p className="text-body">Week <span className="brand-gold font-bold">{todaysWorkout.week}</span> • <span className="italic">"Train to failure, not to a number"</span></p>
+          <p className="text-body">Week <span className="brand-gold font-bold">{todaysWorkout.week}</span> • <span className="italic">&quot;Train to failure, not to a number&quot;</span></p>
         </div>
 
-        {/* Stats Bento Grid */}
-        <div className="stats-grid mb-8">
-          <StatsCard 
-            icon={<Flame size={32} className="brand-fire" />}
-            value="7"
-            label="Fire Streak"
-            sublabel="days"
-            gradient=""
-          />
-          <StatsCard 
-            icon={<BarChart3 size={32} className="brand-fire" />}
-            value="65%"
-            label="Week Progress"
-            sublabel="4/6 workouts"
-            gradient=""
-          />
-          <StatsCard 
-            icon={<Trophy size={32} className="brand-gold" />}
-            value="23"
-            label="Total Workouts"
-            sublabel="this month"
-            gradient=""
-          />
-          <StatsCard 
-            icon={<TrendingUp size={32} className="brand-fire" />}
-            value="+12%"
-            label="Strength Gain"
-            sublabel="this month"
-            gradient=""
-          />
-        </div>
 
         {/* Cadence Control */}
         <div className="brand-card text-center mb-8">
@@ -798,6 +622,28 @@ export default function HomePage() {
             Audio metronome to help maintain proper exercise timing
           </p>
         </div>
+
+        {/* Rest Timer Display */}
+        {restTimer && hasFeature('restTimer') && (
+          <div className="brand-card text-center mb-8">
+            <h3 className="text-body-large mb-4">⏱️ Rest Timer</h3>
+            <div className="text-4xl font-bold brand-fire mb-2">
+              {Math.floor(restTimer.timeLeft / 60)}:{(restTimer.timeLeft % 60).toString().padStart(2, '0')}
+            </div>
+            <p className="text-body-small text-secondary mb-3">
+              Rest period for {exercises[restTimer.exerciseIndex]?.name}
+            </p>
+            <button
+              onClick={() => setRestTimer(null)}
+              className="btn-secondary"
+            >
+              Skip Rest
+            </button>
+            <p className="text-body-small text-secondary mt-2">
+              90-second rest period • Premium feature
+            </p>
+          </div>
+        )}
 
         {/* Exercise Grid */}
         <main>
@@ -910,7 +756,18 @@ export default function HomePage() {
             ))}
           </div>
         </main>
+
+        {/* Recent Workouts Section */}
+        <div className="mt-8">
+          <WorkoutHistory 
+            refreshTrigger={refreshTrigger}
+            maxDisplay={2}
+            defaultRange="last-two"
+            showTitle={true}
+            compact={true}
+          />
+        </div>
       </div>
-    </div>
+    </AppLayout>
   )
 }

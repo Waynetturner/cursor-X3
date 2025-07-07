@@ -16,6 +16,8 @@ interface SubscriptionFeatures {
   progressPhotos: boolean
   socialFeatures: boolean
   apiAccess: boolean
+  restTimer: boolean
+  ttsAudioCues: boolean
 }
 
 interface SubscriptionContextType {
@@ -37,7 +39,9 @@ const TIER_FEATURES: Record<SubscriptionTier, SubscriptionFeatures> = {
     measurementTracking: false,
     progressPhotos: false,
     socialFeatures: false,
-    apiAccess: false
+    apiAccess: false,
+    restTimer: false,
+    ttsAudioCues: false
   },
   momentum: {
     maxWorkoutHistory: 365,
@@ -49,7 +53,9 @@ const TIER_FEATURES: Record<SubscriptionTier, SubscriptionFeatures> = {
     measurementTracking: true,
     progressPhotos: true,
     socialFeatures: false,
-    apiAccess: false
+    apiAccess: false,
+    restTimer: true,
+    ttsAudioCues: true
   },
   mastery: {
     maxWorkoutHistory: -1, // unlimited
@@ -61,7 +67,9 @@ const TIER_FEATURES: Record<SubscriptionTier, SubscriptionFeatures> = {
     measurementTracking: true,
     progressPhotos: true,
     socialFeatures: true,
-    apiAccess: true
+    apiAccess: true,
+    restTimer: true,
+    ttsAudioCues: true
   }
 }
 
@@ -149,7 +157,13 @@ export const TIER_DESCRIPTIONS = {
 } as const
 
 export const TIER_PRICING = {
-  foundation: 0,
+  foundation: 4.99,
   momentum: 9.99,
   mastery: 19.99
+} as const
+
+export const TIER_PRICING_ANNUAL = {
+  foundation: 49,
+  momentum: 99,
+  mastery: 199
 } as const

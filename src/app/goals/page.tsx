@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
-import { supabase, getTodaysWorkout, X3_EXERCISES } from '@/lib/supabase'
-import { Target, Trophy, TrendingUp, Plus, CheckCircle, Calendar, Flame, Award, Star, Clock, BarChart } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+import { Target, Trophy, CheckCircle, Calendar, Flame, Clock, BarChart } from 'lucide-react'
 
 interface Goal {
   id: string
@@ -37,7 +37,7 @@ export default function GoalsPage() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser()
+      const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUser(user)
         await loadUserData(user.id)
@@ -190,24 +190,12 @@ export default function GoalsPage() {
       case 'consistency':
         return <Calendar size={20} className="text-blue-400" />
       case 'milestone':
-        return <Trophy size={20} className="text-yellow-400" />
+        return <Trophy size={20} className="text-orange-400" />
       default:
         return <Target size={20} className="text-purple-400" />
     }
   }
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'strength':
-        return 'bg-orange-500/20 border-orange-500 text-orange-400'
-      case 'consistency':
-        return 'bg-blue-500/20 border-blue-500 text-blue-400'
-      case 'milestone':
-        return 'bg-yellow-500/20 border-yellow-500 text-yellow-400'
-      default:
-        return 'bg-purple-500/20 border-purple-500 text-purple-400'
-    }
-  }
 
   const activeGoals = goals.filter(g => !g.isCompleted)
   const completedGoals = goals.filter(g => g.isCompleted)
@@ -273,8 +261,8 @@ export default function GoalsPage() {
               </div>
 
               <div className="brand-card rounded-xl p-4 text-center">
-                <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Trophy size={24} className="text-yellow-400" />
+                <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Trophy size={24} className="text-orange-400" />
                 </div>
                 <div className="text-2xl font-bold text-gray-900 mb-1">{userStats.longestStreak}</div>
                 <div className="text-sm text-gray-600">Best Streak</div>

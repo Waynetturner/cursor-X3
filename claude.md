@@ -217,6 +217,7 @@ Pull: Deadlift, Bent Row, Bicep Curl, Calf Raise
 - `implementation.md` - Deep technical architecture, database schema, component patterns
 - `design.md` - Complete UI/UX specifications with modern bento grid layouts
 - `brand.md` - Fire theme guidelines, color system, typography hierarchy
+- `current-specifications.md` - overrides any conflicting information in the other docs
 
 ### Key Implementation Patterns
 - **State Management**: Zustand stores + React Query for server state

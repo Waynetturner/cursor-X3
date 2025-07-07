@@ -37,7 +37,7 @@ export default function MeasurementsPage() {
   useEffect(() => {
     // Load user and settings
     const loadData = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
         
@@ -219,8 +219,8 @@ export default function MeasurementsPage() {
               <div className="text-6xl mb-4">📊</div>
               <h2 className="text-2xl font-bold mb-4 text-gray-800">No Measurements Selected</h2>
               <p className="text-gray-600 mb-6">
-                You have measurement tracking enabled, but haven't selected any measurements to track. 
-                Choose which measurements you'd like to track in settings.
+                You have measurement tracking enabled, but haven&apos;t selected any measurements to track. 
+                Choose which measurements you&apos;d like to track in settings.
               </p>
               <button
                 onClick={() => router.push('/settings')}
@@ -263,8 +263,8 @@ export default function MeasurementsPage() {
 
             <div className="space-y-6">
               {Object.entries(enabledMeasurements)
-                .filter(([_, enabled]) => enabled)
-                .map(([key, _]) => (
+                .filter(([, enabled]) => enabled)
+                .map(([key]) => (
                   <div key={key} className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">
                       {getMeasurementLabel(key)} ({getUnitLabel(key)})
