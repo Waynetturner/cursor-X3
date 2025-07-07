@@ -216,3 +216,20 @@ body {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* X3 Band Color Styling */
+.band-elite {
+  background: var(--fire-orange);
+  color: var(--pure-white);
+  border: 1px solid var(--fire-orange);
+}
+
+.exercise-elite-band {
+  background: var(--fire-orange);
+  color: var(--pure-white);
+  border: 2px solid var(--fire-orange);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}

@@ -12,6 +12,8 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, compact = fal
         return 'bg-gray-700 text-white border border-gray-600';
       case 'Black':
         return 'bg-black text-white border border-gray-800';
+      case 'Elite':
+        return 'bg-orange-500 text-white border border-orange-600';
       default:
         return 'bg-gray-50 text-gray-800 border border-gray-200';
     }

@@ -10,7 +10,7 @@ export const TIME_RANGE_LABELS: Record<TimeRange, string> = {
 
 export interface Exercise {
   exercise_name: string;
-  band_color: 'White' | 'Light Gray' | 'Dark Gray' | 'Black';
+  band_color: 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite';
   full_reps: number;
   partial_reps: number;
 }
