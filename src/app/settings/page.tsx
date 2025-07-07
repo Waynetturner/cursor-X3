@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { supabase } from '@/lib/supabase';
 import { useSubscription, TIER_NAMES, TIER_DESCRIPTIONS, TIER_PRICING, TIER_PRICING_ANNUAL } from '@/contexts/SubscriptionContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Crown, Star, Zap, CheckCircle, Lock } from 'lucide-react';
 
 const tabs = [
@@ -16,7 +17,7 @@ const tabs = [
 
 export default function Settings() {
   const { tier, features, hasFeature, upgradeTo } = useSubscription();
-  const [darkMode, setDarkMode] = useState(false);
+  const { isDark, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState(tabs[0].value);
   const [user, setUser] = useState<any>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
@@ -33,9 +34,6 @@ export default function Settings() {
   });
 
   useEffect(() => {
-    const darkModePreference = localStorage.getItem('darkMode') === 'true';
-    setDarkMode(darkModePreference);
-    
     // Load user and measurement preferences
     const loadUserData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -430,14 +428,14 @@ export default function Settings() {
                       <p className="text-xs text-gray-500">Toggle between light and dark themes</p>
                     </div>
                     <button
-                      onClick={() => setDarkMode(!darkMode)}
+                      onClick={toggleTheme}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        darkMode ? 'bg-orange-500' : 'bg-gray-200'
+                        isDark ? 'bg-orange-500' : 'bg-gray-200'
                       }`}
                     >
                       <span 
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          darkMode ? 'translate-x-6' : 'translate-x-1'
+                          isDark ? 'translate-x-6' : 'translate-x-1'
                         }`} 
                       />
                     </button>
