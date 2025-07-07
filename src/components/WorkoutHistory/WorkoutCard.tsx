@@ -3,19 +3,20 @@ import { WorkoutCardProps } from './types';
 
 export const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, compact = false }) => {
   const getBandColorClasses = (bandColor: string) => {
+    // Use specific colors that won't be affected by dark mode
     switch (bandColor) {
       case 'White':
-        return 'bg-white text-black border border-gray-300';
+        return 'band-color-exempt border' + ' ' + 'bg-white text-black border-gray-300';
       case 'Light Gray':
-        return 'bg-gray-300 text-black border border-gray-400';
+        return 'band-color-exempt border' + ' ' + 'bg-gray-300 text-black border-gray-400';
       case 'Dark Gray':
-        return 'bg-gray-700 text-white border border-gray-600';
+        return 'band-color-exempt border' + ' ' + 'bg-gray-700 text-white border-gray-600';
       case 'Black':
-        return 'bg-black text-white border border-gray-800';
+        return 'band-color-exempt border' + ' ' + 'bg-black text-white border-gray-800';
       case 'Elite':
-        return 'bg-orange-500 text-white border border-orange-600';
+        return 'band-color-exempt border' + ' ' + 'bg-orange-500 text-white border-orange-600';
       default:
-        return 'bg-gray-50 text-gray-800 border border-gray-200';
+        return 'band-color-exempt border' + ' ' + 'bg-gray-50 text-gray-800 border-gray-200';
     }
   };
 
@@ -33,12 +34,12 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, compact = fal
   };
 
   const cardClasses = compact 
-    ? 'bg-gray-50 p-3 rounded-lg border border-gray-200'
-    : 'bg-gray-50 p-4 rounded-lg border border-gray-200';
+    ? 'brand-card p-3 rounded-lg'
+    : 'brand-card p-4 rounded-lg';
 
   const titleClasses = compact
-    ? 'font-bold text-base mb-2'
-    : 'font-bold text-lg mb-3';
+    ? 'font-bold text-base mb-2 text-primary'
+    : 'font-bold text-lg mb-3 text-primary';
 
   const exerciseSpacing = compact ? 'space-y-1' : 'space-y-2';
 
@@ -52,7 +53,7 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, compact = fal
         </div>
       </div>
       
-      <div className="bg-gray-50 rounded-lg p-3">
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
         <div className="flex flex-wrap gap-2">
           {workout.exercises.map((exercise, exIndex) => (
             <div 

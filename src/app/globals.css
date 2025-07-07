@@ -132,10 +132,6 @@ body {
 }
 
 /* Dark mode utility classes */
-.dark .bg-white {
-  background-color: var(--background-card);
-}
-
 .dark .text-gray-100 {
   color: var(--text-primary);
 }
@@ -146,6 +142,41 @@ body {
 
 .dark .border-gray-300 {
   border-color: var(--border-subtle);
+}
+
+/* Exempt band colors from dark mode - they should remain accurate */
+.band-color-exempt {
+  /* Override any dark mode background changes */
+}
+
+.band-color-exempt.bg-white {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.band-color-exempt.bg-gray-300 {
+  background-color: #d1d5db !important;
+  color: #000000 !important;
+}
+
+.band-color-exempt.bg-gray-700 {
+  background-color: #374151 !important;
+  color: #ffffff !important;
+}
+
+.band-color-exempt.bg-black {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.band-color-exempt.bg-orange-500 {
+  background-color: #f97316 !important;
+  color: #ffffff !important;
+}
+
+.band-color-exempt.bg-gray-50 {
+  background-color: #f9fafb !important;
+  color: #1f2937 !important;
 }
 
 .border-subtle {
