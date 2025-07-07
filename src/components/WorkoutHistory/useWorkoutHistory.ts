@@ -7,6 +7,16 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to convert stored datetime to local date string
+  // Handles DST transitions automatically
+  const getLocalDateFromStoredTime = (storedTimestamp: string): string => {
+    const date = new Date(storedTimestamp); // JavaScript automatically converts to local time
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const getDateFilter = (range: TimeRange): string | null => {
     const now = new Date();
     
@@ -17,15 +27,16 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
       case 'week':
         const weekAgo = new Date(now);
         weekAgo.setDate(now.getDate() - 7);
-        return weekAgo.toISOString().split('T')[0];
+        // Create local date string for comparison
+        return `${weekAgo.getFullYear()}-${String(weekAgo.getMonth() + 1).padStart(2, '0')}-${String(weekAgo.getDate()).padStart(2, '0')}`;
       case 'month':
         const monthAgo = new Date(now);
         monthAgo.setMonth(now.getMonth() - 1);
-        return monthAgo.toISOString().split('T')[0];
+        return `${monthAgo.getFullYear()}-${String(monthAgo.getMonth() + 1).padStart(2, '0')}-${String(monthAgo.getDate()).padStart(2, '0')}`;
       case '6months':
         const sixMonthsAgo = new Date(now);
         sixMonthsAgo.setMonth(now.getMonth() - 6);
-        return sixMonthsAgo.toISOString().split('T')[0];
+        return `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, '0')}-${String(sixMonthsAgo.getDate()).padStart(2, '0')}`;
       case 'all':
         return null;
       default:
@@ -49,19 +60,12 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
 
       const dateFilter = getDateFilter(timeRange);
       
-      // Build query
-      let query = supabase
+      // Build query - fetch all exercises and filter client-side for accurate timezone handling
+      const { data: exercises, error: fetchError } = await supabase
         .from('workout_exercises')
         .select('*')
         .eq('user_id', user.id)
         .order('workout_local_date_time', { ascending: false });
-
-      // Apply date filter if needed
-      if (dateFilter && timeRange !== 'last-two') {
-        query = query.gte('workout_local_date_time', dateFilter);
-      }
-
-      const { data: exercises, error: fetchError } = await query;
 
       if (fetchError) {
         throw fetchError;
@@ -72,11 +76,20 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
         return;
       }
 
+      // Filter exercises by date range using local date conversion
+      let filteredExercises = exercises;
+      if (dateFilter && timeRange !== 'last-two') {
+        filteredExercises = exercises.filter(exercise => {
+          const localDate = getLocalDateFromStoredTime(exercise.workout_local_date_time);
+          return localDate >= dateFilter;
+        });
+      }
+
       // Group exercises by date and workout type
       const groupedWorkouts: Record<string, Workout> = {};
       
-      exercises.forEach((exercise) => {
-        const exerciseDate = exercise.workout_local_date_time.split('T')[0];
+      filteredExercises.forEach((exercise) => {
+        const exerciseDate = getLocalDateFromStoredTime(exercise.workout_local_date_time);
         const key = `${exerciseDate}_${exercise.workout_type}`;
         
         if (!groupedWorkouts[key]) {

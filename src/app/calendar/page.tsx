@@ -62,7 +62,14 @@ export default function CalendarPage() {
 
       if (exercises) {
         const completed = new Set(
-          exercises.map(e => e.workout_local_date_time.split('T')[0])
+          exercises.map(e => {
+            // Convert stored timestamp to local date properly
+            const date = new Date(e.workout_local_date_time);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          })
         )
         setCompletedWorkouts(completed)
       }
@@ -77,65 +84,36 @@ export default function CalendarPage() {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
     
-    // Get first day of month and number of days
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-    const daysInMonth = lastDay.getDate()
-    const startDayOfWeek = firstDay.getDay()
-
-    // Generate calendar grid (6 weeks)
-    const calendarDays: WorkoutDay[] = []
+    // Get first day of month and determine starting date for calendar
+    const firstDayOfMonth = new Date(year, month, 1)
+    const startDayOfWeek = firstDayOfMonth.getDay() // 0 = Sunday, 1 = Monday, etc.
     
-    // Previous month days
-    const prevMonth = new Date(year, month - 1, 0)
-    for (let i = startDayOfWeek - 1; i >= 0; i--) {
-      const date = new Date(year, month - 1, prevMonth.getDate() - i)
-      const dateStr = date.toISOString().split('T')[0]
-      const workout = getWorkoutForDate(userStartDate, dateStr)
-      
-      calendarDays.push({
-        date: dateStr,
-        dayOfMonth: date.getDate(),
-        workoutType: workout.workoutType,
-        isCompleted: completedWorkouts.has(dateStr),
-        isToday: false,
-        isThisMonth: false,
-        week: workout.week
-      })
-    }
+    // Calculate the first date to show (might be from previous month)
+    const startDate = new Date(firstDayOfMonth)
+    startDate.setDate(startDate.getDate() - startDayOfWeek)
 
-    // Current month days
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day)
-      const dateStr = date.toISOString().split('T')[0]
+    // Generate 42 days (6 weeks × 7 days)
+    const calendarDays: WorkoutDay[] = []
+    const today = (() => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    })()
+    
+    for (let i = 0; i < 42; i++) {
+      const currentDate = new Date(startDate)
+      currentDate.setDate(startDate.getDate() + i)
+      
+      const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
       const workout = getWorkoutForDate(userStartDate, dateStr)
-      const today = new Date().toISOString().split('T')[0]
+      const isThisMonth = currentDate.getMonth() === month
       
       calendarDays.push({
         date: dateStr,
-        dayOfMonth: day,
+        dayOfMonth: currentDate.getDate(),
         workoutType: workout.workoutType,
         isCompleted: completedWorkouts.has(dateStr),
         isToday: dateStr === today,
-        isThisMonth: true,
-        week: workout.week
-      })
-    }
-
-    // Next month days to fill grid
-    const remainingDays = 42 - calendarDays.length // 6 weeks × 7 days
-    for (let day = 1; day <= remainingDays; day++) {
-      const date = new Date(year, month + 1, day)
-      const dateStr = date.toISOString().split('T')[0]
-      const workout = getWorkoutForDate(userStartDate, dateStr)
-      
-      calendarDays.push({
-        date: dateStr,
-        dayOfMonth: day,
-        workoutType: workout.workoutType,
-        isCompleted: completedWorkouts.has(dateStr),
-        isToday: false,
-        isThisMonth: false,
+        isThisMonth: isThisMonth,
         week: workout.week
       })
     }
