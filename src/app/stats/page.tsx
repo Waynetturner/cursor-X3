@@ -6,6 +6,7 @@ import { BarChart3, Calendar, Flame, Trophy } from 'lucide-react'
 import X3MomentumWordmark from '@/components/X3MomentumWordmark'
 import AppLayout from '@/components/layout/AppLayout'
 import { WorkoutHistory } from '@/components/WorkoutHistory'
+import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
 interface WorkoutStats {
   totalWorkouts: number
@@ -157,105 +158,75 @@ export default function StatsPage() {
 
   if (loading) {
     return (
-      <AppLayout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="brand-card text-center">
-            <h2 className="text-subhead brand-gold mb-4">Loading Stats...</h2>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
+      <ProtectedRoute>
+        <AppLayout>
+          <div className="container mx-auto px-4 py-8">
+            <div className="brand-card text-center">
+              <h2 className="text-subhead brand-gold mb-4">Loading Stats...</h2>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
+            </div>
           </div>
-        </div>
-      </AppLayout>
-    )
-  }
-
-  if (!user) {
-    return (
-      <AppLayout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="brand-card text-center">
-            <h2 className="text-subhead brand-gold mb-4">Please Sign In</h2>
-            <p className="text-body text-secondary">Sign in to view your workout statistics</p>
-          </div>
-        </div>
-      </AppLayout>
+        </AppLayout>
+      </ProtectedRoute>
     )
   }
 
   return (
-    <AppLayout>
-      <div className="container mx-auto px-4 py-8">
-        {/* Page Header */}
-        <div className="brand-card text-center mb-8">
-          <h1 className="text-headline mb-2">
-            Workout <span className="brand-gold">Statistics</span>
-          </h1>
-          <p className="text-body text-secondary">Track your X3 progress and achievements</p>
+    <ProtectedRoute>
+      <AppLayout>
+        <div className="container mx-auto px-4 py-8">
+          {/* Page Header */}
+          <div className="brand-card text-center mb-8">
+            <h1 className="text-headline mb-2">
+              Workout <span className="brand-gold">Statistics</span>
+            </h1>
+            <p className="text-body text-secondary">Track your X3 progress and achievements</p>
+          </div>
+          
+          <main className="max-w-6xl mx-auto">
+            {/* Key Stats Bento Grid */}
+            <div className="stats-grid mb-8">
+              <div className="brand-card text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <BarChart3 className="brand-fire" size={32} />
+                </div>
+                <h3 className="text-body-large font-semibold mb-2">Total Workouts</h3>
+                <p className="text-headline brand-fire">{stats?.totalWorkouts || 0}</p>
+              </div>
+
+              <div className="brand-card text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <Flame className="brand-fire" size={32} />
+                </div>
+                <h3 className="text-body-large font-semibold mb-2">Current Streak</h3>
+                <p className="text-headline brand-fire">{stats?.currentStreak || 0} days</p>
+              </div>
+
+              <div className="brand-card text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <Calendar className="brand-fire" size={32} />
+                </div>
+                <h3 className="text-body-large font-semibold mb-2">Current Week</h3>
+                <p className="text-headline brand-fire">Week {stats?.currentWeek || 1}</p>
+              </div>
+
+              <div className="brand-card text-center">
+                <div className="flex items-center justify-center mb-4">
+                  <Trophy className="brand-fire" size={32} />
+                </div>
+                <h3 className="text-body-large font-semibold mb-2">Longest Streak</h3>
+                <p className="text-headline brand-fire">{stats?.longestStreak || 0} days</p>
+              </div>
+            </div>
+
+            {/* Workout History */}
+            <div className="brand-card">
+              <h2 className="text-subhead mb-6">Recent Workouts</h2>
+              <WorkoutHistory />
+            </div>
+          </main>
         </div>
-        
-        <main className="max-w-6xl mx-auto">
-          {/* Key Stats Bento Grid */}
-          <div className="stats-grid mb-8">
-            <div className="brand-card text-center">
-              <div className="flex items-center justify-center mb-4">
-                <BarChart3 className="brand-fire" size={32} />
-              </div>
-              <div className="text-3xl font-bold text-primary mb-2">{stats?.totalWorkouts || 0}</div>
-              <div className="text-body-large brand-gold font-medium mb-1">Total Workouts</div>
-              <div className="text-body-small text-secondary">Sessions completed</div>
-            </div>
-
-            <div className="brand-card text-center">
-              <div className="flex items-center justify-center mb-4">
-                <Calendar className="brand-fire" size={32} />
-              </div>
-              <div className="text-3xl font-bold text-primary mb-2">{stats?.currentWeek || 1}</div>
-              <div className="text-body-large brand-gold font-medium mb-1">Current Week</div>
-              <div className="text-body-small text-secondary">X3 program week</div>
-            </div>
-
-            <div className="brand-card text-center">
-              <div className="flex items-center justify-center mb-4">
-                <Flame className="brand-fire" size={32} />
-              </div>
-              <div className="text-3xl font-bold text-primary mb-2">{stats?.currentStreak || 0}</div>
-              <div className="text-body-large brand-gold font-medium mb-1">Fire Streak</div>
-              <div className="text-body-small text-secondary">Days in a row</div>
-            </div>
-
-            <div className="brand-card text-center">
-              <div className="flex items-center justify-center mb-4">
-                <Trophy className="brand-gold" size={32} />
-              </div>
-              <div className="text-3xl font-bold text-primary mb-2">{stats?.longestStreak || 0}</div>
-              <div className="text-body-large brand-gold font-medium mb-1">Best Streak</div>
-              <div className="text-body-small text-secondary">Personal record</div>
-            </div>
-          </div>
-
-          {/* Workout History */}
-          <div className="mt-8">
-            <WorkoutHistory 
-              defaultRange="week"
-              showAllControls={true}
-              showTitle={true}
-              compact={false}
-            />
-          </div>
-
-          {/* Motivational Message */}
-          <div className="mt-8 brand-card text-center">
-            <h2 className="text-body-large font-bold brand-gold mb-2">Keep Going!</h2>
-            <p className="text-body text-secondary">
-              {stats?.totalWorkouts === 0 
-                ? "Start your first workout to see your progress here!"
-                : stats?.currentStreak === 0
-                ? "Get back on track - consistency is key to X3 success!"
-                : `Great job maintaining a ${stats?.currentStreak || 0}-day streak! Keep building momentum.`
-              }
-            </p>
-          </div>
-        </main>
-      </div>
-    </AppLayout>
+      </AppLayout>
+    </ProtectedRoute>
   )
 }

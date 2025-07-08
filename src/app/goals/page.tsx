@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import { supabase } from '@/lib/supabase'
 import { Target, Trophy, CheckCircle, Calendar, Flame, Clock, BarChart } from 'lucide-react'
+import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
 interface Goal {
   id: string
@@ -202,198 +203,156 @@ export default function GoalsPage() {
 
   if (loading) {
     return (
-      <AppLayout title="Goals">
-        <div className="p-8">
-          <div className="brand-card text-gray-100 rounded-2xl p-8 text-center">
-            <h2 className="text-2xl font-bold brand-fire mb-4">Loading Goals...</h2>
+      <ProtectedRoute>
+        <AppLayout>
+          <div className="container mx-auto px-4 py-8">
+            <div className="brand-card text-center">
+              <h2 className="text-subhead brand-gold mb-4">Loading Goals...</h2>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
+            </div>
           </div>
-        </div>
-      </AppLayout>
-    )
-  }
-
-  if (!user) {
-    return (
-      <AppLayout title="Goals">
-        <div className="p-8">
-          <div className="brand-card text-gray-100 rounded-2xl p-8 text-center">
-            <h2 className="text-2xl font-bold brand-fire mb-4">Please Sign In</h2>
-            <p className="text-gray-600">Sign in to set and track your fitness goals</p>
-          </div>
-        </div>
-      </AppLayout>
+        </AppLayout>
+      </ProtectedRoute>
     )
   }
 
   return (
-    <AppLayout title="Goals">
-      <div className="p-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-100">Your <span className="brand-fire">Goals</span></h1>
-          <p className="text-gray-400 mt-2">Track your progress and achieve your fitness milestones</p>
-        </header>
+    <ProtectedRoute>
+      <AppLayout>
+        <div className="container mx-auto px-4 py-8">
+          {/* Page Header */}
+          <div className="brand-card text-center mb-8">
+            <h1 className="text-headline mb-2">
+              Your <span className="brand-gold">Goals</span>
+            </h1>
+            <p className="text-body text-secondary">Track your progress and celebrate achievements</p>
+          </div>
 
-        <main className="max-w-6xl mx-auto">
-          {userStats && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-              <div className="brand-card rounded-xl p-4 text-center">
-                <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <BarChart size={24} className="text-orange-400" />
+          <main className="max-w-6xl mx-auto">
+            {/* Stats Overview */}
+            {userStats && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="brand-card text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <BarChart className="brand-fire" size={32} />
+                  </div>
+                  <h3 className="text-body-large font-semibold mb-2">Total Workouts</h3>
+                  <p className="text-headline brand-fire">{userStats.totalWorkouts}</p>
                 </div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">{userStats.totalWorkouts}</div>
-                <div className="text-sm text-gray-600">Total Workouts</div>
+
+                <div className="brand-card text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <Calendar className="brand-fire" size={32} />
+                  </div>
+                  <h3 className="text-body-large font-semibold mb-2">Current Week</h3>
+                  <p className="text-headline brand-fire">{userStats.currentWeek}</p>
+                </div>
+
+                <div className="brand-card text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <Flame className="brand-fire" size={32} />
+                  </div>
+                  <h3 className="text-body-large font-semibold mb-2">Current Streak</h3>
+                  <p className="text-headline brand-fire">{userStats.currentStreak} days</p>
+                </div>
+
+                <div className="brand-card text-center">
+                  <div className="flex items-center justify-center mb-4">
+                    <Trophy className="brand-fire" size={32} />
+                  </div>
+                  <h3 className="text-body-large font-semibold mb-2">Longest Streak</h3>
+                  <p className="text-headline brand-fire">{userStats.longestStreak} days</p>
+                </div>
+              </div>
+            )}
+
+            {/* Goals Tabs */}
+            <div className="brand-card">
+              <div className="flex space-x-1 mb-6">
+                <button
+                  onClick={() => setActiveTab('active')}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                    activeTab === 'active'
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Active Goals ({activeGoals.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('completed')}
+                  className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
+                    activeTab === 'completed'
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Completed ({completedGoals.length})
+                </button>
               </div>
 
-              <div className="brand-card rounded-xl p-4 text-center">
-                <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Calendar size={24} className="text-blue-400" />
-                </div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">{userStats.currentWeek}</div>
-                <div className="text-sm text-gray-600">Current Week</div>
+              {/* Goals List */}
+              <div className="space-y-4">
+                {(activeTab === 'active' ? activeGoals : completedGoals).map((goal) => (
+                  <div
+                    key={goal.id}
+                    className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-start space-x-3">
+                        {getCategoryIcon(goal.category)}
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{goal.title}</h3>
+                          <p className="text-gray-600">{goal.description}</p>
+                        </div>
+                      </div>
+                      {goal.isCompleted && (
+                        <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0" />
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>Progress</span>
+                        <span>{goal.currentValue} / {goal.targetValue} {goal.unit}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-orange-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${getProgressPercentage(goal.currentValue, goal.targetValue)}%` }}
+                        ></div>
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {goal.isCompleted ? (
+                          <span className="text-green-600 font-medium">Goal achieved!</span>
+                        ) : (
+                          <span>{Math.round(getProgressPercentage(goal.currentValue, goal.targetValue))}% complete</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              <div className="brand-card rounded-xl p-4 text-center">
-                <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Flame size={24} className="text-green-400" />
+              {activeTab === 'active' && activeGoals.length === 0 && (
+                <div className="text-center py-8">
+                  <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Goals</h3>
+                  <p className="text-gray-600">All your goals have been completed! Great job!</p>
                 </div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">{userStats.currentStreak}</div>
-                <div className="text-sm text-gray-600">Current Streak</div>
-              </div>
+              )}
 
-              <div className="brand-card rounded-xl p-4 text-center">
-                <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Trophy size={24} className="text-orange-400" />
+              {activeTab === 'completed' && completedGoals.length === 0 && (
+                <div className="text-center py-8">
+                  <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Completed Goals Yet</h3>
+                  <p className="text-gray-600">Keep working on your active goals to see them here!</p>
                 </div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">{userStats.longestStreak}</div>
-                <div className="text-sm text-gray-600">Best Streak</div>
-              </div>
+              )}
             </div>
-          )}
-
-          {/* Tab Navigation */}
-          <div className="flex border-b border-gray-300 mb-6">
-            <button
-              className={`px-4 py-2 font-semibold focus:outline-none transition-colors duration-200 ${
-                activeTab === 'active'
-                  ? 'border-b-4 border-orange-500 text-orange-500'
-                  : 'text-gray-600 hover:text-orange-500'
-              }`}
-              onClick={() => setActiveTab('active')}
-            >
-              Active Goals ({activeGoals.length})
-            </button>
-            <button
-              className={`px-4 py-2 font-semibold focus:outline-none transition-colors duration-200 ${
-                activeTab === 'completed'
-                  ? 'border-b-4 border-orange-500 text-orange-500'
-                  : 'text-gray-600 hover:text-orange-500'
-              }`}
-              onClick={() => setActiveTab('completed')}
-            >
-              Completed ({completedGoals.length})
-            </button>
-          </div>
-
-          {/* Goals Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {activeTab === 'active' && activeGoals.map((goal) => (
-              <div key={goal.id} className="brand-card rounded-xl p-6 hover:shadow-lg transition-shadow">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    {getCategoryIcon(goal.category)}
-                    <div>
-                      <h3 className="font-bold text-lg text-gray-900">{goal.title}</h3>
-                      <p className="text-sm text-gray-600 capitalize">{goal.category}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900">
-                      {goal.currentValue}/{goal.targetValue}
-                    </div>
-                    <div className="text-sm text-gray-600">{goal.unit}</div>
-                  </div>
-                </div>
-
-                <p className="text-gray-700 mb-4">{goal.description}</p>
-
-                {/* Progress Bar */}
-                <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 mb-1">
-                    <span>Progress</span>
-                    <span>{Math.round(getProgressPercentage(goal.currentValue, goal.targetValue))}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-orange-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${getProgressPercentage(goal.currentValue, goal.targetValue)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {goal.targetDate && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Clock size={16} className="mr-1" />
-                    Target: {new Date(goal.targetDate).toLocaleDateString()}
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {activeTab === 'completed' && completedGoals.map((goal) => (
-              <div key={goal.id} className="brand-card rounded-xl p-6 opacity-75">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <CheckCircle size={20} className="text-green-400" />
-                    <div>
-                      <h3 className="font-bold text-lg text-gray-900">{goal.title}</h3>
-                      <p className="text-sm text-gray-600 capitalize">{goal.category}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-green-600">
-                      {goal.currentValue}/{goal.targetValue}
-                    </div>
-                    <div className="text-sm text-gray-600">{goal.unit}</div>
-                  </div>
-                </div>
-
-                <p className="text-gray-700 mb-4">{goal.description}</p>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-green-600 font-semibold">✓ Completed</span>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Trophy size={16} className="mr-1" />
-                    Achievement Unlocked!
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Motivational Section */}
-          <div className="mt-12 brand-card rounded-xl p-8 text-center">
-            <div className="text-4xl mb-4">🚀</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Keep Pushing Forward!</h2>
-            <p className="text-gray-600 mb-6">
-              Every workout brings you closer to your goals. Stay consistent, stay motivated, and watch your progress soar.
-            </p>
-            <div className="flex justify-center space-x-4">
-              <div className="text-center">
-                <div className="text-xl font-bold text-orange-500">
-                  {userStats ? Math.round((userStats.totalWorkouts / 30) * 100) : 0}%
-                </div>
-                <div className="text-sm text-gray-600">to 30 workouts</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl font-bold text-blue-500">
-                  {userStats ? Math.round((userStats.currentWeek / 12) * 100) : 0}%
-                </div>
-                <div className="text-sm text-gray-600">to 12 weeks</div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    </AppLayout>
+          </main>
+        </div>
+      </AppLayout>
+    </ProtectedRoute>
   )
 }
