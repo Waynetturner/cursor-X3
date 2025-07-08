@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useSubscription, TIER_NAMES, TIER_DESCRIPTIONS, TIER_PRICING, TIER_PRICING_ANNUAL } from '@/contexts/SubscriptionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Crown, Star, Zap, CheckCircle, Lock } from 'lucide-react';
+import BackendTester from '@/components/BackendTester';
 
 const tabs = [
   { label: "Profile", value: "profile" },
@@ -644,8 +645,17 @@ export default function Settings() {
                 <h2 className="text-xl font-semibold mb-4 brand-fire">Advanced Settings</h2>
                 
                 {hasFeature('advancedAnalytics') ? (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <p className="text-gray-600 mb-4">Advanced features for {TIER_NAMES[tier]} users.</p>
+                    
+                    {/* Backend Integration Tester */}
+                    <div className="p-4 border border-gray-300 bg-white rounded-lg">
+                      <h3 className="font-medium text-gray-800 mb-2">Backend Integration Status</h3>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Test and verify all backend services and integrations.
+                      </p>
+                      <BackendTester />
+                    </div>
                     
                     <div className="space-y-4">
                       <div className="p-4 border border-gray-300 bg-white rounded-lg">
