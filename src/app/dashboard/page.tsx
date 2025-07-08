@@ -17,6 +17,7 @@ import {
 import AppLayout from '@/components/layout/AppLayout'
 import RestTimer from '@/components/RestTimer'
 import TTSSettings from '@/components/TTSSettings'
+import AICoaching from '@/components/AICoaching'
 import { useX3TTS } from '@/hooks/useX3TTS'
 import { useSubscription } from '@/contexts/SubscriptionContext'
 import { useAudioCues } from '@/components/AudioCues'
@@ -333,6 +334,12 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
+          {/* AI Coaching */}
+          <AICoaching 
+            workoutData={currentSession?.exercises || []}
+            className="mb-8"
+          />
 
           {/* TTS Status */}
           {isTTSAvailable && (

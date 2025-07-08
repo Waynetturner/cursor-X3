@@ -88,7 +88,7 @@ function getRandomMessage(type: keyof typeof STATIC_COACHING_MESSAGES): CoachCha
     tts_message: randomMessage.tts,
     tone: randomMessage.tone,
     confidence: randomMessage.confidence,
-    suggestions: randomMessage.suggestions,
+    suggestions: 'suggestions' in randomMessage ? randomMessage.suggestions : undefined,
     success: true
   }
 }
@@ -197,15 +197,91 @@ serve(async (req) => {
         )
       }
 
-      // For now, return a mock dynamic response
-      // In production, this would integrate with OpenAI/Claude APIs
-      response = {
-        message: `I understand your feedback: "${user_feedback}". Based on your workout data, I can see you're making progress. Keep focusing on form and pushing to failure.`,
-        tts_message: `I understand your feedback. Based on your workout data, you're making progress. Keep focusing on form and pushing to failure.`,
-        tone: 'supportive',
-        confidence: 0.8,
-        suggestions: ["Focus on controlled movements", "Rest 90 seconds between exercises", "Listen to your body"],
-        success: true
+      // Try direct OpenAI integration first, fallback to mock response
+      try {
+        const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+        if (openaiApiKey) {
+          const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openaiApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4',
+              messages: [
+                {
+                  role: 'system',
+                  content: `You are an expert X3 resistance band trainer and motivational coach. You provide personalized, supportive feedback based on workout data and user feedback. Keep responses concise, encouraging, and actionable. Use a tone that matches the user's needs: supportive, motivational, educational, or celebratory.`
+                },
+                {
+                  role: 'user',
+                  content: `User feedback: "${user_feedback}"
+Workout data: ${JSON.stringify(workout_data || [])}
+Progress history: ${JSON.stringify(progress_history || [])}
+
+Please provide coaching feedback in this JSON format:
+{
+  "message": "Your coaching message",
+  "tts_message": "Shorter version for TTS",
+  "tone": "supportive|motivational|educational|celebratory",
+  "confidence": 0.8,
+  "suggestions": ["suggestion1", "suggestion2"]
+}`
+                }
+              ],
+              max_tokens: 500,
+              temperature: 0.7
+            })
+          })
+
+          if (openaiResponse.ok) {
+            const openaiData = await openaiResponse.json()
+            const content = openaiData.choices[0]?.message?.content
+            
+            if (content) {
+              try {
+                const parsedResponse = JSON.parse(content)
+                response = {
+                  message: parsedResponse.message || "Great work! Keep pushing through your X3 journey.",
+                  tts_message: parsedResponse.tts_message || parsedResponse.message || "Great work! Keep pushing through your X3 journey.",
+                  tone: parsedResponse.tone || 'supportive',
+                  confidence: parsedResponse.confidence || 0.8,
+                  suggestions: parsedResponse.suggestions || [],
+                  success: true
+                }
+              } catch (parseError) {
+                // If JSON parsing fails, use the raw content
+                response = {
+                  message: content,
+                  tts_message: content.length > 100 ? content.substring(0, 100) + "..." : content,
+                  tone: 'supportive',
+                  confidence: 0.7,
+                  suggestions: ["Focus on form", "Push to failure", "Rest adequately"],
+                  success: true
+                }
+              }
+            } else {
+              throw new Error('No content in OpenAI response')
+            }
+          } else {
+            throw new Error(`OpenAI API error: ${openaiResponse.status}`)
+          }
+        } else {
+          throw new Error('OpenAI API key not configured')
+        }
+      } catch (openaiError) {
+        console.error('OpenAI integration failed:', openaiError)
+        
+        // Fallback to mock dynamic response
+        response = {
+          message: `I understand your feedback: "${user_feedback}". Based on your workout data, I can see you're making progress. Keep focusing on form and pushing to failure.`,
+          tts_message: `I understand your feedback. Based on your workout data, you're making progress. Keep focusing on form and pushing to failure.`,
+          tone: 'supportive',
+          confidence: 0.8,
+          suggestions: ["Focus on controlled movements", "Rest 90 seconds between exercises", "Listen to your body"],
+          success: true
+        }
       }
       
     } else {

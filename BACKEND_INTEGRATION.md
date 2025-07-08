@@ -112,6 +112,42 @@ CREATE TRIGGER update_user_ui_settings_updated_at BEFORE UPDATE ON user_ui_setti
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 ```
 
+### coaching_requests Table
+```sql
+CREATE TABLE coaching_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  coaching_type TEXT NOT NULL CHECK (coaching_type IN ('static', 'dynamic')),
+  user_feedback TEXT,
+  subscription_tier TEXT NOT NULL,
+  response_tone TEXT CHECK (response_tone IN ('supportive', 'motivational', 'educational', 'celebratory')),
+  confidence DECIMAL(3,2) CHECK (confidence >= 0.0 AND confidence <= 1.0),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_coaching_requests_user_id ON coaching_requests(user_id);
+CREATE INDEX idx_coaching_requests_created_at ON coaching_requests(created_at);
+CREATE INDEX idx_coaching_requests_type ON coaching_requests(coaching_type);
+```
+
+### tts_requests Table
+```sql
+CREATE TABLE tts_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  voice TEXT,
+  speed DECIMAL(3,1),
+  subscription_tier TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for performance
+CREATE INDEX idx_tts_requests_user_id ON tts_requests(user_id);
+CREATE INDEX idx_tts_requests_created_at ON tts_requests(created_at);
+```
+
 ## Row Level Security (RLS) Policies
 
 ### workout_exercises RLS
@@ -169,6 +205,37 @@ CREATE POLICY "Users can update own UI settings" ON user_ui_settings
 
 CREATE POLICY "Users can delete own UI settings" ON user_ui_settings
   FOR DELETE USING (auth.uid() = user_id);
+```
+
+### coaching_requests RLS
+```sql
+-- Enable RLS
+ALTER TABLE coaching_requests ENABLE ROW LEVEL SECURITY;
+
+-- Users can only access their own coaching requests
+CREATE POLICY "Users can view own coaching requests" ON coaching_requests
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own coaching requests" ON coaching_requests
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Users cannot update or delete coaching requests (read-only for analytics)
+```
+
+### tts_requests RLS
+```sql
+-- Enable RLS
+ALTER TABLE tts_requests ENABLE ROW LEVEL SECURITY;
+
+-- Users can only access their own TTS requests
+CREATE POLICY "Users can view own TTS requests" ON tts_requests
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own TTS requests" ON tts_requests
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Users cannot update or delete TTS requests (read-only for analytics)
+```
 ```
 
 ## Edge Functions Setup
