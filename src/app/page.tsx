@@ -13,19 +13,29 @@ import { WorkoutHistory } from '@/components/WorkoutHistory'
 // Helper to get local ISO string with timezone offset
 function getLocalISODateTime() {
   const now = new Date();
-  const tzo = -now.getTimezoneOffset(),
-    dif = tzo >= 0 ? '+' : '-',
-    pad = function(num: number) {
-      const norm = Math.floor(Math.abs(num));
-      return (norm < 10 ? '0' : '') + norm;
-    };
-  return now.getFullYear() +
-    '-' + pad(now.getMonth() + 1) +
-    '-' + pad(now.getDate()) +
-    'T' + pad(now.getHours()) +
-    ':' + pad(now.getMinutes()) +
-    ':' + pad(now.getSeconds()) +
-    dif + pad(tzo / 60) + ':' + pad(tzo % 60);
+  
+  // Create a timestamp that preserves the local date regardless of timezone
+  // Use the local date components directly
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  
+  // Get timezone offset in proper format
+  const tzo = -now.getTimezoneOffset(); // Minutes difference from UTC
+  const offsetHours = String(Math.floor(Math.abs(tzo) / 60)).padStart(2, '0');
+  const offsetMinutes = String(Math.abs(tzo) % 60).padStart(2, '0');
+  const offsetSign = tzo >= 0 ? '+' : '-';
+  
+  const result = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${offsetHours}:${offsetMinutes}`;
+  
+  console.log('🕒 Generated timestamp:', result);
+  console.log('🌍 Timezone offset minutes:', now.getTimezoneOffset());
+  console.log('📅 Local date components:', { year, month, day, hours, minutes, seconds });
+  
+  return result;
 }
 
 

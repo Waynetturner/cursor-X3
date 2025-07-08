@@ -11,7 +11,9 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
   // Since workout_local_date_time already stores in correct timezone, just extract date part
   const getLocalDateFromStoredTime = (storedTimestamp: string): string => {
     // Extract date portion directly without conversion to avoid timezone shifts
-    return storedTimestamp.split('T')[0];
+    const extractedDate = storedTimestamp.split('T')[0];
+    console.log('📖 Reading stored timestamp:', storedTimestamp, '→ extracted date:', extractedDate);
+    return extractedDate;
   };
 
   const getDateFilter = (range: TimeRange): string | null => {
