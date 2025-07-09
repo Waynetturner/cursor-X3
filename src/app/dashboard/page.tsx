@@ -51,7 +51,7 @@ export default function DashboardPage() {
 
   // Sample workout data
   const sampleExercises: WorkoutExercise[] = [
-    { id: '1', name: 'Push-ups', bandColor: 'Black', fullReps: 0, partialReps: 0, completed: false, personalBest: false },
+    { id: '1', name: 'Tricep Press', bandColor: 'Black', fullReps: 0, partialReps: 0, completed: false, personalBest: false },
     { id: '2', name: 'Overhead Press', bandColor: 'Dark Gray', fullReps: 0, partialReps: 0, completed: false, personalBest: false },
     { id: '3', name: 'Chest Press', bandColor: 'Light Gray', fullReps: 0, partialReps: 0, completed: false, personalBest: false },
   ]

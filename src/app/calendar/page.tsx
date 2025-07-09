@@ -89,24 +89,24 @@ export default function CalendarPage() {
     const startDate = new Date(firstDayOfMonth)
     startDate.setDate(startDate.getDate() - startDayOfWeek)
 
-    // Generate 42 days (6 weeks × 7 days)
+    // Generate 35 days (5 weeks × 7 days) instead of 42
     const calendarDays: WorkoutDay[] = []
     const today = (() => {
       const now = new Date();
       return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     })()
     
-    for (let i = 0; i < 42; i++) {
-      const currentDate = new Date(startDate)
-      currentDate.setDate(startDate.getDate() + i)
+    for (let i = 0; i < 35; i++) {
+      const currentCalendarDate = new Date(startDate)
+      currentCalendarDate.setDate(startDate.getDate() + i)
       
-      const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
+      const dateStr = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}-${String(currentCalendarDate.getDate()).padStart(2, '0')}`
       const workout = getWorkoutForDate(userStartDate, dateStr)
-      const isThisMonth = currentDate.getMonth() === month
+      const isThisMonth = currentCalendarDate.getMonth() === month
       
       calendarDays.push({
         date: dateStr,
-        dayOfMonth: currentDate.getDate(),
+        dayOfMonth: currentCalendarDate.getDate(),
         workoutType: workout.workoutType,
         isCompleted: completedWorkouts.has(dateStr),
         isToday: dateStr === today,
@@ -152,7 +152,7 @@ export default function CalendarPage() {
       case 'Rest':
         return 'bg-blue-500/20 border-blue-500 text-blue-400'
     }
-  }
+  } // ← Make sure this closing brace exists!
 
   if (loading) {
     return (
@@ -190,83 +190,101 @@ export default function CalendarPage() {
     <ProtectedRoute>
       <AppLayout title="Calendar">
         <div className="p-8">
-          <header className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-3xl font-bold text-white">X3 Calendar</h1>
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => navigateMonth('prev')}
-                  className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-                >
-                  <ChevronLeft className="w-5 h-5 text-white" />
-                </button>
-                <span className="text-xl font-semibold text-white">{monthName}</span>
-                <button
-                  onClick={() => navigateMonth('next')}
-                  className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5 text-white" />
-                </button>
-              </div>
-            </div>
-          </header>
+       
 
           <main>
+            {/* Month Name - Centered and Large */}
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                {monthName}
+              </h1>
+            </div>
+
             {/* Calendar Grid */}
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+            <div className="bg-gray-100 dark:bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-gray-300 dark:border-white/20">
               {/* Day Headers */}
-              <div className="grid grid-cols-7 gap-2 mb-4">
+              <div className="grid grid-cols-7 gap-3 mb-4 max-w-4xl mx-auto">
                 {dayNames.map(day => (
-                  <div key={day} className="text-center text-sm font-medium text-gray-300 py-2">
+                  <div key={day} className="text-center text-sm font-medium text-gray-700 dark:text-gray-300 py-2">
                     {day}
                   </div>
                 ))}
               </div>
 
-              {/* Calendar Days */}
-              <div className="grid grid-cols-7 gap-2">
-                {workoutDays.map((day, index) => (
-                  <div
-                    key={index}
-                    className={`
-                      aspect-square p-2 rounded-lg border-2 transition-all duration-200
-                      ${day.isThisMonth ? 'bg-white/5' : 'bg-white/2 opacity-50'}
-                      ${day.isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-gray-900' : ''}
-                      ${getWorkoutTypeColor(day.workoutType, day.isCompleted)}
-                    `}
-                  >
-                    <div className="flex flex-col items-center justify-center h-full">
-                      <span className={`text-sm font-medium ${day.isThisMonth ? 'text-white' : 'text-gray-400'}`}>
-                        {day.dayOfMonth}
-                      </span>
-                      <div className="mt-1">
-                        {getWorkoutIcon(day.workoutType)}
-                      </div>
-                      {day.isCompleted && (
-                        <CheckCircle size={12} className="text-green-400 mt-1" />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+              {/* Calendar with Navigation - Fixed Sizing */}
+              <div className="flex items-center justify-center gap-6">
+                {/* Left Chevron */}
+                <button
+                  onClick={() => navigateMonth('prev')}
+                  className="p-3 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-white/10 dark:hover:bg-white/20 transition-colors border border-gray-400 dark:border-white/20 flex-shrink-0"
+                  aria-label="Previous month"
+                >
+                  <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
+                </button>
 
-            {/* Legend */}
-            <div className="mt-6 bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20">
-              <h3 className="text-lg font-semibold text-white mb-3">Legend</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Dumbbell size={16} className="text-orange-400" />
-                  <span className="text-gray-300">Push Workout</span>
+                {/* Calendar Days - Full Width */}
+                <div className="grid grid-cols-7 gap-3 w-full max-w-4xl">
+                  {workoutDays.map((day, index) => (
+                    <div
+                      key={day.date}
+                      className={`
+                        relative min-h-[80px] p-3 rounded-lg border-2 transition-all duration-200
+                        ${day.isThisMonth ? '' : 'opacity-50'}
+                        ${day.isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-gray-100 dark:ring-offset-gray-900' : ''}
+                        ${day.workoutType === 'Push' ? 'border-orange-500 bg-orange-100 dark:bg-orange-900/30' : ''}
+                        ${day.workoutType === 'Pull' ? 'border-red-500 bg-red-100 dark:bg-red-900/30' : ''}
+                        ${day.workoutType === 'Rest' ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/30' : ''}
+                        ${day.isCompleted ? 'border-green-500' : ''}
+                      `}
+                    >
+                      <div className="flex flex-col h-full">
+                        {/* Day Number */}
+                        <span className="text-lg font-bold mb-1 text-gray-900 dark:text-gray-100">
+                          {day.dayOfMonth}
+                        </span>
+                        
+                        {/* Workout Type */}
+                        <div className="flex-1 flex flex-col items-center justify-center">
+                          <div className="flex items-center space-x-1 mb-1">
+                            {getWorkoutIcon(day.workoutType)}
+                            <span className={`text-xs font-medium ${
+                              day.workoutType === 'Rest' 
+                                ? 'text-blue-600 dark:text-blue-400' 
+                                : day.workoutType === 'Push' 
+                                ? 'text-orange-600 dark:text-orange-400' 
+                                : 'text-red-600 dark:text-red-400'
+                            }`}>
+                              {day.workoutType}
+                            </span>
+                          </div>
+                          
+                          {/* Week indicator for current month */}
+                          {day.isThisMonth && (
+                            <span className="text-xs opacity-80 text-gray-700 dark:text-gray-300">
+                              W{day.week}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Completion Status */}
+                        {day.isCompleted && (
+                          <div className="absolute top-1 right-1">
+                            <CheckCircle size={16} className="text-green-400" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Flame size={16} className="text-red-400" />
-                  <span className="text-gray-300">Pull Workout</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Coffee size={16} className="text-blue-400" />
-                  <span className="text-gray-300">Rest Day</span>
-                </div>
+
+                {/* Right Chevron */}
+                <button
+                  onClick={() => navigateMonth('next')}
+                  className="p-3 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-white/10 dark:hover:bg-white/20 transition-colors border border-gray-400 dark:border-white/20 flex-shrink-0"
+                  aria-label="Next month"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-900 dark:text-white" />
+                </button>
               </div>
             </div>
           </main>

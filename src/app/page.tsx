@@ -106,6 +106,8 @@ interface Exercise {
 }
 
 export default function HomePage() {
+
+
   const [user, setUser] = useState<any>(null);
   const [todaysWorkout, setTodaysWorkout] = useState<any>(null);
   const [cadenceActive, setCadenceActive] = useState(false);
@@ -116,17 +118,23 @@ export default function HomePage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { hasFeature } = useSubscription();
   const router = useRouter();
-
+  const getTomorrowsWorkout = () => {
+    if (!user || !todaysWorkout) return 'Push';
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDateStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+    return 'Push';
+  }
 
   // Metronome beep effect: always call useEffect at the top level
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     if (cadenceActive) {
       playBeep(); // play immediately
-      speakText("Cadence started. 1 second intervals for proper form", hasFeature('ttsAudioCues'));
+      speakText("Cadence started. 2 second intervals for proper form", hasFeature('ttsAudioCues'));
       interval = setInterval(() => {
         playBeep();
-      }, 1000);
+      }, 2000);
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -712,8 +720,33 @@ export default function HomePage() {
                 </div>
               </div>
               
+
               <p className="text-body-small text-secondary">Week {todaysWorkout.week} • Day {todaysWorkout.dayInWeek + 1}</p>
-              <p className="text-body brand-fire font-medium mt-4">Tomorrow: Pull Workout Ready! 💪</p>
+<p className="text-body brand-fire font-medium mt-4">
+  Tomorrow: {getTomorrowsWorkout()} Workout Ready! 💪
+</p>       
+
+  
+  // Calculate tomorrow's date
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowDateStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+  
+  // Get user's start date from profile (you'll need to store this in state)
+  // For now, use a simple calculation based on today's workout
+  // You can get the actual start date from the profile data you already fetch
+  
+  // Use the getTodaysWorkout function with tomorrow's date
+  // You'll need access to the user's start date here
+  const tomorrowWorkout = getTodaysWorkout(userStartDate, tomorrowDateStr);
+  return tomorrowWorkout.workoutType;
+}
+
+// Replace line 716 with:
+const tomorrowWorkoutType = getTomorrowsWorkout();
+
+
+
             </div>
           </div>
         </main>
