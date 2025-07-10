@@ -55,7 +55,7 @@ function CadenceButton({ cadenceActive, setCadenceActive }: { cadenceActive: boo
       aria-label={cadenceActive ? 'Stop Cadence' : 'Start Cadence'}
     >
       {cadenceActive ? <Pause size={20} /> : <Play size={20} />}
-      <span>{cadenceActive ? 'Stop Cadence' : 'Start Cadence (1s)'}</span>
+      <span>{cadenceActive ? 'Stop Cadence' : 'Start Cadence (2s)'}</span>
     </button>
   );
 }

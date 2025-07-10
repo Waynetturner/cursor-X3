@@ -88,7 +88,7 @@ export default function AudioCues({ event, onEventProcessed }: AudioCuesProps) {
           return "Remember your cadence. Slow and controlled."
         } else {
           // Mastery tier - more specific
-          return "Focus on your tempo. Two seconds down, one second up. Control the movement."
+          return "Focus on your tempo. Two seconds out, two seconds back. Control the movement."
         }
 
       case 'rest_start':
@@ -205,7 +205,7 @@ export function useAudioCues() {
           } else if (tier === 'momentum') {
             return "Remember your cadence. Slow and controlled."
           } else {
-            return "Focus on your tempo. Two seconds down, one second up. Control the movement."
+            return "Focus on your tempo. Two seconds out, two seconds back. Control the movement."
           }
 
         case 'rest_start':
