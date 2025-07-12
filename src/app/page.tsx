@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkout } from '@/lib/supabase'
 import { announceToScreenReader } from '@/lib/accessibility'
-import { Play, Pause, Save, Info, BarChart3, Flame, Target, Calendar, Settings, ArrowRight, Sparkles, TrendingUp, Users, Shield, Loader2, AlertCircle, RotateCcw } from 'lucide-react'
+import { Play, Pause, Save, Info, BarChart3, Flame, Target, Calendar, Settings, ArrowRight, Sparkles, TrendingUp, Users, Shield, Loader2, AlertCircle, RotateCcw, CheckCircle } from 'lucide-react'
 import React from 'react'
 import X3MomentumWordmark from '@/components/X3MomentumWordmark'
 import AppLayout from '@/components/layout/AppLayout'
@@ -43,21 +43,60 @@ function formatWorkoutDate(timestamp: string): string {
 
 
 function CadenceButton({ cadenceActive, setCadenceActive }: { cadenceActive: boolean; setCadenceActive: React.Dispatch<React.SetStateAction<boolean>> }) {
+  const handleCadenceToggle = () => {
+    setCadenceActive((prev) => {
+      const newState = !prev
+      // Provide immediate feedback
+      if (newState) {
+        console.log('🎵 Cadence Started: 2-second interval timer')
+        announceToScreenReader('Cadence timer started with 2-second intervals', 'polite')
+      } else {
+        console.log('🎵 Cadence Stopped')
+        announceToScreenReader('Cadence timer stopped', 'polite')
+      }
+      return newState
+    })
+  }
+
   return (
-    <button
-      onClick={() => setCadenceActive((prev) => !prev)}
-      className={`w-full px-8 py-4 font-bold flex items-center justify-center space-x-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transform hover:scale-105 ${
-        cadenceActive 
-          ? 'bg-ember-red hover:bg-red-600 text-white border-none' 
-          : 'btn-primary'
-      }`}
-      style={cadenceActive ? { background: 'var(--ember-red)' } : {}}
-      aria-pressed={cadenceActive}
-      aria-label={cadenceActive ? 'Stop Cadence' : 'Start Cadence'}
-    >
-      {cadenceActive ? <Pause size={20} /> : <Play size={20} />}
-      <span>{cadenceActive ? 'Stop Cadence' : 'Start Cadence (2s)'}</span>
-    </button>
+    <div className="w-full">
+      <button
+        onClick={handleCadenceToggle}
+        className={`w-full px-8 py-4 font-bold flex items-center justify-center space-x-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transform hover:scale-105 ${
+          cadenceActive 
+            ? 'bg-ember-red hover:bg-red-600 text-white border-none' 
+            : 'btn-primary'
+        }`}
+        style={cadenceActive ? { background: 'var(--ember-red)' } : {}}
+        aria-pressed={cadenceActive}
+        aria-label={cadenceActive ? 'Stop Cadence Timer' : 'Start Cadence Timer'}
+      >
+        {cadenceActive ? (
+          <>
+            <Pause size={20} />
+            <span>Stop Cadence</span>
+            <span className="text-xs bg-red-800 bg-opacity-20 px-2 py-1 rounded-full">
+              🎵 Active
+            </span>
+          </>
+        ) : (
+          <>
+            <Play size={20} />
+            <span>Start Cadence (2s)</span>
+          </>
+        )}
+      </button>
+      
+      {/* Cadence Status Indicator */}
+      {cadenceActive && (
+        <div className="mt-2 text-center">
+          <div className="inline-flex items-center space-x-2 bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+            <span>Cadence Timer: 2 second intervals</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -113,6 +152,8 @@ export default function HomePage() {
   const [restTimerInterval, setRestTimerInterval] = useState<NodeJS.Timeout | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [exerciseLoadingStates, setExerciseLoadingStates] = useState<{ [key: number]: boolean }>({});
+  const [exerciseStates, setExerciseStates] = useState<{ [key: number]: 'idle' | 'started' | 'in_progress' | 'completed' }>({});
+  const [ttsActiveStates, setTtsActiveStates] = useState<{ [key: number]: boolean }>({});
   const [saveLoadingStates, setSaveLoadingStates] = useState<{ [key: number]: boolean }>({});
   const [saveErrorStates, setSaveErrorStates] = useState<{ [key: number]: string | null }>({});
   const { hasFeature, tier } = useSubscription();
@@ -171,9 +212,9 @@ export default function HomePage() {
       interval = setInterval(() => {
         setRestTimer(prev => {
           if (!prev || prev.timeLeft <= 1) {
-            // Timer finished
-            const restCompletePhrase = ttsPhaseService.getRestPhrase(tier === 'mastery' ? 'mastery' : 'momentum');
-            speak(restCompletePhrase, 'rest');
+            // Timer finished - DO NOT speak rest complete phrase here
+            // The next exercise will auto-start and speak exercise start phrase
+            console.log('⏰ Rest timer finished - transitioning to next exercise');
             return null;
           }
           
@@ -197,7 +238,7 @@ export default function HomePage() {
         setRestTimerInterval(null);
       }
     };
-  }, [restTimer?.isActive, tier, speak]); // Include tier and speak for TTS calls
+  }, [restTimer?.isActive]); // Removed tier and speak to avoid dependencies
   
   // Separate effect to handle precise countdown timing during rest timer
   useEffect(() => {
@@ -210,30 +251,61 @@ export default function HomePage() {
     if (nextExerciseIndex >= exercises.length) return;
     
     const nextExercise = exercises[nextExerciseIndex];
-    console.log(`⏰ Rest timer at ${timeLeft}s for next exercise: ${nextExercise.name}`);
+    console.log(`⏰ Rest timer: ${timeLeft}s remaining (${90 - timeLeft}s elapsed) for next exercise: ${nextExercise.name}`);
     
-    // Precise timing coordination with context-aware TTS
-    if (timeLeft === 88) {
-      console.log('⏰ TTS: Speaking "one" at exactly 88 seconds with countdown context');
-      speak('one', 'countdown');
-    } else if (timeLeft === 86) {
-      console.log('⏰ TTS: Speaking "two" at exactly 86 seconds with countdown context');
-      speak('two', 'countdown');
-    } else if (timeLeft === 84) {
-      console.log('⏰ TTS: Speaking "three" at exactly 84 seconds with countdown context');
+    // CORRECTED: Calculate elapsed time for proper countdown timing
+    const timeElapsed = 90 - timeLeft; // How much time has passed since timer started
+    
+    // Countdown happens in the FINAL 8 seconds (when 84+ seconds have elapsed)
+    if (timeElapsed === 84) { // 84 seconds elapsed = 6 seconds remaining
+      console.log('⏰ TTS: Speaking "three" at 84 seconds ELAPSED (6 seconds remaining)');
       speak('three', 'countdown');
-      // Start cadence after countdown
+    } else if (timeElapsed === 86) { // 86 seconds elapsed = 4 seconds remaining
+      console.log('⏰ TTS: Speaking "two" at 86 seconds ELAPSED (4 seconds remaining)');
+      speak('two', 'countdown');
+    } else if (timeElapsed === 88) { // 88 seconds elapsed = 2 seconds remaining
+      console.log('⏰ TTS: Speaking "one" at 88 seconds ELAPSED (2 seconds remaining)');
+      speak('one', 'countdown');
+      // Start cadence for final countdown
       setCadenceActive(true);
-      console.log('🎵 Starting cadence for next exercise prep after countdown');
-    } else if (timeLeft === 90) {
-      // Calculate when to start the lead-in phrase so it ends around 84-85 seconds
-      // Estimate: lead-in phrase takes about 3-4 seconds to say
-      // So start at 88-89 seconds to finish by 84-85 seconds
+      console.log('🎵 Starting cadence for next exercise prep during final countdown');
+    } else if (timeElapsed === 80) { // 80 seconds elapsed = 10 seconds remaining
+      // CORRECTED: Lead-in phrase timing to end just before countdown
+      // Estimate: "Get ready for [exercise name] in" takes about 3-4 seconds to say
+      // Start at 80 seconds elapsed (10 remaining) to finish by 83-84 seconds elapsed
       const leadInPhrase = `Get ready for ${nextExercise.name} in`;
-      console.log(`⏰ TTS: Speaking lead-in phrase at 90s: "${leadInPhrase}" with rest context`);
+      console.log(`⏰ TTS: Speaking lead-in phrase at 80 seconds ELAPSED (10 seconds remaining): "${leadInPhrase}"`);
       speak(leadInPhrase, 'rest');
     }
   }, [restTimer?.timeLeft, restTimer?.isActive, cadenceActive, restTimer?.exerciseIndex, exercises, tier, speak, setCadenceActive]);
+
+  // Auto-start next exercise when rest timer finishes
+  useEffect(() => {
+    // Only trigger when restTimer changes from active to null (timer just finished)
+    if (restTimer === null && exercises.length > 0) {
+      // Find the most recent completed exercise to determine the next one
+      const completedExercises = Object.entries(exerciseStates)
+        .filter(([_, state]) => state === 'completed')
+        .map(([index, _]) => parseInt(index));
+      
+      if (completedExercises.length > 0) {
+        const lastCompletedIndex = Math.max(...completedExercises);
+        const nextExerciseIndex = lastCompletedIndex + 1;
+        
+        // Only auto-start if we have a next exercise and it's not already started
+        if (nextExerciseIndex < exercises.length && 
+            (!exerciseStates[nextExerciseIndex] || exerciseStates[nextExerciseIndex] === 'idle')) {
+          
+          console.log(`🚀 Rest timer finished! Auto-starting next exercise: ${exercises[nextExerciseIndex].exercise_name} (index ${nextExerciseIndex})`);
+          
+          // Auto-start the next exercise after a short delay to let cadence settle
+          setTimeout(() => {
+            startExercise(nextExerciseIndex);
+          }, 500);
+        }
+      }
+    }
+  }, [restTimer, exercises, exerciseStates]); // Watch for restTimer becoming null
 
   useEffect(() => {
     console.log('useEffect running, setting mounted to true')
@@ -402,8 +474,10 @@ export default function HomePage() {
     
     console.log('🚀 Starting exercise:', exercise.name)
     
-    // Set loading state for this specific exercise button
+    // Set exercise state to started
+    setExerciseStates(prev => ({ ...prev, [index]: 'started' }))
     setExerciseLoadingStates(prev => ({ ...prev, [index]: true }))
+    setTtsActiveStates(prev => ({ ...prev, [index]: true }))
     
     try {
       // Get exercise start phrase from phrase library
@@ -415,6 +489,10 @@ export default function HomePage() {
       // Speak the start phrase with exercise context
       await speak(startPhrase, 'exercise')
       
+      // Set exercise state to in progress after TTS completes
+      setExerciseStates(prev => ({ ...prev, [index]: 'in_progress' }))
+      setTtsActiveStates(prev => ({ ...prev, [index]: false }))
+      
       // Start cadence automatically
       if (!cadenceActive) {
         setCadenceActive(true)
@@ -422,9 +500,11 @@ export default function HomePage() {
       }
       
       // Screen reader announcement
-      announceToScreenReader(`Starting ${exercise.name} with audio guidance`, 'assertive')
+      announceToScreenReader(`Starting ${exercise.name} with audio guidance. Exercise is now in progress.`, 'assertive')
     } catch (error) {
       console.error('Error starting exercise:', error)
+      setExerciseStates(prev => ({ ...prev, [index]: 'idle' }))
+      setTtsActiveStates(prev => ({ ...prev, [index]: false }))
     } finally {
       // Clear loading state for this exercise button
       setExerciseLoadingStates(prev => ({ ...prev, [index]: false }))
@@ -563,6 +643,7 @@ export default function HomePage() {
       const newExercises = [...exercises]
       newExercises[index].saved = true
       setExercises(newExercises)
+      setExerciseStates(prev => ({ ...prev, [index]: 'completed' }))
       setRefreshTrigger(prev => prev + 1) // Trigger workout history refresh
       console.log('✅ Exercise saved successfully!')
       announceToScreenReader(`${exercise.name} saved successfully!`, 'assertive')
@@ -928,6 +1009,22 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8">
 
         {/* Motivational Greeting */}
+        {/* Test Mode Banner */}
+        {testModeService.isEnabled() && (
+          <div className="bg-purple-100 border-2 border-purple-300 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-center space-x-2">
+              <span className="text-2xl">🧪</span>
+              <span className="text-purple-800 font-bold text-lg">TEST MODE ACTIVE</span>
+            </div>
+            <p className="text-purple-700 text-center text-sm mt-2">
+              {testModeService.getTestModeIndicator()}
+            </p>
+            <p className="text-purple-600 text-center text-xs mt-1">
+              All features are functional with mock data. TTS uses browser speech synthesis.
+            </p>
+          </div>
+        )}
+
         <div className="brand-card text-center mb-8">
           <h1 className="text-headline mb-2">
             Today&apos;s <span className="brand-fire">{todaysWorkout.workoutType}</span> Workout
@@ -941,15 +1038,27 @@ export default function HomePage() {
           <div className="brand-card text-center mb-4">
             <div className="flex items-center justify-center space-x-2">
               {ttsLoading && (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500"></div>
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500"></div>
+                  <span className="text-orange-600 text-sm font-medium">
+                    🔊 Speaking...
+                  </span>
+                </div>
               )}
-              <span className="text-body-small font-medium">
-                {getSourceIndicator()}
-              </span>
+              {!ttsLoading && (
+                <span className="text-body-small font-medium">
+                  {getSourceIndicator()}
+                </span>
+              )}
             </div>
             {ttsError && (
               <p className="text-body-small text-red-600 mt-1">
                 ⚠️ {ttsError}
+              </p>
+            )}
+            {!ttsError && !ttsLoading && (
+              <p className="text-body-small text-gray-600 mt-1">
+                Audio guidance ready for exercises
               </p>
             )}
           </div>
@@ -1081,29 +1190,87 @@ export default function HomePage() {
                   </div>
                 )}
 
-                {/* Start Exercise Button */}
-                {!exercise.saved && hasFeature('ttsAudioCues') && (
-                  <button
-                    onClick={() => startExercise(index)}
-                    disabled={exerciseLoadingStates[index]}
-                    className={`w-full py-2 mb-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
-                      exerciseLoadingStates[index] 
-                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                        : 'bg-green-500 text-white hover:bg-green-600'
-                    }`}
-                  >
-                    {exerciseLoadingStates[index] ? (
-                      <>
-                        <div className="inline animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="inline mr-2" size={16} aria-hidden="true" />
-                        Start Exercise
-                      </>
+                {/* Exercise Status Indicator */}
+                {!exercise.saved && (
+                  <div className="mb-3">
+                    {/* Exercise State Banner */}
+                    {exerciseStates[index] && exerciseStates[index] !== 'idle' && (
+                      <div className={`p-2 rounded-lg mb-2 flex items-center space-x-2 ${
+                        exerciseStates[index] === 'started' ? 'bg-yellow-100 border border-yellow-300' :
+                        exerciseStates[index] === 'in_progress' ? 'bg-blue-100 border border-blue-300' :
+                        exerciseStates[index] === 'completed' ? 'bg-green-100 border border-green-300' : ''
+                      }`}>
+                        {exerciseStates[index] === 'started' && (
+                          <>
+                            <Loader2 className="animate-spin text-yellow-600" size={16} />
+                            <span className="text-yellow-800 text-sm font-medium">Exercise Starting...</span>
+                            {ttsActiveStates[index] && (
+                              <span className="text-xs text-yellow-600 bg-yellow-200 px-2 py-1 rounded-full">
+                                🔊 TTS Active
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {exerciseStates[index] === 'in_progress' && (
+                          <>
+                            <Target className="text-blue-600" size={16} />
+                            <span className="text-blue-800 text-sm font-medium">Exercise In Progress</span>
+                            {cadenceActive && (
+                              <span className="text-xs text-blue-600 bg-blue-200 px-2 py-1 rounded-full">
+                                🎵 Cadence Active
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {exerciseStates[index] === 'completed' && (
+                          <>
+                            <CheckCircle className="text-green-600" size={16} />
+                            <span className="text-green-800 text-sm font-medium">Exercise Completed</span>
+                          </>
+                        )}
+                      </div>
                     )}
-                  </button>
+
+                    {/* Start Exercise Button */}
+                    {hasFeature('ttsAudioCues') && exerciseStates[index] !== 'in_progress' && (
+                      <button
+                        onClick={() => startExercise(index)}
+                        disabled={exerciseLoadingStates[index] || exerciseStates[index] === 'started'}
+                        className={`w-full py-2 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                          exerciseLoadingStates[index] || exerciseStates[index] === 'started'
+                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                            : exerciseStates[index] === 'completed'
+                            ? 'bg-green-600 text-white hover:bg-green-700'
+                            : 'bg-green-500 text-white hover:bg-green-600'
+                        }`}
+                      >
+                        {exerciseLoadingStates[index] || exerciseStates[index] === 'started' ? (
+                          <>
+                            <div className="inline animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            {exerciseStates[index] === 'started' ? 'Starting...' : 'Processing...'}
+                          </>
+                        ) : (
+                          <>
+                            <Play className="inline mr-2" size={16} aria-hidden="true" />
+                            {exerciseStates[index] === 'completed' ? 'Restart Exercise' : 'Start Exercise'}
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Exercise Progress Indicator */}
+                    {exerciseStates[index] === 'in_progress' && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                        <div className="flex items-center justify-center space-x-2 mb-2">
+                          <Target className="text-blue-600 animate-pulse" size={20} />
+                          <span className="text-blue-800 font-medium">Exercise Active</span>
+                        </div>
+                        <p className="text-blue-700 text-sm">
+                          Complete your reps and click Save when finished.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* Error Display */}

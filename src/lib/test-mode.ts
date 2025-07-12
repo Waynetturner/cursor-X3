@@ -40,6 +40,9 @@ const TEST_SUBSCRIPTION_KEY = 'x3-test-subscription'
 class TestModeService {
   private settings: TestModeSettings = DEFAULT_SETTINGS
   private listeners: Array<(enabled: boolean) => void> = []
+  private ttsQueue: Array<{ text: string; resolve: () => void; reject: (error: Error) => void }> = []
+  private isCurrentlySpeaking = false
+  private currentUtterance: SpeechSynthesisUtterance | null = null
 
   constructor() {
     this.loadSettings()
@@ -235,18 +238,215 @@ class TestModeService {
     })
   }
 
-  getMockTTSResponse(text: string): Promise<{ audio_url: string; success: boolean }> {
+  async getMockTTSResponse(text: string): Promise<{ audio_url: string; success: boolean }> {
     console.log('🧪 Test Mode: Mock TTS for text:', text)
     
-    // Simulate TTS processing delay
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          audio_url: `data:audio/wav;base64,mock-audio-${Date.now()}`,
-          success: true
-        })
-      }, 500)
+    try {
+      // Actually speak the text using browser speech synthesis in test mode
+      await this.speakWithBrowserTTS(text)
+      
+      console.log('🧪 Test Mode: TTS completed successfully')
+      return {
+        audio_url: `data:audio/wav;base64,mock-audio-${Date.now()}`,
+        success: true
+      }
+    } catch (error) {
+      console.error('🧪 Test Mode: TTS failed:', error)
+      return {
+        audio_url: `data:audio/wav;base64,mock-audio-${Date.now()}`,
+        success: true // Still return success to avoid breaking the flow
+      }
+    }
+  }
+
+  // Speak text using browser speech synthesis with queueing (for test mode)
+  private speakWithBrowserTTS(text: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!('speechSynthesis' in window)) {
+        console.warn('🔊 Test Mode: Speech synthesis not available')
+        reject(new Error('Speech synthesis not available'))
+        return
+      }
+
+      // Add to queue
+      this.ttsQueue.push({ text, resolve, reject })
+      console.log(`🔊 Test Mode: Added to TTS queue (${this.ttsQueue.length} items)`)
+      
+      // Process queue if not currently speaking
+      this.processNextTTS()
     })
+  }
+
+  private processNextTTS(): void {
+    if (this.isCurrentlySpeaking || this.ttsQueue.length === 0) {
+      return
+    }
+
+    const { text, resolve, reject } = this.ttsQueue.shift()!
+    this.isCurrentlySpeaking = true
+
+    console.log(`🔊 Test Mode: Processing TTS: "${text.substring(0, 50)}..."`)
+
+    // Cancel any existing speech to prevent conflicts
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel()
+      // Wait a bit for cancellation to complete
+      setTimeout(() => this.createAndSpeakUtterance(text, resolve, reject), 100)
+    } else {
+      this.createAndSpeakUtterance(text, resolve, reject)
+    }
+  }
+
+  private async createAndSpeakUtterance(text: string, resolve: () => void, reject: (error: Error) => void): Promise<void> {
+    // Request audio permission if needed
+    if (navigator.permissions) {
+      try {
+        const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+        console.log('🔒 Audio permission status:', permission.state)
+      } catch (e) {
+        // Permissions API not available or microphone permission not applicable
+        console.log('🔒 Audio permissions check not available')
+      }
+    }
+
+    // Ensure voices are loaded
+    await this.ensureVoicesLoaded()
+
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.rate = 0.9
+    utterance.pitch = 1.0
+    utterance.volume = 0.8
+    
+    // Store current utterance for cancellation tracking
+    this.currentUtterance = utterance
+    
+    // Try to use a good voice
+    const voices = window.speechSynthesis.getVoices()
+    console.log(`🔊 Available voices: ${voices.length}`)
+    
+    const preferredVoice = voices.find(voice => 
+      voice.lang.startsWith('en') && 
+      (voice.name.includes('Female') || voice.name.includes('Samantha') || voice.name.includes('Victoria') || voice.name.includes('Microsoft'))
+    ) || voices.find(voice => voice.lang.startsWith('en')) || voices[0]
+    
+    if (preferredVoice) {
+      utterance.voice = preferredVoice
+      console.log('🔊 Test Mode: Using voice:', preferredVoice.name)
+    }
+    
+    let hasEnded = false
+    
+    utterance.onstart = () => {
+      console.log('🔊 Test Mode: TTS started successfully')
+    }
+    
+    utterance.onend = () => {
+      if (!hasEnded) {
+        hasEnded = true
+        console.log('🔊 Test Mode: TTS completed successfully')
+        this.isCurrentlySpeaking = false
+        this.currentUtterance = null
+        resolve()
+        
+        // Process next item in queue
+        setTimeout(() => this.processNextTTS(), 100)
+      }
+    }
+    
+    utterance.onerror = (event) => {
+      if (!hasEnded) {
+        hasEnded = true
+        console.error('🔊 Test Mode: TTS error:', event.error)
+        this.isCurrentlySpeaking = false
+        this.currentUtterance = null
+        
+        // Don't fail completely on interrupted errors, just continue
+        if (event.error === 'interrupted') {
+          console.log('🔊 Test Mode: TTS was interrupted, continuing...')
+          resolve() // Resolve instead of reject for interrupted
+        } else {
+          reject(new Error(`TTS error: ${event.error}`))
+        }
+        
+        // Process next item in queue
+        setTimeout(() => this.processNextTTS(), 100)
+      }
+    }
+    
+    // Handle browser-specific timing issues
+    setTimeout(() => {
+      try {
+        console.log('🔊 Test Mode: Starting speech synthesis...')
+        window.speechSynthesis.speak(utterance)
+        
+        // Safety timeout to prevent hanging
+        setTimeout(() => {
+          if (!hasEnded && this.currentUtterance === utterance) {
+            console.warn('🔊 Test Mode: TTS timeout, forcing completion')
+            hasEnded = true
+            this.isCurrentlySpeaking = false
+            this.currentUtterance = null
+            resolve()
+            setTimeout(() => this.processNextTTS(), 100)
+          }
+        }, 10000) // 10 second timeout
+        
+      } catch (error) {
+        console.error('🔊 Test Mode: Error starting TTS:', error)
+        if (!hasEnded) {
+          hasEnded = true
+          this.isCurrentlySpeaking = false
+          this.currentUtterance = null
+          reject(error instanceof Error ? error : new Error('Unknown TTS error'))
+          setTimeout(() => this.processNextTTS(), 100)
+        }
+      }
+    }, 50)
+  }
+
+  // Ensure voices are loaded before attempting speech
+  private ensureVoicesLoaded(): Promise<void> {
+    return new Promise((resolve) => {
+      const voices = window.speechSynthesis.getVoices()
+      if (voices.length > 0) {
+        resolve()
+        return
+      }
+
+      // Wait for voices to load
+      const handleVoicesChanged = () => {
+        const voices = window.speechSynthesis.getVoices()
+        if (voices.length > 0) {
+          window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged)
+          resolve()
+        }
+      }
+
+      window.speechSynthesis.addEventListener('voiceschanged', handleVoicesChanged)
+      
+      // Fallback timeout
+      setTimeout(() => {
+        window.speechSynthesis.removeEventListener('voiceschanged', handleVoicesChanged)
+        resolve()
+      }, 2000)
+    })
+  }
+
+  // Stop all TTS and clear queue
+  public stopAllTTS(): void {
+    console.log('🔊 Test Mode: Stopping all TTS')
+    
+    // Clear queue
+    this.ttsQueue.forEach(item => item.resolve())
+    this.ttsQueue = []
+    
+    // Cancel current speech
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel()
+    }
+    
+    this.isCurrentlySpeaking = false
+    this.currentUtterance = null
   }
 
   getTestModeIndicator(): string {
@@ -254,7 +454,7 @@ class TestModeService {
     
     const indicators = []
     if (this.settings.mockWorkouts) indicators.push('Workouts')
-    if (this.settings.mockTTS) indicators.push('TTS')
+    if (this.settings.mockTTS) indicators.push('TTS (Browser Speech)')
     if (this.settings.mockSubscription) indicators.push('Subscription')
     
     return `🧪 TEST MODE: ${indicators.join(', ')}`

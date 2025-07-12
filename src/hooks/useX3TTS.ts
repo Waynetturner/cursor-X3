@@ -32,15 +32,18 @@ export interface TTSAudio {
 }
 
 const DEFAULT_VOICES: TTSVoice[] = [
-  { id: 'ash', name: 'Ash (Dynamic)', gender: 'female', language: 'en-US' },
+  { id: 'ash', name: 'Ash (Premium Dynamic)', gender: 'female', language: 'en-US' },
   { id: 'nova', name: 'Nova (Female)', gender: 'female', language: 'en-US' },
   { id: 'alloy', name: 'Alloy (Neutral)', gender: 'female', language: 'en-US' },
   { id: 'echo', name: 'Echo (Male)', gender: 'male', language: 'en-US' },
+  { id: 'fable', name: 'Fable (Male)', gender: 'male', language: 'en-US' },
+  { id: 'onyx', name: 'Onyx (Male)', gender: 'male', language: 'en-US' },
+  { id: 'shimmer', name: 'Shimmer (Female)', gender: 'female', language: 'en-US' },
 ]
 
 const DEFAULT_SETTINGS: TTSSettings = {
   enabled: true,
-  voice: 'ash',
+  voice: 'ash', // Use Ash as default (premium dynamic voice with instructions)
   speed: 1.0,
   volume: 0.8,
 }
@@ -179,7 +182,7 @@ export function useX3TTS() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          console.log(`🤖 Attempting OpenAI TTS with 'ash' voice for context: ${context}`)
+          console.log(`🤖 Attempting OpenAI.fm TTS with '${settings.voice}' voice for context: ${context}`)
           const result = await backendService.generateSpeech(
             text,
             user.id,
@@ -188,21 +191,36 @@ export function useX3TTS() {
             context
           )
 
-          if (result.success && result.audio_url) {
-            console.log('✅ OpenAI TTS successful - high quality voice')
+          if (result && result.audioContent) {
+            console.log('✅ OpenAI TTS successful - got base64 audio content')
             setCurrentSource('openai')
             
-            const audio: TTSAudio = {
-              id: audioId,
-              text,
-              audioUrl: result.audio_url,
-              isPlaying: false,
-            }
+            // Convert base64 to blob URL
+            try {
+              const audioBytes = atob(result.audioContent)
+              const audioArray = new Uint8Array(audioBytes.length)
+              for (let i = 0; i < audioBytes.length; i++) {
+                audioArray[i] = audioBytes.charCodeAt(i)
+              }
+              
+              const audioBlob = new Blob([audioArray], { type: 'audio/mp3' })
+              const audioUrl = URL.createObjectURL(audioBlob)
+              
+              const audio: TTSAudio = {
+                id: audioId,
+                text,
+                audioUrl: audioUrl,
+                isPlaying: false,
+              }
 
-            setAudioQueue(prev => [...prev, audio])
-            return audio
+              setAudioQueue(prev => [...prev, audio])
+              return audio
+            } catch (conversionError) {
+              console.error('❌ Failed to convert base64 to audio:', conversionError)
+            }
           } else {
-            console.warn('⚠️ OpenAI TTS failed:', result.error)
+            console.warn('⚠️ OpenAI TTS failed. Full response:', result)
+            console.warn('⚠️ Error details:', result?.error || 'No audioContent in response')
           }
         }
       } catch (openAIError) {
@@ -252,7 +270,7 @@ export function useX3TTS() {
     } finally {
       setIsLoading(false)
     }
-  }, [isTTSAvailable, settings, tier, backendService])
+  }, [isTTSAvailable, settings, tier])
 
   const playAudio = useCallback(async (audio: TTSAudio) => {
     try {
@@ -276,7 +294,20 @@ export function useX3TTS() {
 
       // Handle different TTS sources
       if (audio.audioUrl) {
-        // OpenAI TTS or Mock TTS with audio URL
+        // Check if this is a mock audio URL (test mode)
+        if (audio.audioUrl.startsWith('data:audio/wav;base64,mock-audio-')) {
+          console.log('🧪 Test Mode: Mock audio URL detected, skipping audio element playback')
+          // For mock audio, just mark as completed since actual TTS already happened
+          setTimeout(() => {
+            setAudioQueue(prev => prev.map(item => 
+              item.id === audio.id ? { ...item, isPlaying: false } : item
+            ))
+            currentAudioId.current = null
+          }, 100)
+          return
+        }
+        
+        // Real OpenAI TTS with audio URL
         const audioElement = new Audio(audio.audioUrl)
         audioElement.volume = settings.volume
         
@@ -422,7 +453,7 @@ export function useX3TTS() {
     // Source indicator helper
     getSourceIndicator: () => {
       switch (currentSource) {
-        case 'openai': return '🤖 OpenAI TTS'
+        case 'openai': return '🎤 OpenAI.fm TTS'
         case 'webspeech': return '🔊 Web Speech API'
         case 'browser': return '📱 Browser TTS'
         case 'mock': return '🧪 Test Mode'

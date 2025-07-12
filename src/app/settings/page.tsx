@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Crown, Star, Zap, CheckCircle, Lock } from 'lucide-react';
 import BackendTester from '@/components/BackendTester';
 import TestModeSettings from '@/components/TestModeSettings';
+import TTSSettings from '@/components/TTSSettings/TTSSettings';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 const tabs = [
@@ -25,6 +26,17 @@ export default function Settings() {
   const [user, setUser] = useState<any>(null);
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
   
+  // Profile form state
+  const [profileData, setProfileData] = useState({
+    displayName: '',
+    startDate: '',
+    fitnessExperience: '',
+    primaryGoal: '',
+    preferredDays: [] as string[]
+  });
+  const [profileSaveLoading, setProfileSaveLoading] = useState(false);
+  const [profileSaveStatus, setProfileSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  
   // Measurement preferences
   const [measurementTrackingEnabled, setMeasurementTrackingEnabled] = useState(false);
   const [unitSystem, setUnitSystem] = useState('imperial'); // 'imperial' or 'metric'
@@ -35,6 +47,16 @@ export default function Settings() {
     waist: false,
     arms: false
   });
+  const [currentMeasurements, setCurrentMeasurements] = useState({
+    weight: '',
+    bodyFat: '',
+    chest: '',
+    waist: '',
+    arms: ''
+  });
+  const [measurementSaveLoading, setMeasurementSaveLoading] = useState(false);
+  const [measurementSaveStatus, setMeasurementSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [ttsSettingsOpen, setTtsSettingsOpen] = useState(false);
 
   useEffect(() => {
     // Load user and measurement preferences
@@ -43,14 +65,43 @@ export default function Settings() {
       if (user) {
         setUser(user);
         
-        // Load measurement preferences from localStorage
+        // Load profile data from Supabase
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          setProfileData({
+            displayName: profile.display_name || '',
+            startDate: profile.x3_start_date || '',
+            fitnessExperience: profile.fitness_experience || '',
+            primaryGoal: profile.primary_goal || '',
+            preferredDays: profile.preferred_workout_days || []
+          });
+        } else {
+          // Fallback to localStorage for migration
+          const savedProfile = JSON.parse(localStorage.getItem('profileData') || '{}');
+          setProfileData({
+            displayName: savedProfile.displayName || '',
+            startDate: savedProfile.startDate || '',
+            fitnessExperience: savedProfile.fitnessExperience || '',
+            primaryGoal: savedProfile.primaryGoal || '',
+            preferredDays: savedProfile.preferredDays || []
+          });
+        }
+        
+        // Load measurement preferences from localStorage (will be migrated to Supabase later)
         const measurementEnabled = localStorage.getItem('measurementTrackingEnabled') === 'true';
         const units = localStorage.getItem('unitSystem') || 'imperial';
         const enabled = JSON.parse(localStorage.getItem('enabledMeasurements') || '{"weight":false,"bodyFat":false,"chest":false,"waist":false,"arms":false}');
+        const measurements = JSON.parse(localStorage.getItem('currentMeasurements') || '{"weight":"","bodyFat":"","chest":"","waist":"","arms":""}');
         
         setMeasurementTrackingEnabled(measurementEnabled);
         setUnitSystem(units);
         setEnabledMeasurements(enabled);
+        setCurrentMeasurements(measurements);
       }
     };
     
@@ -62,6 +113,102 @@ export default function Settings() {
     localStorage.setItem('measurementTrackingEnabled', measurementTrackingEnabled.toString());
     localStorage.setItem('unitSystem', unitSystem);
     localStorage.setItem('enabledMeasurements', JSON.stringify(enabledMeasurements));
+  };
+
+  const saveProfileData = async () => {
+    if (!user) return;
+    
+    setProfileSaveLoading(true);
+    setProfileSaveStatus('idle');
+    
+    try {
+      // Save to Supabase profiles table
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          display_name: profileData.displayName || null,
+          x3_start_date: profileData.startDate || null,
+          fitness_experience: profileData.fitnessExperience || null,
+          primary_goal: profileData.primaryGoal || null,
+          preferred_workout_days: profileData.preferredDays.length > 0 ? profileData.preferredDays : null
+        });
+      
+      if (error) throw error;
+      
+      // Also save to localStorage as backup
+      localStorage.setItem('profileData', JSON.stringify(profileData));
+      
+      setProfileSaveStatus('success');
+      setTimeout(() => setProfileSaveStatus('idle'), 3000);
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      setProfileSaveStatus('error');
+      setTimeout(() => setProfileSaveStatus('idle'), 3000);
+    } finally {
+      setProfileSaveLoading(false);
+    }
+  };
+
+  const saveMeasurementData = async () => {
+    setMeasurementSaveLoading(true);
+    setMeasurementSaveStatus('idle');
+    
+    try {
+      // Save current measurements with timestamp
+      const measurementEntry = {
+        ...currentMeasurements,
+        date: new Date().toISOString(),
+        unitSystem
+      };
+      
+      // Get existing measurements history
+      const existingMeasurements = JSON.parse(localStorage.getItem('measurementHistory') || '[]');
+      existingMeasurements.push(measurementEntry);
+      
+      // Save to localStorage
+      localStorage.setItem('measurementHistory', JSON.stringify(existingMeasurements));
+      localStorage.setItem('currentMeasurements', JSON.stringify(currentMeasurements));
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setMeasurementSaveStatus('success');
+      
+      // Clear current measurements after successful save
+      setCurrentMeasurements({
+        weight: '',
+        bodyFat: '',
+        chest: '',
+        waist: '',
+        arms: ''
+      });
+      
+      setTimeout(() => setMeasurementSaveStatus('idle'), 3000);
+    } catch (error) {
+      console.error('Failed to save measurements:', error);
+      setMeasurementSaveStatus('error');
+      setTimeout(() => setMeasurementSaveStatus('idle'), 3000);
+    } finally {
+      setMeasurementSaveLoading(false);
+    }
+  };
+
+  const updateProfileField = (field: string, value: string | string[]) => {
+    setProfileData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const togglePreferredDay = (day: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      preferredDays: prev.preferredDays.includes(day)
+        ? prev.preferredDays.filter(d => d !== day)
+        : [...prev.preferredDays, day]
+    }));
+  };
+
+  const updateMeasurement = (measurement: string, value: string) => {
+    setCurrentMeasurements(prev => ({ ...prev, [measurement]: value }));
   };
 
   const toggleMeasurementTracking = () => {
@@ -134,6 +281,8 @@ export default function Settings() {
                           <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
                           <input
                             type="text"
+                            value={profileData.displayName}
+                            onChange={(e) => updateProfileField('displayName', e.target.value)}
                             placeholder="Enter your name"
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                           />
@@ -146,6 +295,7 @@ export default function Settings() {
                             disabled
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
                           />
+                          <p className="text-xs text-gray-500 mt-1">Email cannot be changed here. Contact support if needed.</p>
                         </div>
                       </div>
                     </div>
@@ -158,12 +308,18 @@ export default function Settings() {
                           <label className="block text-sm font-medium text-gray-700 mb-1">X3 Start Date</label>
                           <input
                             type="date"
+                            value={profileData.startDate}
+                            onChange={(e) => updateProfileField('startDate', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                           />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Fitness Experience</label>
-                          <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                          <select 
+                            value={profileData.fitnessExperience}
+                            onChange={(e) => updateProfileField('fitnessExperience', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          >
                             <option value="">Select experience level</option>
                             <option value="beginner">Beginner (0-1 years)</option>
                             <option value="intermediate">Intermediate (1-3 years)</option>
@@ -179,7 +335,11 @@ export default function Settings() {
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Primary Goal</label>
-                          <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                          <select 
+                            value={profileData.primaryGoal}
+                            onChange={(e) => updateProfileField('primaryGoal', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          >
                             <option value="">Select your primary goal</option>
                             <option value="strength">Build Strength</option>
                             <option value="muscle">Build Muscle</option>
@@ -194,7 +354,13 @@ export default function Settings() {
                             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                               <button
                                 key={day}
-                                className="px-3 py-1 text-sm border border-gray-300 rounded-lg hover:border-orange-500 hover:text-orange-600 transition-colors"
+                                type="button"
+                                onClick={() => togglePreferredDay(day)}
+                                className={`px-3 py-1 text-sm border rounded-lg transition-colors ${
+                                  profileData.preferredDays.includes(day)
+                                    ? 'border-orange-500 bg-orange-50 text-orange-600'
+                                    : 'border-gray-300 hover:border-orange-500 hover:text-orange-600'
+                                }`}
                               >
                                 {day}
                               </button>
@@ -206,9 +372,25 @@ export default function Settings() {
 
                     {/* Save Button */}
                     <div className="pt-4 border-t border-gray-200">
-                      <button className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium transition-colors">
-                        Save Profile Changes
-                      </button>
+                      <div className="flex items-center gap-4">
+                        <button 
+                          onClick={saveProfileData}
+                          disabled={profileSaveLoading}
+                          className="bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                        >
+                          {profileSaveLoading && (
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          )}
+                          {profileSaveLoading ? 'Saving...' : 'Save Profile Changes'}
+                        </button>
+                        
+                        {profileSaveStatus === 'success' && (
+                          <span className="text-green-600 text-sm font-medium">✓ Profile saved successfully!</span>
+                        )}
+                        {profileSaveStatus === 'error' && (
+                          <span className="text-red-600 text-sm font-medium">✗ Failed to save profile</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -425,48 +607,79 @@ export default function Settings() {
                 <div>
                   <h2 className="text-xl font-semibold mb-4 brand-fire">App Preferences</h2>
                   
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border border-gray-300 bg-gray-50 rounded-lg">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Dark Mode</label>
-                        <p className="text-xs text-gray-500">Toggle between light and dark themes</p>
+                  <div className="space-y-6">
+                    {/* Theme Settings */}
+                    <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
+                      <h3 className="font-medium text-gray-700 mb-3">Appearance</h3>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-gray-700">Dark Mode</label>
+                          <p className="text-xs text-gray-500">Toggle between light and dark themes</p>
+                        </div>
+                        <button
+                          onClick={toggleTheme}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            isDark ? 'bg-orange-500' : 'bg-gray-200'
+                          }`}
+                        >
+                          <span 
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              isDark ? 'translate-x-6' : 'translate-x-1'
+                            }`} 
+                          />
+                        </button>
                       </div>
-                      <button
-                        onClick={toggleTheme}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          isDark ? 'bg-orange-500' : 'bg-gray-200'
-                        }`}
-                      >
-                        <span 
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            isDark ? 'translate-x-6' : 'translate-x-1'
-                          }`} 
-                        />
-                      </button>
                     </div>
 
-                    <div className="flex items-center justify-between p-4 border border-gray-300 bg-gray-50 rounded-lg">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Notification Sounds</label>
-                        <p className="text-xs text-gray-500">Play sounds for workout notifications</p>
+                    {/* TTS Settings */}
+                    {hasFeature('ttsAudioCues') && (
+                      <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-medium text-gray-700">Text-to-Speech Settings</h3>
+                          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
+                            🎵 {tier === 'mastery' ? 'Premium Voices' : 'Standard Voices'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-4">
+                          Configure voice settings for workout audio cues, rest timer, and AI coach responses.
+                        </p>
+                        <button
+                          onClick={() => setTtsSettingsOpen(true)}
+                          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          Configure Voice Settings
+                        </button>
                       </div>
-                      <button
-                        className="relative inline-flex h-6 w-11 items-center rounded-full bg-orange-500"
-                      >
-                        <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
-                      </button>
-                    </div>
+                    )}
 
-                    <div className="flex items-center justify-between p-4 border border-gray-300 bg-gray-50 rounded-lg">
-                      <div>
-                        <label className="text-sm font-medium text-gray-700">Auto-save Workouts</label>
-                        <p className="text-xs text-gray-500">Automatically save workout data</p>
+                    {/* Workout Settings */}
+                    <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
+                      <h3 className="font-medium text-gray-700 mb-3">Workout Preferences</h3>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Auto-save Workouts</label>
+                            <p className="text-xs text-gray-500">Automatically save workout data</p>
+                          </div>
+                          <button
+                            className="relative inline-flex h-6 w-11 items-center rounded-full bg-orange-500"
+                          >
+                            <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
+                          </button>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <label className="text-sm font-medium text-gray-700">Workout Reminders</label>
+                            <p className="text-xs text-gray-500">Get notified for scheduled workouts</p>
+                          </div>
+                          <button
+                            className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200"
+                          >
+                            <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
+                          </button>
+                        </div>
                       </div>
-                      <button
-                        className="relative inline-flex h-6 w-11 items-center rounded-full bg-orange-500"
-                      >
-                        <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -596,6 +809,8 @@ export default function Settings() {
                                     <input
                                       type="number"
                                       step="0.1"
+                                      value={currentMeasurements[key as keyof typeof currentMeasurements]}
+                                      onChange={(e) => updateMeasurement(key, e.target.value)}
                                       placeholder={`Enter ${key} measurement`}
                                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                                     />
@@ -604,10 +819,26 @@ export default function Settings() {
                               )}
                             </div>
                             <div className="mt-4 pt-4 border-t border-gray-200">
-                              <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                                Save Measurements
-                              </button>
-                              <p className="text-xs text-gray-500 mt-2">
+                              <div className="flex items-center gap-4 mb-2">
+                                <button 
+                                  onClick={saveMeasurementData}
+                                  disabled={measurementSaveLoading || !Object.values(currentMeasurements).some(v => v.trim())}
+                                  className="bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                                >
+                                  {measurementSaveLoading && (
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  )}
+                                  {measurementSaveLoading ? 'Saving...' : 'Save Measurements'}
+                                </button>
+                                
+                                {measurementSaveStatus === 'success' && (
+                                  <span className="text-green-600 text-sm font-medium">✓ Measurements saved!</span>
+                                )}
+                                {measurementSaveStatus === 'error' && (
+                                  <span className="text-red-600 text-sm font-medium">✗ Failed to save measurements</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-500">
                                 Measurements are saved with today&apos;s date. You can track changes over time in your progress charts.
                               </p>
                             </div>
@@ -725,6 +956,12 @@ export default function Settings() {
             </div>
           </main>
         </div>
+        
+        {/* TTS Settings Modal */}
+        <TTSSettings 
+          isOpen={ttsSettingsOpen}
+          onClose={() => setTtsSettingsOpen(false)}
+        />
       </AppLayout>
     </ProtectedRoute>
   );

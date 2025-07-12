@@ -237,6 +237,71 @@ import CoachChat from '@/components/CoachChat/CoachChat'
 
 ## Session History
 
+### Session: 2025-07-12 - OpenAI.fm TTS Integration & Debugging Enhancement
+
+**Context**: Enhanced TTS system to use premium OpenAI.fm API with dynamic voice instructions and comprehensive debugging capabilities.
+
+**Completed Tasks**:
+
+1. **OpenAI.fm TTS Integration** ✅
+   - Updated `generate-speech` Edge Function to use `OPENAI_FM_API_KEY`
+   - Changed API endpoint from `api.openai.com` to `openai.fm/v1/audio/speech`
+   - Added support for premium 'ash' voice with dynamic instructions
+   - Implemented context-aware voice directions (energetic, calm, professional)
+   - Maintained coach-chat function unchanged (still uses standard OpenAI)
+
+2. **Enhanced Edge Function Debugging** ✅
+   - Added comprehensive endpoint testing (3 different openai.fm URLs)
+   - Implemented automatic fallback to standard OpenAI if openai.fm fails
+   - Enhanced error logging with detailed HTTP responses and headers
+   - Added environment variable verification and request/response tracing
+   - Voice validation with intelligent mapping ('ash' → 'alloy' for fallback)
+
+3. **Client-Side TTS Improvements** ✅
+   - Restored 'ash' voice as default with "Premium Dynamic" label
+   - Updated UI indicators to show "🎤 OpenAI.fm TTS" instead of generic OpenAI
+   - Enhanced error logging to show full response details instead of 'undefined'
+   - Updated console messages to reflect OpenAI.fm integration
+
+4. **Dynamic Voice Instructions by Context** ✅
+   - **Exercise**: "Energetic and motivational. Encouraging and powerful."
+   - **Countdown**: "Building intensity. Focused and urgent with dramatic emphasis."
+   - **Rest**: "Calm but encouraging. Supportive and reassuring."
+   - **Coach**: "Professional and knowledgeable. Supportive mentor."
+   - **General**: "Natural and friendly. Clear and professional."
+
+**Key Implementation Details**:
+- **Edge Function**: `/supabase/functions/generate-speech/index.ts` - Enhanced with openai.fm API
+- **Client Hook**: `/src/hooks/useX3TTS.ts` - Updated for ash voice and better error handling
+- **Endpoint Testing**: Tests 3 openai.fm variants with automatic fallback
+- **Voice Mapping**: 'ash' → 'alloy' mapping for standard OpenAI compatibility
+- **Separation**: Coach chat uses `OPENAI_API_KEY`, TTS uses `OPENAI_FM_API_KEY`
+
+**Files Created/Modified**:
+- `/supabase/functions/generate-speech/index.ts` - OpenAI.fm integration with debugging
+- `/src/hooks/useX3TTS.ts` - Ash voice default and improved error logging
+- `/OPENAI_FM_TTS_UPDATE.md` - Deployment guide and feature documentation
+- `/DEBUG_TTS_500_ERRORS.md` - Comprehensive debugging instructions
+
+**Debugging Features**:
+- **Environment Verification**: Logs API key presence without exposing values
+- **Endpoint Testing**: Tries multiple openai.fm URL variations automatically
+- **Response Logging**: Full HTTP status codes, headers, and error messages
+- **Fallback System**: Graceful degradation to standard OpenAI for compatibility
+- **Error Details**: Comprehensive error messages for troubleshooting
+
+**Expected Results**:
+- Premium 'ash' voice with dynamic instructions for different workout contexts
+- Enhanced debugging capabilities to identify API integration issues
+- Robust fallback system ensuring TTS always works
+- Separation of services (coaching vs TTS) for reliability
+
+**Notes for Future Sessions**:
+- OpenAI.fm integration provides premium voice capabilities with context-aware instructions
+- Enhanced debugging Edge Function will identify exact issues with 500 errors
+- Fallback system ensures TTS functionality regardless of openai.fm availability
+- Coach chat continues using existing n8n/OpenAI integration without disruption
+
 ### Session: 2025-07-12 - Coach Chat Integration & AI Coaching Implementation
 
 **Context**: Implemented complete AI coaching chat integration using n8n workflow with TTS voice responses.

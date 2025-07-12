@@ -24,3 +24,373 @@
  ✓ Compiled in 96ms (840 modules)
  ✓ Compiled in 123ms (840 modules)
  ✓ Compiled in 128ms (840 modules)
+ GET / 200 in 51ms
+ ○ Compiling /settings ...
+ ✓ Compiled /settings in 648ms (1806 modules)
+ GET /settings 200 in 696ms
+ GET /settings 200 in 102ms
+ ✓ Compiled in 379ms (1820 modules)
+ GET /settings 200 in 45ms
+ GET /settings 200 in 81ms
+ ✓ Compiled in 163ms (859 modules)
+ GET /settings 200 in 11ms
+ ✓ Compiled in 274ms (1820 modules)
+ GET /settings 200 in 46ms
+ ✓ Compiled in 616ms (1826 modules)
+ GET /settings 200 in 28ms
+ GET /settings 200 in 90ms
+ GET / 200 in 25ms
+ ✓ Compiled /favicon.ico in 407ms (980 modules)
+ GET /favicon.ico 200 in 457ms
+ ✓ Compiled /_not-found in 412ms (1832 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 510ms
+ GET / 200 in 63ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 20ms
+ GET /favicon.ico 200 in 10ms
+ GET /settings 200 in 17ms
+ ✓ Compiled in 659ms (1826 modules)
+ GET /settings 200 in 59ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /settings 200 in 76ms
+ ✓ Compiled in 660ms (1826 modules)
+ GET /settings 200 in 45ms
+ ✓ Compiled in 340ms (1826 modules)
+ GET /settings 200 in 44ms
+ ✓ Compiled in 255ms (1826 modules)
+ GET /settings 200 in 26ms
+ ✓ Compiled in 317ms (1826 modules)
+ GET /settings 200 in 24ms
+ GET /settings 200 in 78ms
+ GET / 200 in 19ms
+ ✓ Compiled /favicon.ico in 311ms (980 modules)
+ GET /favicon.ico 200 in 355ms
+ ✓ Compiled /_not-found in 209ms (1832 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 289ms
+ ✓ Compiled in 606ms (1826 modules)
+ GET / 200 in 69ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 200 in 88ms
+ ✓ Compiled /_not-found in 196ms (1816 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 272ms
+ ✓ Compiled in 299ms (1830 modules)
+ GET / 200 in 40ms
+ ✓ Compiled in 196ms (1830 modules)
+ GET / 200 in 27ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 200 in 59ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 21ms
+ ✓ Compiled in 280ms (1830 modules)
+ GET / 200 in 25ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 200 in 59ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 22ms
+ ✓ Compiled in 232ms (1830 modules)
+ GET / 200 in 28ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 200 in 53ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 28ms
+ GET / 200 in 39ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 18ms
+ ✓ Compiled /favicon.ico in 276ms (981 modules)
+ GET /favicon.ico 200 in 321ms
+ ✓ Compiled in 532ms (1826 modules)
+ GET / 200 in 58ms
+ ✓ Compiled in 239ms (1826 modules)
+ GET / 200 in 45ms
+ GET / 200 in 83ms
+ ✓ Compiled /_not-found in 153ms (1816 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 244ms
+ ✓ Compiled /favicon.ico in 106ms (981 modules)
+ GET /favicon.ico 200 in 151ms
+ ✓ Compiled in 436ms (1826 modules)
+ GET / 200 in 65ms
+ ✓ Compiled in 372ms (1826 modules)
+ GET / 200 in 26ms
+ ✓ Compiled in 237ms (1826 modules)
+ GET / 200 in 36ms
+ GET / 200 in 83ms
+ ✓ Compiled /_not-found in 153ms (1816 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 222ms
+ ✓ Compiled in 266ms (1830 modules)
+ GET / 200 in 28ms
+ ✓ Compiled /favicon.ico in 144ms (981 modules)
+ GET /favicon.ico 200 in 191ms
+ GET / 200 in 101ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 30ms
+ GET /favicon.ico 200 in 7ms
+ GET /settings 200 in 21ms
+ GET / 200 in 9ms
+ GET / 200 in 34ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 19ms
+ ✓ Compiled in 182ms (862 modules)
+ GET / 200 in 23ms
+ ✓ Compiled in 116ms (862 modules)
+ GET / 200 in 8ms
+ ✓ Compiled in 100ms (862 modules)
+ GET / 200 in 9ms
+ ✓ Compiled in 470ms (1826 modules)
+ GET / 200 in 59ms
+ ✓ Compiled in 190ms (1826 modules)
+ GET / 200 in 38ms
+   Reload env: .env.local
+ ✓ Compiled in 252ms (1812 modules)
+ GET / 200 in 45ms
+ ✓ Compiled in 145ms (862 modules)
+ GET / 200 in 11ms
+ ✓ Compiled in 110ms (862 modules)
+ GET / 200 in 9ms
+ ✓ Compiled in 163ms (862 modules)
+ GET / 200 in 17ms
+ ✓ Compiled in 139ms (862 modules)
+ GET / 200 in 12ms
+ ✓ Compiled in 318ms (1826 modules)
+ GET / 200 in 44ms
+ ✓ Compiled in 200ms (1826 modules)
+ GET / 200 in 26ms
+ ✓ Compiled in 213ms (1826 modules)
+ GET / 200 in 29ms
+ ✓ Compiled in 188ms (1826 modules)
+ GET / 200 in 110ms
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET / 200 in 116ms
+ ✓ Compiled /_not-found in 404ms (1816 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 466ms
+ GET / 200 in 69ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 29ms
+ ✓ Compiled in 221ms (862 modules)
+ GET / 200 in 16ms
+ ✓ Compiled in 121ms (862 modules)
+ GET / 200 in 9ms
+ ✓ Compiled in 105ms (862 modules)
+ GET / 200 in 9ms
+ ✓ Compiled in 102ms (862 modules)
+ GET / 200 in 9ms
+ GET / 200 in 39ms
+ ✓ Compiled /favicon.ico in 160ms (980 modules)
+ GET /favicon.ico 200 in 204ms
+ ✓ Compiled /_not-found in 187ms (1832 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 274ms
+ GET / 200 in 47ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 22ms
+ GET /settings 200 in 16ms
+ GET / 200 in 9ms
+ GET /favicon.ico 200 in 9ms
+ GET /settings 200 in 9ms
+ GET / 200 in 10ms
+ ✓ Compiled in 378ms (1826 modules)
+ GET / 200 in 79ms
+ GET / 200 in 104ms
+ ✓ Compiled /_not-found in 294ms (1816 modules)
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 379ms
+ ✓ Compiled /favicon.ico in 83ms (981 modules)
+ GET /favicon.ico 200 in 126ms
+ GET / 200 in 113ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 25ms
+ GET /favicon.ico 200 in 6ms
+ GET / 200 in 35ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 23ms
+ GET /favicon.ico 200 in 5ms
+ ✓ Compiled in 184ms (862 modules)
+ GET / 200 in 31ms
+ ⨯ ./src/hooks/useX3TTS.ts
+Error:   [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:222:1]
+ [2m219[0m |               console.error('❌ Failed to convert base64 to audio:', conversionError)
+ [2m220[0m |             }
+ [2m221[0m |         }
+ [2m222[0m |       } catch (openAIError) {
+     : [35;1m        ^^^^^[0m
+ [2m223[0m |         console.warn('⚠️ OpenAI TTS failed, trying Web Speech API:', openAIError)
+ [2m224[0m |       }
+ [2m224[0m | 
+     `----
+  [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:269:1]
+ [2m266[0m |     } finally {
+ [2m267[0m |       setIsLoading(false)
+ [2m268[0m |     }
+ [2m269[0m |   }, [isTTSAvailable, settings, tier, backendService])
+     : [35;1m   ^[0m
+ [2m270[0m | 
+ [2m271[0m |   const playAudio = useCallback(async (audio: TTSAudio) => {
+ [2m271[0m |     try {
+     `----
+  [31mx[0m Expression expected
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:269:1]
+ [2m266[0m |     } finally {
+ [2m267[0m |       setIsLoading(false)
+ [2m268[0m |     }
+ [2m269[0m |   }, [isTTSAvailable, settings, tier, backendService])
+     : [35;1m   ^[0m
+ [2m270[0m | 
+ [2m271[0m |   const playAudio = useCallback(async (audio: TTSAudio) => {
+ [2m271[0m |     try {
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/hooks/useX3TTS.ts
+./src/app/page.tsx
+ ○ Compiling /_error ...
+ ⨯ ./src/hooks/useX3TTS.ts
+Error:   [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:222:1]
+ [2m219[0m |               console.error('❌ Failed to convert base64 to audio:', conversionError)
+ [2m220[0m |             }
+ [2m221[0m |         }
+ [2m222[0m |       } catch (openAIError) {
+     : [35;1m        ^^^^^[0m
+ [2m223[0m |         console.warn('⚠️ OpenAI TTS failed, trying Web Speech API:', openAIError)
+ [2m224[0m |       }
+ [2m224[0m | 
+     `----
+  [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:269:1]
+ [2m266[0m |     } finally {
+ [2m267[0m |       setIsLoading(false)
+ [2m268[0m |     }
+ [2m269[0m |   }, [isTTSAvailable, settings, tier, backendService])
+     : [35;1m   ^[0m
+ [2m270[0m | 
+ [2m271[0m |   const playAudio = useCallback(async (audio: TTSAudio) => {
+ [2m271[0m |     try {
+     `----
+  [31mx[0m Expression expected
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:269:1]
+ [2m266[0m |     } finally {
+ [2m267[0m |       setIsLoading(false)
+ [2m268[0m |     }
+ [2m269[0m |   }, [isTTSAvailable, settings, tier, backendService])
+     : [35;1m   ^[0m
+ [2m270[0m | 
+ [2m271[0m |   const playAudio = useCallback(async (audio: TTSAudio) => {
+ [2m271[0m |     try {
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/hooks/useX3TTS.ts
+./src/app/page.tsx
+ GET / 500 in 2231ms
+ GET / 500 in 389ms
+ ⨯ ./src/hooks/useX3TTS.ts
+Error:   [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:222:1]
+ [2m219[0m |               console.error('❌ Failed to convert base64 to audio:', conversionError)
+ [2m220[0m |             }
+ [2m221[0m |         }
+ [2m222[0m |       } catch (openAIError) {
+     : [35;1m        ^^^^^[0m
+ [2m223[0m |         console.warn('⚠️ OpenAI TTS failed, trying Web Speech API:', openAIError)
+ [2m224[0m |       }
+ [2m224[0m | 
+     `----
+  [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:269:1]
+ [2m266[0m |     } finally {
+ [2m267[0m |       setIsLoading(false)
+ [2m268[0m |     }
+ [2m269[0m |   }, [isTTSAvailable, settings, tier, backendService])
+     : [35;1m   ^[0m
+ [2m270[0m | 
+ [2m271[0m |   const playAudio = useCallback(async (audio: TTSAudio) => {
+ [2m271[0m |     try {
+     `----
+  [31mx[0m Expression expected
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:269:1]
+ [2m266[0m |     } finally {
+ [2m267[0m |       setIsLoading(false)
+ [2m268[0m |     }
+ [2m269[0m |   }, [isTTSAvailable, settings, tier, backendService])
+     : [35;1m   ^[0m
+ [2m270[0m | 
+ [2m271[0m |   const playAudio = useCallback(async (audio: TTSAudio) => {
+ [2m271[0m |     try {
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/hooks/useX3TTS.ts
+./src/app/page.tsx
+ GET /.well-known/appspecific/com.chrome.devtools.json 500 in 333ms
+ ⨯ ./src/hooks/useX3TTS.ts
+Error:   [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:270:1]
+ [2m267[0m |     } finally {
+ [2m268[0m |       setIsLoading(false)
+ [2m269[0m |     }
+ [2m270[0m |   }, [isTTSAvailable, settings, tier, backendService])
+     : [35;1m   ^[0m
+ [2m271[0m | 
+ [2m272[0m |   const playAudio = useCallback(async (audio: TTSAudio) => {
+ [2m272[0m |     try {
+     `----
+  [31mx[0m Expression expected
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:270:1]
+ [2m267[0m |     } finally {
+ [2m268[0m |       setIsLoading(false)
+ [2m269[0m |     }
+ [2m270[0m |   }, [isTTSAvailable, settings, tier, backendService])
+     : [35;1m   ^[0m
+ [2m271[0m | 
+ [2m272[0m |   const playAudio = useCallback(async (audio: TTSAudio) => {
+ [2m272[0m |     try {
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/hooks/useX3TTS.ts
+./src/app/page.tsx
+ GET / 500 in 12ms
+ ⨯ ./src/hooks/useX3TTS.ts
+Error:   [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:270:1]
+ [2m267[0m |     } finally {
+ [2m268[0m |       setIsLoading(false)
+ [2m269[0m |     }
+ [2m270[0m |   }, [isTTSAvailable, settings, tier, backendService])
+     : [35;1m   ^[0m
+ [2m271[0m | 
+ [2m272[0m |   const playAudio = useCallback(async (audio: TTSAudio) => {
+ [2m272[0m |     try {
+     `----
+  [31mx[0m Expression expected
+     ,-[[36;1;4m/home/waynetturner/projects/x3-tracker/src/hooks/useX3TTS.ts[0m:270:1]
+ [2m267[0m |     } finally {
+ [2m268[0m |       setIsLoading(false)
+ [2m269[0m |     }
+ [2m270[0m |   }, [isTTSAvailable, settings, tier, backendService])
+     : [35;1m   ^[0m
+ [2m271[0m | 
+ [2m272[0m |   const playAudio = useCallback(async (audio: TTSAudio) => {
+ [2m272[0m |     try {
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/hooks/useX3TTS.ts
+./src/app/page.tsx
+ GET /.well-known/appspecific/com.chrome.devtools.json 500 in 168ms
+ GET / 500 in 10ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 500 in 6ms
+ ✓ Compiled /_not-found in 648ms (2150 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /_next/static/webpack/13e1d3c72804ac82.webpack.hot-update.json 404 in 468ms
+ GET / 200 in 58ms
+ GET / 200 in 27ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 19ms
+ ✓ Compiled in 202ms (2164 modules)
+ GET / 200 in 109ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 26ms
+ ✓ Compiled /favicon.ico in 100ms (1068 modules)
+ GET /favicon.ico 200 in 145ms
