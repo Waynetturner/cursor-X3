@@ -277,7 +277,7 @@ export class BackendIntegrationService {
   }
 
   // Generate speech
-  async generateSpeech(text: string, userId: string, voice?: string, speed?: number): Promise<{ audio_url?: string; error?: string; success: boolean }> {
+  async generateSpeech(text: string, userId: string, voice?: string, speed?: number, context?: string): Promise<{ audio_url?: string; error?: string; success: boolean }> {
     try {
       const response = await fetch(`${this.edgeFunctionUrl}/generate-speech`, {
         method: 'POST',
@@ -288,8 +288,9 @@ export class BackendIntegrationService {
         body: JSON.stringify({
           text,
           user_id: userId,
-          voice: voice || 'en-US-Neural2-F',
+          voice: voice || 'ash',
           speed: speed || 1.0,
+          context: context || 'general',
         }),
       });
 

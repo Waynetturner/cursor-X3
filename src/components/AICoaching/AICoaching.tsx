@@ -182,7 +182,7 @@ export default function AICoaching({ workoutData = [], className = '' }: AICoach
           </div>
           <h3 className="text-subhead mb-2">AI Coaching</h3>
           <p className="text-secondary mb-4">
-            Upgrade to Mastery tier to access personalized AI coaching and workout analysis.
+            Upgrade to Momentum or Mastery tier to access personalized AI coaching and workout analysis.
           </p>
           <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
             <div className="text-sm text-gray-500">

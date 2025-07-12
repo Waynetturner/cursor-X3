@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { BarChart3, Calendar, Target, Settings, Flame, LogOut, Flask } from 'lucide-react'
+import { BarChart3, Calendar, Target, Settings, Flame, LogOut, FlaskConical } from 'lucide-react'
 import { ReactNode } from 'react'
 import X3MomentumWordmark from '../X3MomentumWordmark'
 import { supabase } from '@/lib/supabase'
@@ -51,7 +51,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {testModeEnabled && (
           <div className="w-full bg-purple-600 text-white text-center py-2 px-4">
             <div className="flex items-center justify-center gap-2 text-sm font-medium">
-              <Flask size={16} />
+              <FlaskConical size={16} />
               <span>{indicator}</span>
             </div>
           </div>

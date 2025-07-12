@@ -21,6 +21,17 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({ workout, compact = fal
   };
 
   const formatDate = (dateStr: string) => {
+    // Parse date string directly as YYYY-MM-DD format to avoid timezone conversion
+    // The dateStr is already in the correct local format (Central time)
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]);
+      const day = parseInt(parts[2]);
+      return `${month}/${day}/${year}`;
+    }
+    
+    // Fallback to original method if format is unexpected
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', {
       month: 'numeric',

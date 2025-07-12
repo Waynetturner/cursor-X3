@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkout } from '@/lib/supabase'
 import { announceToScreenReader } from '@/lib/accessibility'
-import { Play, Pause, Save, Info, BarChart3, Flame, Target, Calendar, Settings, ArrowRight, Sparkles, TrendingUp, Users, Shield } from 'lucide-react'
+import { Play, Pause, Save, Info, BarChart3, Flame, Target, Calendar, Settings, ArrowRight, Sparkles, TrendingUp, Users, Shield, Loader2, AlertCircle, RotateCcw } from 'lucide-react'
 import React from 'react'
 import X3MomentumWordmark from '@/components/X3MomentumWordmark'
 import AppLayout from '@/components/layout/AppLayout'
@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation'
 import { testModeService } from '@/lib/test-mode'
 import { getCurrentCentralISOString } from '@/lib/timezone'
 import { ttsPhaseService } from '@/lib/tts-phrases'
+import CoachChat from '@/components/CoachChat/CoachChat'
 
 // Helper to get local ISO string with timezone offset
 // Updated to use Central time with proper DST handling
@@ -21,6 +22,22 @@ function getLocalISODateTime() {
   const timestamp = getCurrentCentralISOString();
   console.log('🕒 Generated Central timestamp:', timestamp);
   return timestamp;
+}
+
+// Helper to format workout dates correctly without timezone conversion
+function formatWorkoutDate(timestamp: string): string {
+  // Extract just the date part if it's an ISO timestamp
+  const dateStr = timestamp.split('T')[0];
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0]);
+    const month = parseInt(parts[1]);
+    const day = parseInt(parts[2]);
+    return `${month}/${day}/${year}`;
+  }
+  
+  // Fallback to original method if format is unexpected
+  return new Date(timestamp).toLocaleDateString();
 }
 
 
@@ -95,6 +112,9 @@ export default function HomePage() {
   const [restTimer, setRestTimer] = useState<{ isActive: boolean; timeLeft: number; exerciseIndex: number } | null>(null);
   const [restTimerInterval, setRestTimerInterval] = useState<NodeJS.Timeout | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [exerciseLoadingStates, setExerciseLoadingStates] = useState<{ [key: number]: boolean }>({});
+  const [saveLoadingStates, setSaveLoadingStates] = useState<{ [key: number]: boolean }>({});
+  const [saveErrorStates, setSaveErrorStates] = useState<{ [key: number]: string | null }>({});
   const { hasFeature, tier } = useSubscription();
   const { speak, isLoading: ttsLoading, error: ttsError, getSourceIndicator } = useX3TTS();
   const router = useRouter();
@@ -108,55 +128,58 @@ export default function HomePage() {
 
   // Metronome beep effect: always call useEffect at the top level
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    // Clear any existing interval first to prevent multiple instances
+    if (cadenceInterval) {
+      clearInterval(cadenceInterval);
+      setCadenceInterval(null);
+    }
+
     if (cadenceActive) {
       playBeep(); // play immediately
       const cadencePhrase = ttsPhaseService.getCadencePhrase(tier === 'mastery' ? 'mastery' : 'momentum');
-      speak(cadencePhrase);
-      interval = setInterval(() => {
+      speak(cadencePhrase, 'exercise');
+      
+      // Use the state-managed interval for consistency
+      const interval = setInterval(() => {
         playBeep();
       }, 2000);
+      setCadenceInterval(interval);
+      console.log('🎵 Cadence interval started:', interval);
+    } else {
+      console.log('🎵 Cadence stopped');
     }
+
     return () => {
-      if (interval) clearInterval(interval);
+      // Cleanup happens in the next effect or when cadenceActive becomes false
     };
   }, [cadenceActive, hasFeature, tier, speak]);
 
-  // Rest timer effect
+  // Separate effect to cleanup cadence interval when needed
   useEffect(() => {
+    if (!cadenceActive && cadenceInterval) {
+      console.log('🎵 Cleaning up cadence interval:', cadenceInterval);
+      clearInterval(cadenceInterval);
+      setCadenceInterval(null);
+    }
+  }, [cadenceActive, cadenceInterval]);
+
+  // Rest timer effect - Fixed to prevent interval recreation on every tick
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
     if (restTimer?.isActive && restTimer.timeLeft > 0) {
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         setRestTimer(prev => {
           if (!prev || prev.timeLeft <= 1) {
             // Timer finished
             const restCompletePhrase = ttsPhaseService.getRestPhrase(tier === 'mastery' ? 'mastery' : 'momentum');
-            speak(restCompletePhrase);
+            speak(restCompletePhrase, 'rest');
             return null;
           }
           
           const newTimeLeft = prev.timeLeft - 1;
           
-          // Start cadence at 82 seconds (8 seconds remaining) for next exercise prep
-          if (newTimeLeft === 8 && !cadenceActive) {
-            const nextExerciseIndex = prev.exerciseIndex + 1;
-            if (nextExerciseIndex < exercises.length) {
-              const nextExercise = exercises[nextExerciseIndex];
-              console.log('🎵 Starting cadence for next exercise prep at 82s mark');
-              setCadenceActive(true);
-              
-              // Announce the transition with countdown
-              const startPhrase = ttsPhaseService.getExerciseStartPhrase(nextExercise.name, tier === 'mastery' ? 'mastery' : 'momentum');
-              speak(`Begin ${nextExercise.name} in 3, 2, 1. ${startPhrase}`);
-              
-              // Start the cadence beeping
-              playBeep(); // Initial beep
-              const cadenceInt = setInterval(() => {
-                playBeep();
-              }, 2000); // 2-second intervals
-              setCadenceInterval(cadenceInt);
-            }
-          }
-          
+          // Just decrement the timer - cadence logic is handled in separate effect
           return { ...prev, timeLeft: newTimeLeft };
         });
       }, 1000);
@@ -169,11 +192,48 @@ export default function HomePage() {
     }
 
     return () => {
-      if (restTimerInterval) {
-        clearInterval(restTimerInterval);
+      if (interval) {
+        clearInterval(interval);
+        setRestTimerInterval(null);
       }
     };
-  }, [restTimer, hasFeature, cadenceActive, exercises, tier, speak, setCadenceActive, setCadenceInterval]);
+  }, [restTimer?.isActive, tier, speak]); // Include tier and speak for TTS calls
+  
+  // Separate effect to handle precise countdown timing during rest timer
+  useEffect(() => {
+    if (!restTimer?.isActive || cadenceActive) return;
+    
+    const timeLeft = restTimer.timeLeft;
+    const nextExerciseIndex = restTimer.exerciseIndex + 1;
+    
+    // Only proceed if there's a next exercise
+    if (nextExerciseIndex >= exercises.length) return;
+    
+    const nextExercise = exercises[nextExerciseIndex];
+    console.log(`⏰ Rest timer at ${timeLeft}s for next exercise: ${nextExercise.name}`);
+    
+    // Precise timing coordination with context-aware TTS
+    if (timeLeft === 88) {
+      console.log('⏰ TTS: Speaking "one" at exactly 88 seconds with countdown context');
+      speak('one', 'countdown');
+    } else if (timeLeft === 86) {
+      console.log('⏰ TTS: Speaking "two" at exactly 86 seconds with countdown context');
+      speak('two', 'countdown');
+    } else if (timeLeft === 84) {
+      console.log('⏰ TTS: Speaking "three" at exactly 84 seconds with countdown context');
+      speak('three', 'countdown');
+      // Start cadence after countdown
+      setCadenceActive(true);
+      console.log('🎵 Starting cadence for next exercise prep after countdown');
+    } else if (timeLeft === 90) {
+      // Calculate when to start the lead-in phrase so it ends around 84-85 seconds
+      // Estimate: lead-in phrase takes about 3-4 seconds to say
+      // So start at 88-89 seconds to finish by 84-85 seconds
+      const leadInPhrase = `Get ready for ${nextExercise.name} in`;
+      console.log(`⏰ TTS: Speaking lead-in phrase at 90s: "${leadInPhrase}" with rest context`);
+      speak(leadInPhrase, 'rest');
+    }
+  }, [restTimer?.timeLeft, restTimer?.isActive, cadenceActive, restTimer?.exerciseIndex, exercises, tier, speak, setCadenceActive]);
 
   useEffect(() => {
     console.log('useEffect running, setting mounted to true')
@@ -299,7 +359,7 @@ export default function HomePage() {
         fullReps: previous?.full_reps || 0,
         partialReps: previous?.partial_reps || 0,
         lastWorkout: previous ? `${previous.full_reps}+${previous.partial_reps} reps with ${previous.band_color} band` : '',
-        lastWorkoutDate: previous ? new Date(previous.workout_local_date_time).toLocaleDateString() : ''
+        lastWorkoutDate: previous ? formatWorkoutDate(previous.workout_local_date_time) : ''
       };
     });
     
@@ -307,7 +367,7 @@ export default function HomePage() {
     setExercises(exerciseData)
     
     if (previousData && previousData.length > 0) {
-      const lastWorkoutDate = new Date(previousData[0].workout_local_date_time).toLocaleDateString()
+      const lastWorkoutDate = formatWorkoutDate(previousData[0].workout_local_date_time)
       announceToScreenReader(`Previous ${workoutType} workout data loaded from ${lastWorkoutDate}`)
     }
   }
@@ -322,11 +382,8 @@ export default function HomePage() {
     
     // Stop cadence if running
     if (cadenceActive) {
+      console.log('🎵 Stopping cadence from updateExercise');
       setCadenceActive(false)
-      if (cadenceInterval) {
-        clearInterval(cadenceInterval)
-        setCadenceInterval(null)
-      }
       announceToScreenReader('Cadence stopped')
     }
 
@@ -338,37 +395,53 @@ export default function HomePage() {
     }
   }
 
-  const startExercise = (index: number) => {
+  const startExercise = async (index: number) => {
     const exercise = exercises[index]
     
     if (!hasFeature('ttsAudioCues')) return
     
     console.log('🚀 Starting exercise:', exercise.name)
     
-    // Get exercise start phrase from phrase library
-    const startPhrase = ttsPhaseService.getExerciseStartPhrase(
-      exercise.name, 
-      tier === 'mastery' ? 'mastery' : 'momentum'
-    )
+    // Set loading state for this specific exercise button
+    setExerciseLoadingStates(prev => ({ ...prev, [index]: true }))
     
-    // Speak the start phrase
-    speak(startPhrase)
-    
-    // Start cadence automatically
-    if (!cadenceActive) {
-      setCadenceActive(true)
-      console.log('🎵 Auto-starting cadence for exercise')
+    try {
+      // Get exercise start phrase from phrase library
+      const startPhrase = ttsPhaseService.getExerciseStartPhrase(
+        exercise.name, 
+        tier === 'mastery' ? 'mastery' : 'momentum'
+      )
+      
+      // Speak the start phrase with exercise context
+      await speak(startPhrase, 'exercise')
+      
+      // Start cadence automatically
+      if (!cadenceActive) {
+        setCadenceActive(true)
+        console.log('🎵 Auto-starting cadence for exercise')
+      }
+      
+      // Screen reader announcement
+      announceToScreenReader(`Starting ${exercise.name} with audio guidance`, 'assertive')
+    } catch (error) {
+      console.error('Error starting exercise:', error)
+    } finally {
+      // Clear loading state for this exercise button
+      setExerciseLoadingStates(prev => ({ ...prev, [index]: false }))
     }
-    
-    // Screen reader announcement
-    announceToScreenReader(`Starting ${exercise.name} with audio guidance`, 'assertive')
   }
 
   const saveExercise = async (index: number) => {
     console.log('💾 Starting save for exercise index:', index)
     
+    // Set loading state
+    setSaveLoadingStates(prev => ({ ...prev, [index]: true }))
+    setSaveErrorStates(prev => ({ ...prev, [index]: null }))
+    
     if (!user || !todaysWorkout) {
       console.error('❌ Missing user or todaysWorkout:', { user: !!user, todaysWorkout: !!todaysWorkout })
+      setSaveLoadingStates(prev => ({ ...prev, [index]: false }))
+      setSaveErrorStates(prev => ({ ...prev, [index]: 'Missing user or workout data. Please refresh the page.' }))
       return
     }
 
@@ -494,40 +567,48 @@ export default function HomePage() {
       console.log('✅ Exercise saved successfully!')
       announceToScreenReader(`${exercise.name} saved successfully!`, 'assertive')
       
+      // Clear loading and error states
+      setSaveLoadingStates(prev => ({ ...prev, [index]: false }))
+      setSaveErrorStates(prev => ({ ...prev, [index]: null }))
+      
       // Stop cadence if it's running (important for final exercise)
       if (cadenceActive) {
+        console.log('🎵 Stopping cadence after exercise save')
         setCadenceActive(false)
-        if (cadenceInterval) {
-          clearInterval(cadenceInterval)
-          setCadenceInterval(null)
-        }
-        console.log('🎵 Cadence stopped after exercise save')
         announceToScreenReader('Cadence stopped')
       }
       
-      // Add TTS audio cue for exercise completion
+      // Add TTS audio cue for exercise completion with better context detection
       const nextIndex = index + 1
       const isLastExercise = nextIndex >= exercises.length
+      
+      console.log(`🎯 Context Detection: Exercise ${index + 1} of ${exercises.length} (${exercise.name})`);
+      console.log(`🎯 Next index: ${nextIndex}, Is last exercise: ${isLastExercise}`);
       
       if (hasFeature('ttsAudioCues')) {
         if (isLastExercise) {
           // Final exercise - workout completion
+          console.log('🎉 TTS Context: WORKOUT COMPLETION');
           const nextWorkoutType = getTomorrowsWorkout()
           const completionPhrase = ttsPhaseService.getWorkoutCompletionPhrase(
             todaysWorkout.workoutType, 
             nextWorkoutType, 
             tier === 'mastery' ? 'mastery' : 'momentum'
           )
-          speak(completionPhrase)
+          console.log(`🎉 Speaking completion phrase: "${completionPhrase}" with exercise context`);
+          speak(completionPhrase, 'exercise')
         } else {
           // Exercise transition
+          console.log('🔄 TTS Context: EXERCISE TRANSITION');
           const nextExercise = exercises[nextIndex]?.name || "your next exercise"
+          console.log(`🔄 Transitioning from ${exercise.name} to ${nextExercise}`);
           const transitionPhrase = ttsPhaseService.getExerciseTransitionPhrase(
             exercise.name,
             nextExercise,
             tier === 'mastery' ? 'mastery' : 'momentum'
           )
-          speak(transitionPhrase)
+          console.log(`🔄 Speaking transition phrase: "${transitionPhrase}" with exercise context`);
+          speak(transitionPhrase, 'exercise')
         }
       }
       
@@ -541,6 +622,11 @@ export default function HomePage() {
       }
     } else {
       console.error('❌ Error saving exercise:', error)
+      
+      // Set error state and clear loading
+      setSaveLoadingStates(prev => ({ ...prev, [index]: false }))
+      
+      let errorMessage = 'Unknown error occurred. Please try again.'
       if (error) {
         console.error('❌ Error details:', {
           message: error.message,
@@ -548,14 +634,32 @@ export default function HomePage() {
           hint: error.hint,
           code: error.code
         })
-        announceToScreenReader(`Error saving exercise: ${error.message || 'Unknown error'}. Please try again.`, 'assertive')
+        
+        // Create user-friendly error message
+        if (error.code === 'PGRST116') {
+          errorMessage = 'No database connection. Please check your internet connection.'
+        } else if (error.message?.includes('duplicate')) {
+          errorMessage = 'This exercise has already been saved for today.'
+        } else if (error.message?.includes('permission')) {
+          errorMessage = 'Permission denied. Please sign out and back in.'
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+        
+        announceToScreenReader(`Error saving exercise: ${errorMessage}`, 'assertive')
       } else {
         console.error('❌ Unknown error occurred')
         announceToScreenReader('Unknown error saving exercise. Please try again.', 'assertive')
       }
+      
+      setSaveErrorStates(prev => ({ ...prev, [index]: errorMessage }))
     }
   }
 
+  const retrySaveExercise = (index: number) => {
+    console.log('🔄 Retrying save for exercise index:', index)
+    saveExercise(index)
+  }
 
   const getExerciseInfoUrl = (exerciseName: string) => {
     const exerciseUrls: { [key: string]: string } = {
@@ -981,14 +1085,14 @@ export default function HomePage() {
                 {!exercise.saved && hasFeature('ttsAudioCues') && (
                   <button
                     onClick={() => startExercise(index)}
-                    disabled={ttsLoading}
+                    disabled={exerciseLoadingStates[index]}
                     className={`w-full py-2 mb-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
-                      ttsLoading 
+                      exerciseLoadingStates[index] 
                         ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
                         : 'bg-green-500 text-white hover:bg-green-600'
                     }`}
                   >
-                    {ttsLoading ? (
+                    {exerciseLoadingStates[index] ? (
                       <>
                         <div className="inline animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                         Processing...
@@ -1002,17 +1106,53 @@ export default function HomePage() {
                   </button>
                 )}
 
+                {/* Error Display */}
+                {saveErrorStates[index] && (
+                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-start space-x-2">
+                      <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm text-red-700 mb-2">{saveErrorStates[index]}</p>
+                        <button
+                          onClick={() => retrySaveExercise(index)}
+                          disabled={saveLoadingStates[index]}
+                          className="text-xs text-red-600 hover:text-red-800 underline flex items-center space-x-1 disabled:opacity-50"
+                        >
+                          <RotateCcw size={12} />
+                          <span>Try Again</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   onClick={() => saveExercise(index)}
-                  disabled={exercise.saved}
+                  disabled={exercise.saved || saveLoadingStates[index]}
                   className={`w-full py-3 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ${
                     exercise.saved
                       ? 'btn-success cursor-default focus:ring-green-500'
-                      : 'btn-primary focus:ring-orange-500'
+                      : saveLoadingStates[index]
+                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed focus:ring-gray-400'
+                        : 'btn-primary focus:ring-orange-500'
                   }`}
                 >
-                  <Save className="inline mr-2" size={16} aria-hidden="true" />
-                  {exercise.saved ? 'Saved!' : 'Save Exercise'}
+                  {saveLoadingStates[index] ? (
+                    <>
+                      <Loader2 className="inline mr-2 animate-spin" size={16} aria-hidden="true" />
+                      Saving...
+                    </>
+                  ) : exercise.saved ? (
+                    <>
+                      <Save className="inline mr-2" size={16} aria-hidden="true" />
+                      Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Save className="inline mr-2" size={16} aria-hidden="true" />
+                      Save Exercise
+                    </>
+                  )}
                 </button>
               </article>
             ))}
@@ -1029,6 +1169,23 @@ export default function HomePage() {
             compact={true}
           />
         </div>
+
+        {/* Coach Chat Component */}
+        <CoachChat
+          currentExercise={exercises.find((ex, index) => !ex.saved) ? {
+            name: exercises.find((ex, index) => !ex.saved)?.name || '',
+            band: exercises.find((ex, index) => !ex.saved)?.band || '',
+            fullReps: exercises.find((ex, index) => !ex.saved)?.fullReps || 0,
+            partialReps: exercises.find((ex, index) => !ex.saved)?.partialReps || 0,
+            notes: exercises.find((ex, index) => !ex.saved)?.notes || ''
+          } : undefined}
+          workoutContext={{
+            workoutType: todaysWorkout.workoutType,
+            week: todaysWorkout.week,
+            exercisesCompleted: exercises.filter(ex => ex.saved).length,
+            totalExercises: exercises.length
+          }}
+        />
       </div>
     </AppLayout>
   )

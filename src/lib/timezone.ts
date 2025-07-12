@@ -4,7 +4,7 @@
  */
 
 import { format, parseISO, startOfDay, endOfDay, subDays, subMonths } from 'date-fns'
-import { zonedTimeToUtc, utcToZonedTime, format as formatTz } from 'date-fns-tz'
+import { fromZonedTime, toZonedTime, formatInTimeZone } from 'date-fns-tz'
 
 // Central Time Zone - automatically handles DST
 const CENTRAL_TIMEZONE = 'America/Chicago'
@@ -36,21 +36,21 @@ export interface TimezoneUtils {
  * Convert a date in Central timezone to UTC
  */
 function toUTC(centralDate: Date): Date {
-  return zonedTimeToUtc(centralDate, CENTRAL_TIMEZONE)
+  return fromZonedTime(centralDate, CENTRAL_TIMEZONE)
 }
 
 /**
  * Convert a UTC date to Central timezone
  */
 function toCentral(utcDate: Date): Date {
-  return utcToZonedTime(utcDate, CENTRAL_TIMEZONE)
+  return toZonedTime(utcDate, CENTRAL_TIMEZONE)
 }
 
 /**
  * Format a date in Central timezone
  */
 function formatCentral(date: Date, formatStr: string = 'yyyy-MM-dd'): string {
-  return formatTz(date, formatStr, { timeZone: CENTRAL_TIMEZONE })
+  return formatInTimeZone(date, CENTRAL_TIMEZONE, formatStr)
 }
 
 /**
@@ -143,12 +143,13 @@ function getLocalDateFromTimestamp(timestamp: string): string {
     const centralDate = toCentral(date)
     const localDateStr = formatCentral(centralDate, 'yyyy-MM-dd')
     
-    console.log('🕐 Timezone conversion:', {
-      input: timestamp,
-      parsed: date.toISOString(),
-      central: centralDate.toISOString(),
-      localDate: localDateStr
-    })
+    // Debug logging commented out - was useful for debugging date display issue
+    // console.log('🕐 Timezone conversion:', {
+    //   input: timestamp,
+    //   parsed: date.toISOString(),
+    //   central: centralDate.toISOString(),
+    //   localDate: localDateStr
+    // })
     
     return localDateStr
   } catch (error) {

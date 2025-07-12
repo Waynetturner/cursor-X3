@@ -1,0 +1,55 @@
+
+> x3-tracker@0.1.0 build
+> next build
+
+   ▲ Next.js 15.3.4
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 1000ms
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/17) ...
+Failed to load test mode settings: ReferenceError: localStorage is not defined
+    at c.loadSettings (.next/server/chunks/888.js:1:3830)
+    at new c (.next/server/chunks/888.js:1:3790)
+    at 3557 (.next/server/chunks/888.js:1:7589)
+    at t (.next/server/webpack-runtime.js:1:128)
+    at 9654 (.next/server/chunks/888.js:1:11130)
+    at Object.t [as require] (.next/server/webpack-runtime.js:1:128)
+   Generating static pages (4/17) 
+   Generating static pages (8/17) 
+Failed to load mock workouts: ReferenceError: localStorage is not defined
+    at c.getMockWorkouts (.next/server/chunks/888.js:1:5932)
+    at c.getStatus (.next/server/chunks/888.js:1:7555)
+    at d (.next/server/chunks/888.js:1:7804)
+    at p (.next/server/app/stats/page.js:1:3173)
+   Generating static pages (12/17) 
+ ✓ Generating static pages (17/17)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    13.6 kB         176 kB
+├ ○ /_not-found                            977 B         102 kB
+├ ○ /auth/callback                       2.81 kB         144 kB
+├ ○ /auth/forgot-password                3.38 kB         145 kB
+├ ○ /auth/reset-password                 3.53 kB         145 kB
+├ ○ /auth/signin                         4.15 kB         146 kB
+├ ○ /auth/signup                         4.29 kB         146 kB
+├ ○ /auth/verify-email                   3.24 kB         145 kB
+├ ○ /calendar                            4.15 kB         149 kB
+├ ○ /dashboard                           13.7 kB         162 kB
+├ ○ /goals                               4.54 kB         149 kB
+├ ○ /measurements                        4.47 kB         146 kB
+├ ○ /settings                            10.3 kB         159 kB
+└ ○ /stats                               2.17 kB         161 kB
++ First Load JS shared by all             101 kB
+  ├ chunks/4bd1b696-4acadd0bcfbddfe7.js  53.2 kB
+  ├ chunks/684-4988d1d847f57d74.js       45.9 kB
+  └ other shared chunks (total)          1.92 kB
+
+
+○  (Static)  prerendered as static content
+

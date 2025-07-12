@@ -1,0 +1,18 @@
+
+> x3-tracker@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.3.4
+   - Local:        http://localhost:3000
+   - Network:      http://10.255.255.254:3000
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1132ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1501ms (1779 modules)
+ GET / 200 in 1921ms
+ ✓ Compiled in 215ms (840 modules)
+ ✓ Compiled / in 155ms (939 modules)
+ GET / 200 in 279ms
+ ✓ Compiled in 197ms (840 modules)

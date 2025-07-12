@@ -11,6 +11,7 @@ interface GenerateSpeechRequest {
   voice?: string;
   speed?: number;
   user_id: string;
+  context?: 'exercise' | 'countdown' | 'rest' | 'general';
 }
 
 interface GenerateSpeechResponse {
@@ -32,7 +33,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Parse request body
-    const { text, voice = 'en-US-Neural2-F', speed = 1.0, user_id }: GenerateSpeechRequest = await req.json()
+    const { text, voice = 'ash', speed = 1.0, user_id, context = 'general' }: GenerateSpeechRequest = await req.json()
 
     if (!text || !user_id) {
       return new Response(
@@ -67,23 +68,75 @@ serve(async (req) => {
       )
     }
 
-    // Check if user has access to TTS (Momentum and Mastery tiers)
-    if (profile.subscription_tier === 'foundation') {
+    // Allow TTS for all tiers now (better voice quality improvement)
+    console.log(`TTS request for ${profile.subscription_tier} tier user`)
+
+    // Get OpenAI API key from environment
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    if (!openaiApiKey) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'TTS feature requires Momentum or Mastery subscription' 
+          error: 'OpenAI API key not configured' 
         }),
         { 
-          status: 403, 
+          status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       )
     }
 
-    // For now, return a mock response since we're not integrating with a real TTS service
-    // In production, this would integrate with Google Cloud TTS, Amazon Polly, or similar
-    const mockAudioUrl = `https://api.example.com/tts?text=${encodeURIComponent(text)}&voice=${voice}&speed=${speed}`
+    // Get context-aware instructions for TTS
+    function getInstructionsForContext(context: string): string {
+      switch (context) {
+        case 'exercise':
+          return 'Voice Affect: Energetic and motivational. Tone: Encouraging and powerful. Pacing: Steady with emphasis on key words. Emotion: Confident and inspiring.'
+        case 'countdown':
+          return 'Voice Affect: Building intensity. Tone: Focused and urgent. Pacing: Deliberate with dramatic emphasis. Emotion: Anticipation and readiness.'
+        case 'rest':
+          return 'Voice Affect: Calm but encouraging. Tone: Supportive and reassuring. Pacing: Relaxed with gentle emphasis. Emotion: Recovery-focused.'
+        default:
+          return 'Voice Affect: Natural and friendly. Tone: Clear and professional. Pacing: Conversational. Emotion: Helpful and supportive.'
+      }
+    }
+
+    const instructions = getInstructionsForContext(context)
+    console.log(`🎤 TTS Context: ${context}, Instructions: ${instructions}`)
+
+    // Generate speech using OpenAI TTS API with 'ash' voice and dynamic instructions
+    const openaiResponse = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini-tts',
+        input: text,
+        voice: 'ash', // High quality ash voice with dynamic capabilities
+        speed: speed,
+        instructions: instructions,
+      }),
+    })
+
+    if (!openaiResponse.ok) {
+      console.error('OpenAI TTS API error:', openaiResponse.status, openaiResponse.statusText)
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `OpenAI TTS failed: ${openaiResponse.statusText}` 
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
+    // Get the audio data and convert to base64 data URL
+    const audioBuffer = await openaiResponse.arrayBuffer()
+    const audioBase64 = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)))
+    const audioUrl = `data:audio/mpeg;base64,${audioBase64}`
 
     // Log the TTS request for analytics
     await supabase
@@ -98,7 +151,7 @@ serve(async (req) => {
       })
 
     const response: GenerateSpeechResponse = {
-      audio_url: mockAudioUrl,
+      audio_url: audioUrl,
       success: true
     }
 

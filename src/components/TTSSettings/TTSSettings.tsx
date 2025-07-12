@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { VolumeX, Settings, TestTube, Save, X } from 'lucide-react'
-import { useX3TTS, type TTSSettings } from '@/hooks/useX3TTS'
+import { useX3TTS, type TTSSettings, type TTSContext } from '@/hooks/useX3TTS'
 import { useSubscription } from '@/contexts/SubscriptionContext'
 
 interface TTSSettingsProps {
@@ -57,9 +57,21 @@ export default function TTSSettings({ isOpen, onClose, className = '' }: TTSSett
 
   const handleTestVoice = async () => {
     if (isTTSAvailable && localSettings.enabled) {
-      const testText = "This is a test of the X3 Momentum Pro text-to-speech system."
-      await speak(testText)
+      const testText = "This is a test of the new Ash voice with dynamic instructions."
+      await speak(testText, 'general')
     }
+  }
+
+  const testContextualTTS = async (context: 'exercise' | 'countdown' | 'rest') => {
+    if (!isTTSAvailable || !localSettings.enabled) return
+    
+    const testMessages = {
+      exercise: "Great work! Push through to failure and feel that muscle tension building.",
+      countdown: "Three... Two... One... Go!",
+      rest: "Take a deep breath and recover. You've earned this rest period."
+    }
+    
+    await speak(testMessages[context], context)
   }
 
   const updateSetting = <K extends keyof TTSSettings>(
@@ -221,6 +233,37 @@ export default function TTSSettings({ isOpen, onClose, className = '' }: TTSSett
                   </>
                 )}
               </button>
+
+              {/* Contextual Test Buttons */}
+              <div className="mt-3 space-y-2">
+                <p className="text-sm font-medium text-primary">Test Dynamic Voice Instructions:</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => testContextualTTS('exercise')}
+                    disabled={!localSettings.enabled || isLoading}
+                    className="text-xs btn-tertiary py-2 disabled:opacity-50"
+                  >
+                    🏋️ Exercise
+                  </button>
+                  <button
+                    onClick={() => testContextualTTS('countdown')}
+                    disabled={!localSettings.enabled || isLoading}
+                    className="text-xs btn-tertiary py-2 disabled:opacity-50"
+                  >
+                    ⏱️ Countdown
+                  </button>
+                  <button
+                    onClick={() => testContextualTTS('rest')}
+                    disabled={!localSettings.enabled || isLoading}
+                    className="text-xs btn-tertiary py-2 disabled:opacity-50"
+                  >
+                    😮‍💨 Rest
+                  </button>
+                </div>
+                <p className="text-xs text-secondary mt-1">
+                  Each context uses different voice instructions for optimal experience
+                </p>
+              </div>
               
               {/* TTS Source Indicator */}
               {localSettings.enabled && currentSource !== 'none' && (

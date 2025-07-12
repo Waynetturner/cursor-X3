@@ -21,6 +21,7 @@ export interface TTSSettings {
 }
 
 export type TTSSource = 'openai' | 'webspeech' | 'browser' | 'mock' | 'none'
+export type TTSContext = 'exercise' | 'countdown' | 'rest' | 'general' | 'coach'
 
 export interface TTSAudio {
   id: string
@@ -31,15 +32,15 @@ export interface TTSAudio {
 }
 
 const DEFAULT_VOICES: TTSVoice[] = [
-  { id: 'en-US-Neural2-F', name: 'Sarah (Female)', gender: 'female', language: 'en-US' },
-  { id: 'en-US-Neural2-M', name: 'Michael (Male)', gender: 'male', language: 'en-US' },
-  { id: 'en-US-Neural2-C', name: 'Emma (Female)', gender: 'female', language: 'en-US' },
-  { id: 'en-US-Neural2-D', name: 'David (Male)', gender: 'male', language: 'en-US' },
+  { id: 'ash', name: 'Ash (Dynamic)', gender: 'female', language: 'en-US' },
+  { id: 'nova', name: 'Nova (Female)', gender: 'female', language: 'en-US' },
+  { id: 'alloy', name: 'Alloy (Neutral)', gender: 'female', language: 'en-US' },
+  { id: 'echo', name: 'Echo (Male)', gender: 'male', language: 'en-US' },
 ]
 
 const DEFAULT_SETTINGS: TTSSettings = {
   enabled: true,
-  voice: 'en-US-Neural2-F',
+  voice: 'ash',
   speed: 1.0,
   volume: 0.8,
 }
@@ -143,7 +144,7 @@ export function useX3TTS() {
     }
   }
 
-  const generateSpeech = useCallback(async (text: string): Promise<TTSAudio | null> => {
+  const generateSpeech = useCallback(async (text: string, context: TTSContext = 'general'): Promise<TTSAudio | null> => {
     if (!isTTSAvailable || !settings.enabled) {
       setCurrentSource('none')
       return null
@@ -174,36 +175,38 @@ export function useX3TTS() {
 
       // Fallback hierarchy: OpenAI → Web Speech API → Browser TTS
       
-      // 1. Try OpenAI TTS (for Mastery tier)
-      if (tier === 'mastery') {
-        try {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            const result = await backendService.generateSpeech(
+      // 1. Try OpenAI TTS (for all tiers - better voice quality)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          console.log(`🤖 Attempting OpenAI TTS with 'ash' voice for context: ${context}`)
+          const result = await backendService.generateSpeech(
+            text,
+            user.id,
+            settings.voice,
+            settings.speed,
+            context
+          )
+
+          if (result.success && result.audio_url) {
+            console.log('✅ OpenAI TTS successful - high quality voice')
+            setCurrentSource('openai')
+            
+            const audio: TTSAudio = {
+              id: audioId,
               text,
-              user.id,
-              settings.voice,
-              settings.speed
-            )
-
-            if (result.success && result.audio_url) {
-              console.log('✅ OpenAI TTS successful')
-              setCurrentSource('openai')
-              
-              const audio: TTSAudio = {
-                id: audioId,
-                text,
-                audioUrl: result.audio_url,
-                isPlaying: false,
-              }
-
-              setAudioQueue(prev => [...prev, audio])
-              return audio
+              audioUrl: result.audio_url,
+              isPlaying: false,
             }
+
+            setAudioQueue(prev => [...prev, audio])
+            return audio
+          } else {
+            console.warn('⚠️ OpenAI TTS failed:', result.error)
           }
-        } catch (openAIError) {
-          console.warn('⚠️ OpenAI TTS failed, trying Web Speech API:', openAIError)
         }
+      } catch (openAIError) {
+        console.warn('⚠️ OpenAI TTS failed, trying Web Speech API:', openAIError)
       }
 
       // 2. Try Web Speech API
@@ -370,12 +373,12 @@ export function useX3TTS() {
     }
   }, [])
 
-  const speak = useCallback(async (text: string) => {
+  const speak = useCallback(async (text: string, context: TTSContext = 'general') => {
     if (!isTTSAvailable || !settings.enabled) {
       return
     }
 
-    const audio = await generateSpeech(text)
+    const audio = await generateSpeech(text, context)
     if (audio) {
       await playAudio(audio)
     }

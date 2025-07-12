@@ -48,9 +48,12 @@ class TestModeService {
   // Settings Management
   loadSettings(): TestModeSettings {
     try {
-      const saved = localStorage.getItem(TEST_MODE_KEY)
-      if (saved) {
-        this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }
+      // Check if localStorage is available (client-side only)
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = localStorage.getItem(TEST_MODE_KEY)
+        if (saved) {
+          this.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(saved) }
+        }
       }
     } catch (error) {
       console.warn('Failed to load test mode settings:', error)
@@ -61,7 +64,9 @@ class TestModeService {
 
   saveSettings(newSettings: Partial<TestModeSettings>): void {
     this.settings = { ...this.settings, ...newSettings }
-    localStorage.setItem(TEST_MODE_KEY, JSON.stringify(this.settings))
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(TEST_MODE_KEY, JSON.stringify(this.settings))
+    }
     this.notifyListeners()
   }
 
@@ -129,7 +134,9 @@ class TestModeService {
       }
     ]
     
-    localStorage.setItem(TEST_WORKOUTS_KEY, JSON.stringify(mockWorkouts))
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(TEST_WORKOUTS_KEY, JSON.stringify(mockWorkouts))
+    }
   }
 
   createMockSubscription(): void {
@@ -139,13 +146,18 @@ class TestModeService {
       testMode: true
     }
     
-    localStorage.setItem(TEST_SUBSCRIPTION_KEY, JSON.stringify(mockSubscription))
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(TEST_SUBSCRIPTION_KEY, JSON.stringify(mockSubscription))
+    }
   }
 
   getMockWorkouts(): MockWorkoutData[] {
     try {
-      const saved = localStorage.getItem(TEST_WORKOUTS_KEY)
-      return saved ? JSON.parse(saved) : []
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = localStorage.getItem(TEST_WORKOUTS_KEY)
+        return saved ? JSON.parse(saved) : []
+      }
+      return []
     } catch (error) {
       console.error('Failed to load mock workouts:', error)
       return []
@@ -159,12 +171,16 @@ class TestModeService {
       id: `test-workout-${Date.now()}`
     }
     workouts.unshift(newWorkout) // Add to beginning
-    localStorage.setItem(TEST_WORKOUTS_KEY, JSON.stringify(workouts))
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(TEST_WORKOUTS_KEY, JSON.stringify(workouts))
+    }
   }
 
   clearMockData(): void {
-    localStorage.removeItem(TEST_WORKOUTS_KEY)
-    localStorage.removeItem(TEST_SUBSCRIPTION_KEY)
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(TEST_WORKOUTS_KEY)
+      localStorage.removeItem(TEST_SUBSCRIPTION_KEY)
+    }
   }
 
   // Utility Methods

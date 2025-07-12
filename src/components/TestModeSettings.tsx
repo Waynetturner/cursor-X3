@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { useTestMode } from '@/lib/test-mode'
-import { Flask, Database, Volume2, CreditCard, AlertTriangle, CheckCircle } from 'lucide-react'
+import { FlaskConical, Database, Volume2, CreditCard, AlertTriangle, CheckCircle } from 'lucide-react'
 
 interface TestModeSettingsProps {
   className?: string
@@ -43,7 +43,7 @@ export default function TestModeSettings({ className = '' }: TestModeSettingsPro
       {/* Test Mode Header */}
       <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
         <div className="flex items-center gap-3 mb-2">
-          <Flask size={20} className="text-purple-400" />
+          <FlaskConical size={20} className="text-purple-400" />
           <h3 className="font-medium text-purple-400">Test Mode</h3>
           {isEnabled && (
             <span className="text-xs bg-purple-500 text-white px-2 py-1 rounded">ACTIVE</span>
