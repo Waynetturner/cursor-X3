@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { testModeService } from '@/lib/test-mode'
 
 export type SubscriptionTier = 'foundation' | 'momentum' | 'mastery'
 
@@ -93,6 +94,13 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
 
   useEffect(() => {
     loadUserSubscription()
+
+    // Listen for test mode changes to reload subscription
+    const unsubscribe = testModeService.onTestModeChange(() => {
+      loadUserSubscription()
+    })
+
+    return unsubscribe
   }, [])
 
   const loadUserSubscription = async () => {
@@ -100,6 +108,14 @@ export function SubscriptionProvider({ children }: SubscriptionProviderProps) {
       const { data: { user } } = await supabase.auth.getUser()
       
       if (user) {
+        // Check if test mode is enabled and should mock subscription
+        if (testModeService.shouldMockSubscription()) {
+          console.log('🧪 Test Mode: Using mock subscription (Mastery tier)')
+          setTier('mastery') // Default to mastery in test mode for full feature access
+          setIsLoading(false)
+          return
+        }
+
         // For MVP testing, we'll use localStorage to simulate subscription tiers
         // In production, this would come from your payment processor (Stripe, etc.)
         const savedTier = localStorage.getItem('x3-subscription-tier') as SubscriptionTier

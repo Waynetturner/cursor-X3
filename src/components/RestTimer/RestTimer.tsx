@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Play, Pause, RotateCcw, Volume2, VolumeX } from 'lucide-react'
+import { Play, Pause, RotateCcw, Volume2, VolumeX, SkipForward } from 'lucide-react'
 import { useX3TTS } from '@/hooks/useX3TTS'
 import { useSubscription } from '@/contexts/SubscriptionContext'
 
@@ -17,7 +17,7 @@ export default function RestTimer({
   className = '' 
 }: RestTimerProps) {
   const { tier, hasFeature } = useSubscription()
-  const { speak, settings } = useX3TTS()
+  const { speak, settings, getSourceIndicator, isLoading: ttsLoading, error: ttsError } = useX3TTS()
   const [timeLeft, setTimeLeft] = useState(duration)
   const [isRunning, setIsRunning] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
@@ -121,6 +121,16 @@ export default function RestTimer({
     if (isTTSAvailable && settings.enabled) {
       speak("Timer reset.")
     }
+  }
+
+  const skipTimer = () => {
+    setTimeLeft(0)
+    setIsRunning(false)
+    setIsPaused(false)
+    if (isTTSAvailable && settings.enabled) {
+      speak("Rest period skipped. Time to get back to work!")
+    }
+    onComplete?.()
   }
 
   const toggleTTS = () => {
@@ -251,6 +261,13 @@ export default function RestTimer({
               <RotateCcw size={16} />
               <span>Reset</span>
             </button>
+            <button
+              onClick={skipTimer}
+              className="btn-primary flex items-center space-x-2"
+            >
+              <SkipForward size={16} />
+              <span>Skip</span>
+            </button>
           </>
         )}
       </div>
@@ -261,6 +278,19 @@ export default function RestTimer({
           <div className="text-xs text-secondary">
             {settings.enabled ? 'Audio cues enabled' : 'Audio cues disabled'}
           </div>
+          {settings.enabled && (
+            <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 mt-1">
+              {ttsLoading && (
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-500"></div>
+              )}
+              <span>{getSourceIndicator()}</span>
+            </div>
+          )}
+          {ttsError && (
+            <div className="text-xs text-red-600 mt-1">
+              ⚠️ {ttsError}
+            </div>
+          )}
         </div>
       )}
 

@@ -7,6 +7,7 @@ import { useSubscription, TIER_NAMES, TIER_DESCRIPTIONS, TIER_PRICING, TIER_PRIC
 import { useTheme } from '@/contexts/ThemeContext';
 import { Crown, Star, Zap, CheckCircle, Lock } from 'lucide-react';
 import BackendTester from '@/components/BackendTester';
+import TestModeSettings from '@/components/TestModeSettings';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 const tabs = [
@@ -649,6 +650,15 @@ export default function Settings() {
                   {hasFeature('advancedAnalytics') ? (
                     <div className="space-y-6">
                       <p className="text-gray-600 mb-4">Advanced features for {TIER_NAMES[tier]} users.</p>
+                      
+                      {/* Test Mode Settings */}
+                      <div className="p-4 border border-gray-300 bg-white rounded-lg">
+                        <h3 className="font-medium text-gray-800 mb-2">Developer Test Mode</h3>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Safe testing environment for development and feature testing without affecting production data.
+                        </p>
+                        <TestModeSettings />
+                      </div>
                       
                       {/* Backend Integration Tester */}
                       <div className="p-4 border border-gray-300 bg-white rounded-lg">

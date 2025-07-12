@@ -8,35 +8,19 @@ import React from 'react'
 import X3MomentumWordmark from '@/components/X3MomentumWordmark'
 import AppLayout from '@/components/layout/AppLayout'
 import { useSubscription } from '@/contexts/SubscriptionContext'
+import { useX3TTS } from '@/hooks/useX3TTS'
 import { WorkoutHistory } from '@/components/WorkoutHistory'
 import { useRouter } from 'next/navigation'
+import { testModeService } from '@/lib/test-mode'
+import { getCurrentCentralISOString } from '@/lib/timezone'
+import { ttsPhaseService } from '@/lib/tts-phrases'
 
 // Helper to get local ISO string with timezone offset
+// Updated to use Central time with proper DST handling
 function getLocalISODateTime() {
-  const now = new Date();
-  
-  // Create a timestamp that preserves the local date regardless of timezone
-  // Use the local date components directly
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  
-  // Get timezone offset in proper format
-  const tzo = -now.getTimezoneOffset(); // Minutes difference from UTC
-  const offsetHours = String(Math.floor(Math.abs(tzo) / 60)).padStart(2, '0');
-  const offsetMinutes = String(Math.abs(tzo) % 60).padStart(2, '0');
-  const offsetSign = tzo >= 0 ? '+' : '-';
-  
-  const result = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${offsetHours}:${offsetMinutes}`;
-  
-  console.log('🕒 Generated timestamp:', result);
-  console.log('🌍 Timezone offset minutes:', now.getTimezoneOffset());
-  console.log('📅 Local date components:', { year, month, day, hours, minutes, seconds });
-  
-  return result;
+  const timestamp = getCurrentCentralISOString();
+  console.log('🕒 Generated Central timestamp:', timestamp);
+  return timestamp;
 }
 
 
@@ -75,16 +59,11 @@ function playBeep() {
   oscillator.onended = () => ctx.close();
 }
 
-// TTS function for audio cues
+// Legacy TTS function - replaced by useX3TTS hook
+// Keeping for reference, but all calls should use speak() from useX3TTS
 function speakText(text: string, hasFeature: boolean) {
-  if (!hasFeature || !('speechSynthesis' in window)) return;
-  
-  window.speechSynthesis.cancel(); // Cancel any existing speech
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.9;
-  utterance.pitch = 1.0;
-  utterance.volume = 0.8;
-  window.speechSynthesis.speak(utterance);
+  // This function is deprecated - use speak() from useX3TTS instead
+  console.warn('⚠️ speakText is deprecated, use speak() from useX3TTS hook')
 }
 
 interface Exercise {
@@ -116,7 +95,8 @@ export default function HomePage() {
   const [restTimer, setRestTimer] = useState<{ isActive: boolean; timeLeft: number; exerciseIndex: number } | null>(null);
   const [restTimerInterval, setRestTimerInterval] = useState<NodeJS.Timeout | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const { hasFeature } = useSubscription();
+  const { hasFeature, tier } = useSubscription();
+  const { speak, isLoading: ttsLoading, error: ttsError, getSourceIndicator } = useX3TTS();
   const router = useRouter();
   const getTomorrowsWorkout = () => {
     if (!user || !todaysWorkout) return 'Push';
@@ -131,7 +111,8 @@ export default function HomePage() {
     let interval: NodeJS.Timeout | null = null;
     if (cadenceActive) {
       playBeep(); // play immediately
-      speakText("Cadence started. 2 second intervals for proper form", hasFeature('ttsAudioCues'));
+      const cadencePhrase = ttsPhaseService.getCadencePhrase(tier === 'mastery' ? 'mastery' : 'momentum');
+      speak(cadencePhrase);
       interval = setInterval(() => {
         playBeep();
       }, 2000);
@@ -139,7 +120,7 @@ export default function HomePage() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [cadenceActive, hasFeature]);
+  }, [cadenceActive, hasFeature, tier, speak]);
 
   // Rest timer effect
   useEffect(() => {
@@ -148,10 +129,35 @@ export default function HomePage() {
         setRestTimer(prev => {
           if (!prev || prev.timeLeft <= 1) {
             // Timer finished
-            speakText("Rest period complete. Ready for your next exercise", hasFeature('ttsAudioCues'));
+            const restCompletePhrase = ttsPhaseService.getRestPhrase(tier === 'mastery' ? 'mastery' : 'momentum');
+            speak(restCompletePhrase);
             return null;
           }
-          return { ...prev, timeLeft: prev.timeLeft - 1 };
+          
+          const newTimeLeft = prev.timeLeft - 1;
+          
+          // Start cadence at 82 seconds (8 seconds remaining) for next exercise prep
+          if (newTimeLeft === 8 && !cadenceActive) {
+            const nextExerciseIndex = prev.exerciseIndex + 1;
+            if (nextExerciseIndex < exercises.length) {
+              const nextExercise = exercises[nextExerciseIndex];
+              console.log('🎵 Starting cadence for next exercise prep at 82s mark');
+              setCadenceActive(true);
+              
+              // Announce the transition with countdown
+              const startPhrase = ttsPhaseService.getExerciseStartPhrase(nextExercise.name, tier === 'mastery' ? 'mastery' : 'momentum');
+              speak(`Begin ${nextExercise.name} in 3, 2, 1. ${startPhrase}`);
+              
+              // Start the cadence beeping
+              playBeep(); // Initial beep
+              const cadenceInt = setInterval(() => {
+                playBeep();
+              }, 2000); // 2-second intervals
+              setCadenceInterval(cadenceInt);
+            }
+          }
+          
+          return { ...prev, timeLeft: newTimeLeft };
         });
       }, 1000);
       setRestTimerInterval(interval);
@@ -167,7 +173,7 @@ export default function HomePage() {
         clearInterval(restTimerInterval);
       }
     };
-  }, [restTimer, hasFeature, restTimerInterval]);
+  }, [restTimer, hasFeature, cadenceActive, exercises, tier, speak, setCadenceActive, setCadenceInterval]);
 
   useEffect(() => {
     console.log('useEffect running, setting mounted to true')
@@ -332,6 +338,32 @@ export default function HomePage() {
     }
   }
 
+  const startExercise = (index: number) => {
+    const exercise = exercises[index]
+    
+    if (!hasFeature('ttsAudioCues')) return
+    
+    console.log('🚀 Starting exercise:', exercise.name)
+    
+    // Get exercise start phrase from phrase library
+    const startPhrase = ttsPhaseService.getExerciseStartPhrase(
+      exercise.name, 
+      tier === 'mastery' ? 'mastery' : 'momentum'
+    )
+    
+    // Speak the start phrase
+    speak(startPhrase)
+    
+    // Start cadence automatically
+    if (!cadenceActive) {
+      setCadenceActive(true)
+      console.log('🎵 Auto-starting cadence for exercise')
+    }
+    
+    // Screen reader announcement
+    announceToScreenReader(`Starting ${exercise.name} with audio guidance`, 'assertive')
+  }
+
   const saveExercise = async (index: number) => {
     console.log('💾 Starting save for exercise index:', index)
     
@@ -369,26 +401,54 @@ export default function HomePage() {
     
     console.log('💾 Data being sent to Supabase:', dataToSave)
 
-    console.log('🎯 About to upsert into workout_exercises table...')
+    console.log('🎯 About to save workout data...')
     
-    // First, let's see what records already exist for this user/exercise
-    const { data: existingRecords, error: checkError } = await supabase
-      .from('workout_exercises')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('exercise_name', exercise.name)
-      .order('workout_local_date_time', { ascending: false })
-      .limit(3)
+    let data, error
     
-    console.log('🔍 Existing records for this exercise:', existingRecords)
-    console.log('🔍 Check error:', checkError)
-    
-    // Try a simple insert with fresh timestamp
-    console.log('🚀 Attempting insert operation with fresh timestamp...')
-    const { data, error } = await supabase
-      .from('workout_exercises')
-      .insert(dataToSave)
-      .select()
+    // Check if test mode is enabled
+    if (testModeService.shouldMockWorkouts()) {
+      console.log('🧪 Test Mode: Intercepting workout save, adding to mock data')
+      
+      // Add to mock workout data
+      testModeService.addMockWorkout({
+        date: workoutLocalDateTime.split('T')[0],
+        workout_type: todaysWorkout.workoutType,
+        exercises: [{
+          exercise_name: exercise.name,
+          band_color: exercise.band,
+          full_reps: exercise.fullReps,
+          partial_reps: exercise.partialReps
+        }]
+      })
+      
+      // Simulate successful response for test mode
+      data = [{ ...dataToSave, id: `test-${Date.now()}` }]
+      error = null
+      
+      console.log('🧪 Test Mode: Mock save successful')
+    } else {
+      // First, let's see what records already exist for this user/exercise
+      const { data: existingRecords, error: checkError } = await supabase
+        .from('workout_exercises')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('exercise_name', exercise.name)
+        .order('workout_local_date_time', { ascending: false })
+        .limit(3)
+      
+      console.log('🔍 Existing records for this exercise:', existingRecords)
+      console.log('🔍 Check error:', checkError)
+      
+      // Try a simple insert with fresh timestamp
+      console.log('🚀 Attempting insert operation with fresh timestamp...')
+      const result = await supabase
+        .from('workout_exercises')
+        .insert(dataToSave)
+        .select()
+      
+      data = result.data
+      error = result.error
+    }
 
     console.log('📤 Supabase response data:', data)
     console.log('❌ Supabase error:', error)
@@ -434,23 +494,40 @@ export default function HomePage() {
       console.log('✅ Exercise saved successfully!')
       announceToScreenReader(`${exercise.name} saved successfully!`, 'assertive')
       
+      // Stop cadence if it's running (important for final exercise)
+      if (cadenceActive) {
+        setCadenceActive(false)
+        if (cadenceInterval) {
+          clearInterval(cadenceInterval)
+          setCadenceInterval(null)
+        }
+        console.log('🎵 Cadence stopped after exercise save')
+        announceToScreenReader('Cadence stopped')
+      }
+      
       // Add TTS audio cue for exercise completion
       const nextIndex = index + 1
       const isLastExercise = nextIndex >= exercises.length
       
       if (hasFeature('ttsAudioCues')) {
         if (isLastExercise) {
-          // Final exercise variations
-          const motivationalMessages = [
-            "Great job! How are you doing?",
-            "Excellent work! Tell me about your energy level",
-            "Outstanding! You've completed your workout!"
-          ]
-          const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)]
-          speakText(randomMessage, true)
+          // Final exercise - workout completion
+          const nextWorkoutType = getTomorrowsWorkout()
+          const completionPhrase = ttsPhaseService.getWorkoutCompletionPhrase(
+            todaysWorkout.workoutType, 
+            nextWorkoutType, 
+            tier === 'mastery' ? 'mastery' : 'momentum'
+          )
+          speak(completionPhrase)
         } else {
+          // Exercise transition
           const nextExercise = exercises[nextIndex]?.name || "your next exercise"
-          speakText(`${exercise.name} saved and recorded. Catch your breath and get set up for ${nextExercise}`, true)
+          const transitionPhrase = ttsPhaseService.getExerciseTransitionPhrase(
+            exercise.name,
+            nextExercise,
+            tier === 'mastery' ? 'mastery' : 'momentum'
+          )
+          speak(transitionPhrase)
         }
       }
       
@@ -722,28 +799,9 @@ export default function HomePage() {
               
 
               <p className="text-body-small text-secondary">Week {todaysWorkout.week} • Day {todaysWorkout.dayInWeek + 1}</p>
-<p className="text-body brand-fire font-medium mt-4">
-  Tomorrow: {getTomorrowsWorkout()} Workout Ready! 💪
-</p>       
-
-  
-  // Calculate tomorrow's date
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowDateStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
-  
-  // Get user's start date from profile (you'll need to store this in state)
-  // For now, use a simple calculation based on today's workout
-  // You can get the actual start date from the profile data you already fetch
-  
-  // Use the getTodaysWorkout function with tomorrow's date
-  // You'll need access to the user's start date here
-  const tomorrowWorkout = getTodaysWorkout(userStartDate, tomorrowDateStr);
-  return tomorrowWorkout.workoutType;
-}
-
-// Replace line 716 with:
-const tomorrowWorkoutType = getTomorrowsWorkout();
+              <p className="text-body brand-fire font-medium mt-4">
+                Tomorrow: {getTomorrowsWorkout()} Workout Ready! 💪
+              </p>
 
 
 
@@ -773,6 +831,25 @@ const tomorrowWorkoutType = getTomorrowsWorkout();
           <p className="text-body">Week <span className="brand-gold font-bold">{todaysWorkout.week}</span> • <span className="italic">&quot;Train to failure, not to a number&quot;</span></p>
         </div>
 
+
+        {/* TTS Status Indicator */}
+        {hasFeature('ttsAudioCues') && (
+          <div className="brand-card text-center mb-4">
+            <div className="flex items-center justify-center space-x-2">
+              {ttsLoading && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500"></div>
+              )}
+              <span className="text-body-small font-medium">
+                {getSourceIndicator()}
+              </span>
+            </div>
+            {ttsError && (
+              <p className="text-body-small text-red-600 mt-1">
+                ⚠️ {ttsError}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Cadence Control */}
         <div className="brand-card text-center mb-8">
@@ -898,6 +975,31 @@ const tomorrowWorkoutType = getTomorrowsWorkout();
                       </p>
                     )}
                   </div>
+                )}
+
+                {/* Start Exercise Button */}
+                {!exercise.saved && hasFeature('ttsAudioCues') && (
+                  <button
+                    onClick={() => startExercise(index)}
+                    disabled={ttsLoading}
+                    className={`w-full py-2 mb-3 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                      ttsLoading 
+                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                        : 'bg-green-500 text-white hover:bg-green-600'
+                    }`}
+                  >
+                    {ttsLoading ? (
+                      <>
+                        <div className="inline animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="inline mr-2" size={16} aria-hidden="true" />
+                        Start Exercise
+                      </>
+                    )}
+                  </button>
                 )}
 
                 <button

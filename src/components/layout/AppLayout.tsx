@@ -1,10 +1,11 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { BarChart3, Calendar, Target, Settings, Flame, LogOut } from 'lucide-react'
+import { BarChart3, Calendar, Target, Settings, Flame, LogOut, Flask } from 'lucide-react'
 import { ReactNode } from 'react'
 import X3MomentumWordmark from '../X3MomentumWordmark'
 import { supabase } from '@/lib/supabase'
+import { useTestMode } from '@/lib/test-mode'
 
 interface AppLayoutProps {
   children: ReactNode
@@ -14,6 +15,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const { isEnabled: testModeEnabled, indicator } = useTestMode()
 
   const navItems = [
     { icon: <Flame size={20} />, label: 'Workout', tooltip: 'Workout', route: '/' },
@@ -44,6 +46,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <h2 className="text-subhead mb-2 text-secondary">AI-Powered Resistance Band Tracking</h2>
           </div>
         </header>
+
+        {/* Test Mode Indicator */}
+        {testModeEnabled && (
+          <div className="w-full bg-purple-600 text-white text-center py-2 px-4">
+            <div className="flex items-center justify-center gap-2 text-sm font-medium">
+              <Flask size={16} />
+              <span>{indicator}</span>
+            </div>
+          </div>
+        )}
 
         {/* Navigation - moved under hero banner */}
         <nav className="w-full bg-white/90 backdrop-blur-lg border-b border-gray-200 p-4 shadow-lg">

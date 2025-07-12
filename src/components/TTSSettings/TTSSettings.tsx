@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Volume2, VolumeX, Settings, TestTube, Save, X } from 'lucide-react'
-import { useX3TTS, TTSVoice, type TTSSettings } from '@/hooks/useX3TTS'
+import { VolumeX, Settings, TestTube, Save, X } from 'lucide-react'
+import { useX3TTS, type TTSSettings } from '@/hooks/useX3TTS'
 import { useSubscription } from '@/contexts/SubscriptionContext'
 
 interface TTSSettingsProps {
@@ -12,7 +12,7 @@ interface TTSSettingsProps {
 }
 
 export default function TTSSettings({ isOpen, onClose, className = '' }: TTSSettingsProps) {
-  const { tier, hasFeature } = useSubscription()
+  const { tier } = useSubscription()
   const { 
     settings, 
     voices, 
@@ -20,7 +20,9 @@ export default function TTSSettings({ isOpen, onClose, className = '' }: TTSSett
     speak, 
     isLoading, 
     error,
-    isTTSAvailable 
+    isTTSAvailable,
+    currentSource,
+    getSourceIndicator 
   } = useX3TTS()
   
   const [localSettings, setLocalSettings] = useState<TTSSettings>(settings)
@@ -45,7 +47,7 @@ export default function TTSSettings({ isOpen, onClose, className = '' }: TTSSett
         setSaveMessage('Failed to save settings')
         setTimeout(() => setSaveMessage(''), 3000)
       }
-    } catch (error) {
+    } catch {
       setSaveMessage('Error saving settings')
       setTimeout(() => setSaveMessage(''), 3000)
     } finally {
@@ -207,9 +209,30 @@ export default function TTSSettings({ isOpen, onClose, className = '' }: TTSSett
                 disabled={!localSettings.enabled || isLoading}
                 className="w-full btn-secondary flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <TestTube size={16} />
-                <span>Test Voice</span>
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500"></div>
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <TestTube size={16} />
+                    <span>Test Voice</span>
+                  </>
+                )}
               </button>
+              
+              {/* TTS Source Indicator */}
+              {localSettings.enabled && currentSource !== 'none' && (
+                <div className="mt-2 text-center">
+                  <div className="flex items-center justify-center space-x-2 text-xs text-gray-500">
+                    {isLoading && (
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-orange-500"></div>
+                    )}
+                    <span>{getSourceIndicator()}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Error Display */}

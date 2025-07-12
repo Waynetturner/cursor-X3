@@ -1,41 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, X3_EXERCISES } from '@/lib/supabase';
 import { TimeRange, Workout, UseWorkoutHistoryReturn } from './types';
+import { timezoneUtils } from '@/lib/timezone';
+import { testModeService } from '@/lib/test-mode';
 
 export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): UseWorkoutHistoryReturn => {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Helper function to extract date portion from stored timestamp
-  // Since workout_local_date_time already stores in correct timezone, just extract date part
-  const getLocalDateFromStoredTime = (storedTimestamp: string): string => {
-    // Extract date portion directly without conversion to avoid timezone shifts
-    const extractedDate = storedTimestamp.split('T')[0];
-    console.log('📖 Reading stored timestamp:', storedTimestamp, '→ extracted date:', extractedDate);
-    return extractedDate;
-  };
+  // Use the timezone utility for proper Central time handling
+  const getLocalDateFromStoredTime = timezoneUtils.getLocalDateFromTimestamp;
 
   const getDateFilter = (range: TimeRange): string | null => {
-    const now = new Date();
-    
     switch (range) {
       case 'last-two':
         // For last-two, we'll handle this with LIMIT in the query
         return null;
       case 'week':
-        const weekAgo = new Date(now);
-        weekAgo.setDate(now.getDate() - 7);
-        // Create local date string for comparison
-        return `${weekAgo.getFullYear()}-${String(weekAgo.getMonth() + 1).padStart(2, '0')}-${String(weekAgo.getDate()).padStart(2, '0')}`;
       case 'month':
-        const monthAgo = new Date(now);
-        monthAgo.setMonth(now.getMonth() - 1);
-        return `${monthAgo.getFullYear()}-${String(monthAgo.getMonth() + 1).padStart(2, '0')}-${String(monthAgo.getDate()).padStart(2, '0')}`;
       case '6months':
-        const sixMonthsAgo = new Date(now);
-        sixMonthsAgo.setMonth(now.getMonth() - 6);
-        return `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, '0')}-${String(sixMonthsAgo.getDate()).padStart(2, '0')}`;
+        const dateRange = timezoneUtils.getDateRange(range);
+        console.log(`📅 Date filter for ${range}:`, dateRange);
+        return dateRange.start;
       case 'all':
         return null;
       default:
@@ -50,7 +37,46 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
     setError(null);
     
     try {
-      // Get current user
+      // Check if test mode is enabled
+      if (testModeService.shouldMockWorkouts()) {
+        console.log('🧪 Test Mode: Using mock workout data');
+        const mockWorkouts = testModeService.getMockWorkouts();
+        
+        // Filter mock workouts by date range
+        const dateFilter = getDateFilter(timeRange);
+        let filteredMockWorkouts = mockWorkouts;
+        
+        if (dateFilter && timeRange !== 'last-two') {
+          filteredMockWorkouts = mockWorkouts.filter(workout => 
+            workout.date >= dateFilter
+          );
+        }
+        
+        // Convert mock data to Workout format
+        const convertedWorkouts: Workout[] = filteredMockWorkouts.map(mockWorkout => ({
+          id: mockWorkout.id,
+          date: mockWorkout.date,
+          workout_type: mockWorkout.workout_type,
+          exercises: mockWorkout.exercises
+        }));
+        
+        // Sort by date (newest first)
+        convertedWorkouts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        // Apply maxDisplay limit
+        let finalWorkouts = convertedWorkouts;
+        if (timeRange === 'last-two') {
+          finalWorkouts = convertedWorkouts.slice(0, 2);
+        } else if (maxDisplay) {
+          finalWorkouts = convertedWorkouts.slice(0, maxDisplay);
+        }
+        
+        setWorkouts(finalWorkouts);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get current user for real data
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
         setIsLoading(false);
