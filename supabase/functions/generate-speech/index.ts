@@ -27,7 +27,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('🚀 Generate speech function started')
+    console.log('🚀 Generate speech function started (OpenAI.fm with Ash voice)')
     
     // Log environment variables (without exposing keys)
     console.log('Environment check:', {
@@ -101,137 +101,30 @@ serve(async (req) => {
     
     console.log('✅ OPENAI_FM_API_KEY found, length:', openaiApiKey.length)
 
-    // Validate voice parameter - OpenAI.fm supports premium voices including 'ash'
-    const validVoices = ['ash', 'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']
-    const selectedVoice = validVoices.includes(voice) ? voice : 'ash'
-    
-    if (voice !== selectedVoice) {
-      console.log(`⚠️ Voice '${voice}' not supported, using '${selectedVoice}' instead`)
-    }
+    console.log(`🎤 TTS Request - Voice: ash, Text: "${text.substring(0, 100)}..."`)
 
-    // Get context-aware instructions for dynamic voice directions
-    function getInstructionsForContext(context: string): string {
-      switch (context) {
-        case 'exercise':
-          return 'Voice Affect: Energetic and motivational. Tone: Encouraging and powerful. Pacing: Steady with emphasis on key words. Emotion: Confident and inspiring.'
-        case 'countdown':
-          return 'Voice Affect: Building intensity. Tone: Focused and urgent. Pacing: Deliberate with dramatic emphasis. Emotion: Anticipation and readiness.'
-        case 'rest':
-          return 'Voice Affect: Calm but encouraging. Tone: Supportive and reassuring. Pacing: Relaxed with gentle emphasis. Emotion: Recovery-focused.'
-        case 'coach':
-          return 'Voice Affect: Professional and knowledgeable. Tone: Supportive mentor. Pacing: Clear and thoughtful. Emotion: Encouraging and wise.'
-        default:
-          return 'Voice Affect: Natural and friendly. Tone: Clear and professional. Pacing: Conversational. Emotion: Helpful and supportive.'
-      }
-    }
+    // Generate speech using OpenAI.fm TTS API
+    const openaiResponse = await fetch('https://api.openai.fm/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'tts-1',
+        input: text,
+        voice: 'ash',
+        response_format: 'mp3'
+      })
+    })
 
-    const instructions = getInstructionsForContext(context)
-    console.log(`🎤 TTS Request - Context: ${context}, Voice: ${selectedVoice}, Speed: ${speed}, Instructions: ${instructions}`)
-    console.log(`📝 Text: "${text.substring(0, 100)}..."`)
-
-    // Generate speech using OpenAI.fm TTS API with dynamic instructions
-    const requestBody = {
-      model: 'tts-1-hd', // Use high-definition TTS model
-      input: text,
-      voice: selectedVoice, // Including premium 'ash' voice
-      speed: speed,
-      instructions: instructions, // Dynamic voice directions based on context
-      response_format: 'mp3'
-    }
-
-    console.log('📤 OpenAI.fm TTS Request Body:', JSON.stringify(requestBody, null, 2))
-
-    // Test different potential OpenAI.fm endpoints
-    const possibleEndpoints = [
-      'https://openai.fm/v1/audio/speech',
-      'https://api.openai.fm/v1/audio/speech', 
-      'https://openai.fm/api/v1/audio/speech'
-    ]
-
-    let openaiResponse = null
-    let lastError = null
-    let workingEndpoint = null
-
-    // Try each endpoint until one works
-    for (const endpoint of possibleEndpoints) {
-      try {
-        console.log(`🔍 Trying endpoint: ${endpoint}`)
-        
-        openaiResponse = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openaiApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        })
-
-        console.log(`📡 Response from ${endpoint}:`, {
-          status: openaiResponse.status,
-          statusText: openaiResponse.statusText,
-          headers: Object.fromEntries(openaiResponse.headers.entries())
-        })
-
-        if (openaiResponse.ok) {
-          workingEndpoint = endpoint
-          console.log(`✅ Success with endpoint: ${endpoint}`)
-          break
-        } else {
-          const errorText = await openaiResponse.text()
-          console.log(`❌ Failed with ${endpoint}:`, errorText)
-          lastError = errorText
-        }
-      } catch (error) {
-        console.log(`💥 Network error with ${endpoint}:`, error.message)
-        lastError = error.message
-      }
-    }
-
-    // Check if any endpoint worked
-    if (!openaiResponse || !openaiResponse.ok) {
-      console.error('❌ All OpenAI.fm endpoints failed')
-      console.error('Last error:', lastError)
-      
-      // Try fallback to standard OpenAI API as last resort
-      console.log('🔄 Trying fallback to standard OpenAI API')
-      try {
-        const fallbackBody = {
-          model: 'tts-1-hd',
-          input: text,
-          voice: selectedVoice === 'ash' ? 'alloy' : selectedVoice, // Map ash to alloy for standard API
-          speed: speed,
-          response_format: 'mp3'
-          // Note: No instructions parameter for standard API
-        }
-
-        const fallbackResponse = await fetch('https://api.openai.com/v1/audio/speech', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openaiApiKey}`, // Try same key first
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(fallbackBody),
-        })
-
-        if (fallbackResponse.ok) {
-          console.log('✅ Fallback to standard OpenAI succeeded')
-          openaiResponse = fallbackResponse
-          workingEndpoint = 'https://api.openai.com/v1/audio/speech (fallback)'
-        } else {
-          const fallbackError = await fallbackResponse.text()
-          console.log('❌ Fallback also failed:', fallbackError)
-        }
-      } catch (fallbackError) {
-        console.log('💥 Fallback network error:', fallbackError.message)
-      }
-    }
-
-    // Final error check
-    if (!openaiResponse || !openaiResponse.ok) {
+    if (!openaiResponse.ok) {
+      const error = await openaiResponse.text()
+      console.error('OpenAI.fm API error:', error)
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `All TTS endpoints failed. Last error: ${lastError}. Check logs for details.` 
+          error: 'TTS generation failed' 
         }),
         { 
           status: 500, 
@@ -239,8 +132,6 @@ serve(async (req) => {
         }
       )
     }
-
-    console.log(`🎉 Using working endpoint: ${workingEndpoint}`)
 
     // Get the audio data and convert to base64 data URL
     const audioBuffer = await openaiResponse.arrayBuffer()
@@ -253,7 +144,7 @@ serve(async (req) => {
       .insert({
         user_id,
         text: text.substring(0, 100), // Truncate for storage
-        voice,
+        voice: 'ash',
         speed,
         subscription_tier: profile.subscription_tier,
         created_at: new Date().toISOString()

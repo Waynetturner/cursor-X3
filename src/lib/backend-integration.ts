@@ -277,7 +277,7 @@ export class BackendIntegrationService {
   }
 
   // Generate speech
-  async generateSpeech(text: string, userId: string, voice?: string, speed?: number, context?: string): Promise<{ audio_url?: string; error?: string; success: boolean }> {
+  async generateSpeech(text: string, userId: string, voice?: string, speed?: number, context?: string): Promise<{ audioContent?: string; error?: string; success?: boolean; voice?: string; textLength?: number; provider?: string }> {
     try {
       const response = await fetch(`${this.edgeFunctionUrl}/generate-speech`, {
         method: 'POST',

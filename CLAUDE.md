@@ -44,6 +44,28 @@ npm run lint            # Run ESLint
 # Test mode available in Advanced settings for safe iteration
 ```
 
+## Claude Development Rules
+
+**7 Core Rules for Future Development Sessions:**
+
+1. **Think and Plan First**: Always start by thinking through the problem, reading the codebase for relevant files, and writing a comprehensive plan to `tasks/todo.md`.
+
+2. **Create Actionable Todo Lists**: The plan should contain a clear list of todo items that can be checked off as work progresses, ensuring accountability and progress tracking.
+
+3. **Verify Before Executing**: Before beginning any work, check in with the user to verify the plan is correct and approved. Never start coding without plan approval.
+
+4. **Track Progress Incrementally**: Work through todo items systematically, marking them as complete as you go. Provide real-time progress updates.
+
+5. **Communicate Changes Clearly**: At every step, provide high-level explanations of what changes were made, avoiding technical jargon while maintaining clarity.
+
+6. **Prioritize Simplicity**: Make every task and code change as simple as possible. Avoid massive or complex changes. Every modification should impact as little code as possible. Everything is about simplicity and minimal disruption.
+
+7. **Document and Review**: Finally, add a review section to the `tasks/todo.md` file with a summary of the changes made and any other relevant information for future reference.
+
+**Security and Learning Requirements:**
+- **Security Review**: Always check code for security best practices, ensure no sensitive information in frontend, and verify no exploitable vulnerabilities
+- **Knowledge Transfer**: Explain functionality and code changes in detail, acting like a senior engineer teaching the codebase and implementation decisions
+
 ## Current Project Status (2025-07-12)
 
 ### 🏆 **PRODUCTION READY - ALL CORE FEATURES + AI COACHING COMPLETE**
@@ -90,6 +112,7 @@ npm run lint            # Run ESLint
 | **Progress Tracking Display** | ✅ **WORKING** | Recent workouts, exercise history, auto-refresh |
 | **AI Coaching with TTS** | ✅ **WORKING** | **84+ phrases, 3-tier fallback, context-aware, loading states** |
 | **Coach Chat Integration** | ✅ **WORKING** | **n8n AI coaching, voice responses, workout context, subscription gating** |
+| **Start Exercise Button** | ✅ **WORKING** | **Universal access for all tiers, TTS gated for premium users** |
 
 ### 🎙️ **TTS System Improvements**
 
@@ -236,6 +259,74 @@ import CoachChat from '@/components/CoachChat/CoachChat'
 ```
 
 ## Session History
+
+### Session: 2025-07-15 - Start Exercise Button Accessibility Fix
+
+**Context**: Fixed missing Start Exercise button issue that was preventing Foundation tier users from accessing basic exercise timing functionality.
+
+**Problem Identified**:
+- Start Exercise button was conditionally rendered based on `hasFeature('ttsAudioCues')`
+- Only Momentum/Mastery tier users could see the button (not Foundation users)
+- This created inconsistent UI between subscription tiers and blocked basic exercise timing
+
+**Root Cause**: 
+- Subscription tier restriction in `/src/app/page.tsx:1223`
+- `startExercise` function had early return for non-premium users
+- Feature gating was too restrictive, blocking core functionality
+
+**Completed Tasks**:
+
+1. **Button Display Fix** ✅
+   - Removed `hasFeature('ttsAudioCues')` condition from button rendering
+   - Changed conditional from `{hasFeature('ttsAudioCues') && exerciseStates[index] !== 'in_progress' && (` 
+   - To: `{exerciseStates[index] !== 'in_progress' && (`
+   - Start Exercise button now appears for all subscription tiers
+
+2. **Exercise Function Enhancement** ✅
+   - Modified `startExercise` function to support all users
+   - Removed early return for non-premium users
+   - Added proper feature gating within the function for TTS functionality
+   - Foundation users get basic exercise timing without TTS audio
+
+3. **Premium Feature Preservation** ✅
+   - TTS functionality remains properly gated for Momentum/Mastery users
+   - Different screen reader announcements for premium vs basic users
+   - Premium: "Starting [exercise] with audio guidance. Exercise is now in progress."
+   - Foundation: "Starting [exercise]. Exercise is now in progress."
+
+4. **Verification & Testing** ✅
+   - Build successful with zero compilation errors
+   - Linting shows no new issues (pre-existing warnings unrelated to changes)
+   - Both Push and Pull workouts now show Start Exercise button consistently
+   - All subscription tiers maintain proper feature differentiation
+
+**Key Implementation Details**:
+- **File Modified**: `/src/app/page.tsx` - Lines 1223 and 470-519
+- **Feature Gating**: TTS remains premium-only while basic timing is universal
+- **User Experience**: Consistent UI across all workout types and subscription tiers
+- **Accessibility**: Proper screen reader announcements for all user types
+
+**Files Modified**:
+- `/src/app/page.tsx` - Removed subscription restriction and enhanced exercise function
+
+**Results**:
+- ✅ **Universal Access**: Start Exercise button visible for all subscription tiers
+- ✅ **Feature Preservation**: TTS audio cues still require Momentum/Mastery subscription
+- ✅ **UI Consistency**: Identical interface for both Push and Pull workouts
+- ✅ **Build Integrity**: No compilation errors or new linting issues
+- ✅ **User Experience**: Basic exercise timing available to all users with premium features properly gated
+
+**Technical Impact**:
+- **Improved Accessibility**: Foundation users can now use core exercise timing features
+- **Consistent UX**: No more confusion about missing buttons between workout types
+- **Proper Feature Gating**: Premium TTS features remain exclusive while core functionality is accessible
+- **Code Quality**: Clean separation between basic and premium functionality
+
+**Notes for Future Sessions**:
+- Start Exercise button now provides universal access to basic exercise timing
+- TTS functionality properly differentiated by subscription tier
+- Foundation users get core workout functionality without premium audio features
+- Subscription upgrade path remains clear for enhanced TTS experience
 
 ### Session: 2025-07-12 - OpenAI.fm TTS Integration & Debugging Enhancement
 

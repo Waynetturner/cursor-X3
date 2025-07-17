@@ -41,6 +41,7 @@ export default function AICoaching({ workoutData = [], className = '' }: AICoach
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showWelcome, setShowWelcome] = useState(true)
+  const [announcement, setAnnouncement] = useState('')
 
   const isAICoachingAvailable = hasFeature('aiCoachAccess')
 
@@ -57,6 +58,23 @@ export default function AICoaching({ workoutData = [], className = '' }: AICoach
       }])
     }
   }, [isAICoachingAvailable, messages.length])
+
+  // Announce new AI messages to screen readers
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage.type === 'ai' && lastMessage.id !== 'welcome') {
+        // Create a brief announcement for screen readers
+        const preview = lastMessage.content.length > 100 
+          ? lastMessage.content.substring(0, 100) + '...'
+          : lastMessage.content
+        setAnnouncement(`Coach responded: ${preview}`)
+        
+        // Clear announcement after a short delay
+        setTimeout(() => setAnnouncement(''), 1000)
+      }
+    }
+  }, [messages])
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || !isAICoachingAvailable) return
@@ -201,7 +219,16 @@ export default function AICoaching({ workoutData = [], className = '' }: AICoach
   }
 
   return (
-    <div className={`brand-card ${className}`}>
+    <section 
+      role="region" 
+      aria-label="AI Coach Chat Interface"
+      className={`brand-card ${className}`}
+    >
+      {/* Screen Reader Announcements */}
+      <div aria-live="assertive" className="sr-only">
+        {announcement}
+      </div>
+      
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
@@ -218,12 +245,23 @@ export default function AICoaching({ workoutData = [], className = '' }: AICoach
                   speak("AI coaching audio disabled.")
                 }
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  if (settings.enabled) {
+                    speak("AI coaching audio enabled.")
+                  } else {
+                    speak("AI coaching audio disabled.")
+                  }
+                }
+              }}
               className={`p-2 rounded-lg transition-colors ${
                 settings.enabled 
                   ? 'bg-orange-100 text-orange-600 hover:bg-orange-200' 
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
               title={settings.enabled ? 'Audio enabled' : 'Audio disabled'}
+              aria-label={`TTS audio ${settings.enabled ? 'enabled' : 'disabled'}. Press to test audio.`}
             >
               {settings.enabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
             </button>
@@ -235,7 +273,12 @@ export default function AICoaching({ workoutData = [], className = '' }: AICoach
       </div>
 
       {/* Messages */}
-      <div className="h-96 overflow-y-auto mb-4 space-y-3">
+      <div 
+        role="log" 
+        aria-live="polite" 
+        aria-label="Coach conversation history"
+        className="h-96 overflow-y-auto mb-4 space-y-3"
+      >
         {messages.map((message) => (
           <div
             key={message.id}
@@ -303,13 +346,14 @@ export default function AICoaching({ workoutData = [], className = '' }: AICoach
       )}
 
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="flex space-x-2">
+      <form onSubmit={handleSubmit} className="flex space-x-2" role="form" aria-label="Send message to AI coach">
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           placeholder="Ask your AI coach anything..."
           disabled={isLoading}
+          aria-label="Message input field"
           className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:bg-gray-100"
         />
         <button
@@ -339,13 +383,20 @@ export default function AICoaching({ workoutData = [], className = '' }: AICoach
             <button
               key={prompt}
               onClick={() => setInputValue(prompt)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  setInputValue(prompt)
+                }
+              }}
               className="text-xs px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+              aria-label={`Use quick prompt: ${prompt}`}
             >
               {prompt}
             </button>
           ))}
         </div>
       </div>
-    </div>
+    </section>
   )
 } 

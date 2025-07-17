@@ -270,7 +270,7 @@ export function useX3TTS() {
     } finally {
       setIsLoading(false)
     }
-  }, [isTTSAvailable, settings, tier])
+  }, [isTTSAvailable, settings, tier, backendService])
 
   const playAudio = useCallback(async (audio: TTSAudio) => {
     try {

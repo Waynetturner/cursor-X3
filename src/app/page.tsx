@@ -470,28 +470,37 @@ export default function HomePage() {
   const startExercise = async (index: number) => {
     const exercise = exercises[index]
     
-    if (!hasFeature('ttsAudioCues')) return
-    
     console.log('🚀 Starting exercise:', exercise.name)
     
     // Set exercise state to started
     setExerciseStates(prev => ({ ...prev, [index]: 'started' }))
     setExerciseLoadingStates(prev => ({ ...prev, [index]: true }))
-    setTtsActiveStates(prev => ({ ...prev, [index]: true }))
     
     try {
-      // Get exercise start phrase from phrase library
-      const startPhrase = ttsPhaseService.getExerciseStartPhrase(
-        exercise.name, 
-        tier === 'mastery' ? 'mastery' : 'momentum'
-      )
+      // Only use TTS for premium users
+      if (hasFeature('ttsAudioCues')) {
+        setTtsActiveStates(prev => ({ ...prev, [index]: true }))
+        
+        // Get exercise start phrase from phrase library
+        const startPhrase = ttsPhaseService.getExerciseStartPhrase(
+          exercise.name, 
+          tier === 'mastery' ? 'mastery' : 'momentum'
+        )
+        
+        // Speak the start phrase with exercise context
+        await speak(startPhrase, 'exercise')
+        
+        setTtsActiveStates(prev => ({ ...prev, [index]: false }))
+        
+        // Screen reader announcement with audio guidance
+        announceToScreenReader(`Starting ${exercise.name} with audio guidance. Exercise is now in progress.`, 'assertive')
+      } else {
+        // Basic screen reader announcement for Foundation users
+        announceToScreenReader(`Starting ${exercise.name}. Exercise is now in progress.`, 'assertive')
+      }
       
-      // Speak the start phrase with exercise context
-      await speak(startPhrase, 'exercise')
-      
-      // Set exercise state to in progress after TTS completes
+      // Set exercise state to in progress after TTS completes (or immediately for Foundation users)
       setExerciseStates(prev => ({ ...prev, [index]: 'in_progress' }))
-      setTtsActiveStates(prev => ({ ...prev, [index]: false }))
       
       // Start cadence automatically
       if (!cadenceActive) {
@@ -499,8 +508,6 @@ export default function HomePage() {
         console.log('🎵 Auto-starting cadence for exercise')
       }
       
-      // Screen reader announcement
-      announceToScreenReader(`Starting ${exercise.name} with audio guidance. Exercise is now in progress.`, 'assertive')
     } catch (error) {
       console.error('Error starting exercise:', error)
       setExerciseStates(prev => ({ ...prev, [index]: 'idle' }))
@@ -1165,7 +1172,7 @@ export default function HomePage() {
 
                 <div className="mb-4">
                   <label htmlFor={`notes-${exercise.name}`} className="block text-label mb-1 text-secondary">
-                    Notes & AI Coach Prompts
+                    Notes
                   </label>
                   <textarea
                     id={`notes-${exercise.name}`}
@@ -1173,22 +1180,10 @@ export default function HomePage() {
                     onChange={(e) => updateExercise(index, 'notes', e.target.value)}
                     className="w-full bg-white border border-subtle rounded-xl px-3 py-2 text-body-small focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-primary placeholder-gray-500"
                     rows={2}
-                    placeholder="Add notes about form, difficulty, or questions for the AI coach..."
+                    placeholder="Comments"
                   />
                 </div>
 
-                {exercise.lastWorkout && (
-                  <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-subtle">
-                    <p className="text-body-small text-primary font-medium mb-1">
-                      Last Workout: {exercise.lastWorkout}
-                    </p>
-                    {exercise.lastWorkoutDate && (
-                      <p className="text-label text-secondary">
-                        Date: {exercise.lastWorkoutDate}
-                      </p>
-                    )}
-                  </div>
-                )}
 
                 {/* Exercise Status Indicator */}
                 {!exercise.saved && (
@@ -1232,7 +1227,7 @@ export default function HomePage() {
                     )}
 
                     {/* Start Exercise Button */}
-                    {hasFeature('ttsAudioCues') && exerciseStates[index] !== 'in_progress' && (
+                    {exerciseStates[index] !== 'in_progress' && (
                       <button
                         onClick={() => startExercise(index)}
                         disabled={exerciseLoadingStates[index] || exerciseStates[index] === 'started'}

@@ -394,3 +394,75 @@ Import trace for requested module:
  GET /.well-known/appspecific/com.chrome.devtools.json 404 in 26ms
  ✓ Compiled /favicon.ico in 100ms (1068 modules)
  GET /favicon.ico 200 in 145ms
+ ✓ Compiled in 936ms (2160 modules)
+ GET / 200 in 149ms
+ ✓ Compiled in 254ms (1109 modules)
+ ✓ Compiled /_not-found in 211ms (2150 modules)
+ GET / 404 in 262ms
+ GET / 200 in 117ms
+ GET /_next/static/css/app/layout.css?v=1752366273078 404 in 38ms
+ GET /_next/static/chunks/main-app.js?v=1752366273078 404 in 53ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 48ms
+ GET /_next/static/chunks/app/page.js 404 in 38ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 15ms
+ ✓ Compiled in 152ms (1112 modules)
+ ✓ Compiled in 141ms (1112 modules)
+ ✓ Compiled in 140ms (1112 modules)
+ ✓ Compiled in 164ms (1112 modules)
+ ✓ Compiled in 167ms (1109 modules)
+ ✓ Compiled in 362ms (2160 modules)
+ ✓ Compiled in 270ms (2160 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/home/waynetturner/projects/x3-tracker/.next/cache/webpack/client-development/4.pack.gz_' -> '/home/waynetturner/projects/x3-tracker/.next/cache/webpack/client-development/4.pack.gz'
+ ✓ Compiled /_not-found in 275ms (2150 modules)
+ GET / 404 in 382ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 28ms
+ GET /_next/static/css/app/layout.css?v=1752368781078 404 in 20ms
+ GET /_next/static/chunks/main-app.js?v=1752368781078 404 in 71ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 52ms
+ GET /_next/static/chunks/app/layout.js 404 in 49ms
+ GET / 200 in 59ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 20ms
+ GET /_next/static/css/app/layout.css?v=1752368788545 404 in 23ms
+ GET /_next/static/chunks/main-app.js?v=1752368788545 404 in 70ms
+ GET /_next/static/chunks/app/layout.js 404 in 69ms
+ GET /_next/static/chunks/app/page.js 404 in 70ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 70ms
+ GET / 200 in 27ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 19ms
+ GET /_next/static/css/app/layout.css?v=1752368806666 404 in 24ms
+ GET /_next/static/chunks/app/layout.js 404 in 68ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 68ms
+ GET /_next/static/chunks/main-app.js?v=1752368806666 404 in 70ms
+ GET /_next/static/chunks/app/page.js 404 in 68ms
+ GET / 200 in 35ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 23ms
+ GET /_next/static/css/app/layout.css?v=1752368912729 404 in 20ms
+ GET /_next/static/chunks/main-app.js?v=1752368912729 404 in 69ms
+ GET /_next/static/chunks/app/layout.js 404 in 69ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 70ms
+ GET /_next/static/chunks/app/page.js 404 in 70ms
+ ✓ Compiled in 957ms (2160 modules)
+ ✓ Compiled in 339ms (2160 modules)
+ ✓ Compiled in 485ms (2160 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/home/waynetturner/projects/x3-tracker/.next/cache/webpack/server-development/0.pack.gz_' -> '/home/waynetturner/projects/x3-tracker/.next/cache/webpack/server-development/0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/home/waynetturner/projects/x3-tracker/.next/cache/webpack/client-development/1.pack.gz_' -> '/home/waynetturner/projects/x3-tracker/.next/cache/webpack/client-development/1.pack.gz'
+ GET / 200 in 145ms
+ ✓ Compiled /_not-found in 236ms (2150 modules)
+ GET /_next/static/css/app/layout.css?v=1752369989179 404 in 373ms
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 415ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 369ms
+ GET /_next/static/chunks/main-app.js?v=1752369989179 404 in 368ms
+ GET /_next/static/chunks/app/page.js 404 in 365ms
+ GET /_next/static/chunks/app/layout.js 404 in 368ms
+ ✓ Compiled in 570ms (2160 modules)
+ ✓ Compiled in 389ms (2160 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/home/waynetturner/projects/x3-tracker/.next/cache/webpack/client-development/1.pack.gz_' -> '/home/waynetturner/projects/x3-tracker/.next/cache/webpack/client-development/1.pack.gz'
+ ✓ Compiled in 442ms (2160 modules)
+ ✓ Compiled in 154ms (1109 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/home/waynetturner/projects/x3-tracker/.next/cache/webpack/client-development/0.pack.gz_' -> '/home/waynetturner/projects/x3-tracker/.next/cache/webpack/client-development/0.pack.gz'
+ ✓ Compiled /_not-found in 292ms (2150 modules)
+ GET / 404 in 395ms
+ GET /_next/static/css/app/layout.css?v=1752371312817 404 in 21ms
+ GET /_next/static/chunks/main-app.js?v=1752371312817 404 in 26ms
+ GET /_next/static/chunks/app/layout.js 404 in 34ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 33ms
