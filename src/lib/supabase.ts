@@ -37,7 +37,21 @@ export function getTodaysWorkout(startDate: string) {
 export function getWorkoutForDate(startDate: string, targetDate: string) {
   const start = new Date(startDate)
   const target = new Date(targetDate)
+  
+  // Normalize both dates to avoid timezone issues
+  start.setHours(0, 0, 0, 0)
+  target.setHours(0, 0, 0, 0)
+  
   const daysSinceStart = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  
+  // Handle negative days (before start date)
+  if (daysSinceStart < 0) {
+    return {
+      week: 0,
+      workoutType: 'Rest' as 'Push' | 'Pull' | 'Rest',
+      dayInWeek: -1
+    }
+  }
   
   const week = Math.floor(daysSinceStart / 7) + 1
   const dayInWeek = daysSinceStart % 7
@@ -57,25 +71,28 @@ export function getWorkoutForDate(startDate: string, targetDate: string) {
 
 // Calculate streak including rest days (following Dr. Jaquish methodology)
 export function calculateStreak(startDate: string, workoutDates: string[]) {
+  const start = new Date(startDate)
   const today = new Date()
-  let currentStreak = 0
   
-  // Start from today and work backwards
-  for (let i = 0; i >= -365; i--) { // Check up to 365 days back
-    const checkDate = new Date(today)
-    checkDate.setDate(today.getDate() + i)
-    const checkDateStr = checkDate.toISOString().split('T')[0]
-    
-    // Skip future dates
-    if (checkDate > today) continue
-    
+  // Normalize dates to avoid timezone issues
+  start.setHours(0, 0, 0, 0)
+  today.setHours(0, 0, 0, 0)
+  
+  // If start date is in the future, return 0
+  if (start > today) return 0
+  
+  let streakEndDate = new Date(today)
+  let streakLength = 0
+  
+  // Work backwards from today to find where the streak breaks
+  while (streakEndDate >= start) {
+    const checkDateStr = streakEndDate.toISOString().split('T')[0]
     const scheduledWorkout = getWorkoutForDate(startDate, checkDateStr)
     
     let dayCompleted = false
     
     if (scheduledWorkout.workoutType === 'Rest') {
-      // Rest day - check if user marked it as completed OR if it's a scheduled rest day
-      // For now, assume all rest days are completed (since user follows schedule)
+      // Rest days automatically count as completed (following schedule)
       dayCompleted = true
     } else {
       // Workout day - check if user has workout data for this date
@@ -83,14 +100,17 @@ export function calculateStreak(startDate: string, workoutDates: string[]) {
     }
     
     if (dayCompleted) {
-      if (i <= 0) currentStreak++ // Only count if it's today or in the past
+      streakLength++
     } else {
-      // Break the streak if a day was missed
+      // Found a missed day, streak ends here
       break
     }
+    
+    // Go back one day
+    streakEndDate.setDate(streakEndDate.getDate() - 1)
   }
   
-  return currentStreak
+  return streakLength
 }
 
 // Handle missed workouts following Dr. Jaquish methodology

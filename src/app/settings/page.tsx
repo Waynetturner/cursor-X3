@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useSubscription, TIER_NAMES, TIER_DESCRIPTIONS, TIER_PRICING, TIER_PRICING_ANNUAL } from '@/contexts/SubscriptionContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Crown, Star, Zap, CheckCircle, Lock } from 'lucide-react';
-import BackendTester from '@/components/BackendTester';
+import SimpleTTSTester from '@/components/SimpleTTSTester';
 import TestModeSettings from '@/components/TestModeSettings';
 import TTSSettings from '@/components/TTSSettings/TTSSettings';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -891,49 +891,33 @@ export default function Settings() {
                         <TestModeSettings />
                       </div>
                       
-                      {/* Backend Integration Tester */}
+                      {/* TTS Testing */}
                       <div className="p-4 border border-gray-300 bg-white rounded-lg">
-                        <h3 className="font-medium text-gray-800 mb-2">Backend Integration Status</h3>
-                        <p className="text-sm text-gray-600 mb-3">
-                          Test and verify all backend services and integrations.
-                        </p>
-                        <BackendTester />
+                        <SimpleTTSTester />
                       </div>
                       
-                      <div className="space-y-4">
-                        <div className="p-4 border border-gray-300 bg-white rounded-lg">
-                          <h3 className="font-medium text-gray-800 mb-2">Data Export</h3>
-                          <p className="text-sm text-gray-600 mb-3">
-                            Export your workout data in various formats for external analysis.
-                          </p>
-                          <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                            Export Workout Data
-                          </button>
+                      {/* Future Features */}
+                      <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
+                        <h3 className="font-medium text-gray-800 mb-2">Coming Soon</h3>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-700">Workout Data Export</h4>
+                              <p className="text-xs text-gray-500">Export your workout history as CSV/JSON</p>
+                            </div>
+                            <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Coming Soon</span>
+                          </div>
+                          
+                          {hasFeature('prioritySupport') && (
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="text-sm font-medium text-gray-700">Priority Support</h4>
+                                <p className="text-xs text-gray-500">Direct access to priority support channels</p>
+                              </div>
+                              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Coming Soon</span>
+                            </div>
+                          )}
                         </div>
-                        
-                        {hasFeature('apiAccess') && (
-                          <div className="p-4 border border-gray-300 bg-white rounded-lg">
-                            <h3 className="font-medium text-gray-800 mb-2">API Access</h3>
-                            <p className="text-sm text-gray-600 mb-3">
-                              Connect third-party apps and services to your X3 data.
-                            </p>
-                            <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                              Manage API Keys
-                            </button>
-                          </div>
-                        )}
-                        
-                        {hasFeature('prioritySupport') && (
-                          <div className="p-4 border border-gray-300 bg-white rounded-lg">
-                            <h3 className="font-medium text-gray-800 mb-2">Priority Support</h3>
-                            <p className="text-sm text-gray-600 mb-3">
-                              Get faster response times and dedicated support channels.
-                            </p>
-                            <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-                              Contact Priority Support
-                            </button>
-                          </div>
-                        )}
                       </div>
                     </div>
                   ) : (
@@ -965,4 +949,4 @@ export default function Settings() {
       </AppLayout>
     </ProtectedRoute>
   );
-} 
+}

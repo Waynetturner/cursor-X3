@@ -845,16 +845,16 @@ export default function HomePage() {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button 
-                onClick={signUpWithEmail}
+                onClick={signInWithEmail}
                 className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
               >
-                Get Started Free
+                Sign In
               </button>
               <button 
-                onClick={signInWithEmail}
+                onClick={signUpWithEmail}
                 className="bg-white hover:bg-gray-50 text-orange-600 font-semibold py-3 px-8 rounded-lg border-2 border-orange-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
               >
-                Sign In
+                Get Started Free
               </button>
             </div>
             

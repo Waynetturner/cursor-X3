@@ -22,19 +22,19 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         
         if (error) {
           console.error('Auth error:', error)
-          router.push('/')
+          router.push('/auth/signin')
           return
         }
 
         if (!user) {
-          router.push('/')
+          router.push('/auth/signin')
           return
         }
 
         setUser(user)
       } catch (err) {
         console.error('Auth check error:', err)
-        router.push('/')
+        router.push('/auth/signin')
       } finally {
         setLoading(false)
       }
@@ -47,7 +47,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       async (event, session) => {
         if (event === 'SIGNED_OUT') {
           setUser(null)
-          router.push('/')
+          router.push('/auth/signin')
         } else if (session?.user) {
           setUser(session.user)
         }
@@ -74,4 +74,4 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   return <>{children}</>
-} 
+}

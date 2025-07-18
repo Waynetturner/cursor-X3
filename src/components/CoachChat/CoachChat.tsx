@@ -1,10 +1,12 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { MessageCircle, Send, X, Volume2, VolumeX, Loader2, Bot, User, Minimize2, Maximize2 } from 'lucide-react'
+import { MessageCircle, Send, X, Volume2, VolumeX, Loader2, Bot, User, Minimize2, Maximize2, Brain } from 'lucide-react'
 import { useX3TTS } from '@/hooks/useX3TTS'
 import { useSubscription } from '@/contexts/SubscriptionContext'
 import { testModeService } from '@/lib/test-mode'
+import { useWebLLMCoach } from '@/hooks/useWebLLMCoach'
+import { supabase } from '@/lib/supabase'
 
 interface ChatMessage {
   id: string
@@ -39,12 +41,19 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [autoTTS, setAutoTTS] = useState(true)
+  const [autoTTS, setAutoTTS] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [user, setUser] = useState<any>(null)
 
   // Hooks
   const { hasFeature } = useSubscription()
   const { speak, isLoading: ttsLoading } = useX3TTS()
+  
+  // WebLLM Coach Hook
+  const webLLMCoach = useWebLLMCoach({ 
+    userId: user?.id,
+    modelId: "Llama-3.1-8B-Instruct-q4f32_1-MLC"
+  })
   
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -52,6 +61,15 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
 
   // Check if user has access to coach chat
   const hasCoachAccess = hasFeature('aiCoachAccess')
+
+  // Get current user
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
+    getUser()
+  }, [])
 
   // Auto-scroll to bottom of messages
   const scrollToBottom = () => {
@@ -89,7 +107,7 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
     }
   }, [isOpen, hasCoachAccess, autoTTS, hasFeature, speak, messages.length])
 
-  // Send message to n8n webhook
+  // Send message using WebLLM or fallback to n8n webhook
   const sendMessage = async (content: string) => {
     if (!content.trim() || isLoading) return
 
@@ -107,17 +125,15 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
     setInputMessage('')
 
     try {
-      // Prepare context for the coach
-      const contextData = {
-        message: content.trim(),
-        currentExercise,
-        workoutContext,
-        timestamp: new Date().toISOString(),
-        userId: 'test-user', // TODO: Get from auth context
-        subscription: hasFeature('ttsAudioCues') ? 'mastery' : hasFeature('restTimer') ? 'momentum' : 'foundation'
-      }
+      let response: { message: string; success: boolean; error?: string }
 
-      let response
+      // Update WebLLM context if available
+      if (webLLMCoach.isReady && currentExercise && workoutContext) {
+        webLLMCoach.updateWorkoutContext({
+          currentExercise,
+          workoutContext
+        })
+      }
 
       // Check if in test mode
       if (testModeService.shouldMockWorkouts()) {
@@ -126,7 +142,39 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
           message: `Thanks for your question: "${content}". Here's some personalized advice based on your current ${workoutContext?.workoutType || 'workout'} session. ${currentExercise ? `For ${currentExercise.name} with ${currentExercise.band} band, focus on controlled movements and proper form. Your ${currentExercise.fullReps} full reps and ${currentExercise.partialReps} partial reps show good progression!` : 'Keep pushing towards your goals!'} Remember, consistency beats intensity every time.`,
           success: true
         }
-      } else {
+      }
+      // Try WebLLM first if available
+      else if (webLLMCoach.isReady && webLLMCoach.canGenerate) {
+        console.log('🧠 Using WebLLM coach for response')
+        try {
+          const llmResponse = await webLLMCoach.generateResponse(content.trim(), {
+            currentExercise,
+            workoutContext
+          })
+          
+          response = {
+            message: llmResponse,
+            success: true
+          }
+        } catch (llmError) {
+          console.warn('🧠 WebLLM failed, falling back to n8n:', llmError)
+          throw llmError // Will trigger fallback below
+        }
+      }
+      // Fallback to n8n webhook
+      else {
+        console.log('📡 Using n8n webhook for response (WebLLM not ready)')
+        
+        // Prepare context for the coach
+        const contextData = {
+          message: content.trim(),
+          currentExercise,
+          workoutContext,
+          timestamp: new Date().toISOString(),
+          userId: user?.id || 'anonymous',
+          subscription: hasFeature('ttsAudioCues') ? 'mastery' : hasFeature('restTimer') ? 'momentum' : 'foundation'
+        }
+
         // Make request to n8n webhook
         const webhookResponse = await fetch(COACH_WEBHOOK_URL, {
           method: 'POST',
@@ -272,9 +320,27 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
             <div className="flex items-center space-x-2">
               <Bot className="text-orange-600" size={20} />
               <h3 className="font-semibold text-gray-900">AI Coach</h3>
+              
+              {/* WebLLM Status Indicator */}
+              {webLLMCoach.isReady ? (
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center space-x-1">
+                  <Brain size={12} />
+                  <span>Local AI</span>
+                </span>
+              ) : webLLMCoach.isInitializing ? (
+                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full flex items-center space-x-1">
+                  <Loader2 size={12} className="animate-spin" />
+                  <span>Loading AI</span>
+                </span>
+              ) : (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                  Cloud AI
+                </span>
+              )}
+              
               {hasFeature('ttsAudioCues') && (
                 <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full">
-                  🤖 Voice Enabled
+                  🔊 Voice
                 </span>
               )}
             </div>

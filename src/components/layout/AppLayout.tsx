@@ -18,7 +18,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { isEnabled: testModeEnabled, indicator } = useTestMode()
 
   const navItems = [
-    { icon: <Flame size={20} />, label: 'Workout', tooltip: 'Workout', route: '/' },
+    { icon: <Flame size={20} />, label: 'Workout', tooltip: 'Workout', route: '/workout' },
     { icon: <BarChart3 size={20} />, label: 'Stats', tooltip: 'Stats', route: '/stats' },
     { icon: <Calendar size={20} />, label: 'Calendar', tooltip: 'Calendar', route: '/calendar' },
     { icon: <Target size={20} />, label: 'Goals', tooltip: 'Goals', route: '/goals' },
@@ -30,7 +30,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     if (error) {
       console.error('Error signing out:', error)
     } else {
-      router.push('/')
+      router.push('/auth/signin')
     }
   }
 

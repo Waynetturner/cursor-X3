@@ -195,8 +195,8 @@ export default function CalendarPage() {
           <main>
             {/* Month Name - Centered and Large */}
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {monthName}
+              <h1 className="text-3xl font-bold">
+                <span className="brand-fire">{monthName.split(' ')[0]}</span> <span className="brand-ember">{monthName.split(' ')[1]}</span>
               </h1>
             </div>
 

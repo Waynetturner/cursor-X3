@@ -222,9 +222,9 @@ export default function GoalsPage() {
         <div className="container mx-auto px-4 py-8">
           {/* Page Header */}
           <div className="brand-card text-center mb-8">
-            <h1 className="text-headline mb-2">
-              Your <span className="brand-gold">Goals</span>
-            </h1>
+              <h1 className="text-headline mb-2">
+                <span className="brand-fire">Your</span> <span className="brand-ember">Goals</span>
+              </h1>
             <p className="text-body text-secondary">Track your progress and celebrate achievements</p>
           </div>
 
