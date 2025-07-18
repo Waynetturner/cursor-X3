@@ -15,6 +15,8 @@ import { testModeService } from '@/lib/test-mode'
 import { getCurrentCentralISOString } from '@/lib/timezone'
 import { ttsPhaseService } from '@/lib/tts-phrases'
 import CoachChat from '@/components/CoachChat/CoachChat'
+import ExerciseCard from '@/components/ExerciseCard'
+import CadenceButton from '@/components/CadenceButton'
 
 // Helper to get local ISO string with timezone offset
 // Updated to use Central time with proper DST handling
@@ -42,63 +44,6 @@ function formatWorkoutDate(timestamp: string): string {
 
 
 
-function CadenceButton({ cadenceActive, setCadenceActive }: { cadenceActive: boolean; setCadenceActive: React.Dispatch<React.SetStateAction<boolean>> }) {
-  const handleCadenceToggle = () => {
-    setCadenceActive((prev) => {
-      const newState = !prev
-      // Provide immediate feedback
-      if (newState) {
-        console.log('🎵 Cadence Started: 2-second interval timer')
-        announceToScreenReader('Cadence timer started with 2-second intervals', 'polite')
-      } else {
-        console.log('🎵 Cadence Stopped')
-        announceToScreenReader('Cadence timer stopped', 'polite')
-      }
-      return newState
-    })
-  }
-
-  return (
-    <div className="w-full">
-      <button
-        onClick={handleCadenceToggle}
-        className={`w-full px-8 py-4 font-bold flex items-center justify-center space-x-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transform hover:scale-105 ${
-          cadenceActive 
-            ? 'bg-ember-red hover:bg-red-600 text-white border-none' 
-            : 'btn-primary'
-        }`}
-        style={cadenceActive ? { background: 'var(--ember-red)' } : {}}
-        aria-pressed={cadenceActive}
-        aria-label={cadenceActive ? 'Stop Cadence Timer' : 'Start Cadence Timer'}
-      >
-        {cadenceActive ? (
-          <>
-            <Pause size={20} />
-            <span>Stop Cadence</span>
-            <span className="text-xs bg-red-800 bg-opacity-20 px-2 py-1 rounded-full">
-              🎵 Active
-            </span>
-          </>
-        ) : (
-          <>
-            <Play size={20} />
-            <span>Start Cadence (2s)</span>
-          </>
-        )}
-      </button>
-      
-      {/* Cadence Status Indicator */}
-      {cadenceActive && (
-        <div className="mt-2 text-center">
-          <div className="inline-flex items-center space-x-2 bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm">
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-            <span>Cadence Timer: 2 second intervals</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function playBeep() {
   const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -1107,216 +1052,21 @@ export default function HomePage() {
           <h2 className="sr-only">Exercise tracking cards</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {exercises.map((exercise, index) => (
-              <article key={exercise.name} className="brand-card">
-                <header className="flex justify-between items-start mb-4">
-                  <h3 className="text-body-large font-semibold brand-fire">{exercise.name}</h3>
-                  <a
-                    href={getExerciseInfoUrl(exercise.name)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-secondary hover:text-fire transition-colors"
-                    aria-label={`Learn more about ${exercise.name} on Jaquish Biomedical website`}
-                  >
-                    <Info size={16} aria-hidden="true" />
-                  </a>
-                </header>
-                
-                <div className="mb-4">
-                  <label htmlFor={`band-${exercise.name}`} className="block text-label mb-2 text-secondary">
-                    Band Color
-                  </label>
-                  <select
-                    id={`band-${exercise.name}`}
-                    value={exercise.band}
-                    onChange={(e) => updateExercise(index, 'band', e.target.value)}
-                    className="w-full bg-white border border-subtle rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-primary"
-                  >
-                    {BAND_COLORS.map(color => (
-                      <option key={color} value={color} className="bg-white text-primary">
-                        {color} Band
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div>
-                    <label htmlFor={`full-reps-${exercise.name}`} className="block text-label mb-1 text-secondary">
-                      Full Reps
-                    </label>
-                    <input
-                      id={`full-reps-${exercise.name}`}
-                      type="number"
-                      value={exercise.fullReps || ''}
-                      onChange={(e) => updateExercise(index, 'fullReps', parseInt(e.target.value) || 0)}
-                      className="w-full bg-white border border-subtle rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-primary"
-                      min="0"
-                      max="999"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor={`partial-reps-${exercise.name}`} className="block text-label mb-1 text-secondary">
-                      Partial Reps
-                    </label>
-                    <input
-                      id={`partial-reps-${exercise.name}`}
-                      type="number"
-                      value={exercise.partialReps || ''}
-                      onChange={(e) => updateExercise(index, 'partialReps', parseInt(e.target.value) || 0)}
-                      className="w-full bg-white border border-subtle rounded-xl px-3 py-2 text-center focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-primary"
-                      min="0"
-                      max="999"
-                    />
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <label htmlFor={`notes-${exercise.name}`} className="block text-label mb-1 text-secondary">
-                    Notes
-                  </label>
-                  <textarea
-                    id={`notes-${exercise.name}`}
-                    value={exercise.notes}
-                    onChange={(e) => updateExercise(index, 'notes', e.target.value)}
-                    className="w-full bg-white border border-subtle rounded-xl px-3 py-2 text-body-small focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-primary placeholder-gray-500"
-                    rows={2}
-                    placeholder="Comments"
-                  />
-                </div>
-
-
-                {/* Exercise Status Indicator */}
-                {!exercise.saved && (
-                  <div className="mb-3">
-                    {/* Exercise State Banner */}
-                    {exerciseStates[index] && exerciseStates[index] !== 'idle' && (
-                      <div className={`p-2 rounded-lg mb-2 flex items-center space-x-2 ${
-                        exerciseStates[index] === 'started' ? 'bg-yellow-100 border border-yellow-300' :
-                        exerciseStates[index] === 'in_progress' ? 'bg-blue-100 border border-blue-300' :
-                        exerciseStates[index] === 'completed' ? 'bg-green-100 border border-green-300' : ''
-                      }`}>
-                        {exerciseStates[index] === 'started' && (
-                          <>
-                            <Loader2 className="animate-spin text-yellow-600" size={16} />
-                            <span className="text-yellow-800 text-sm font-medium">Exercise Starting...</span>
-                            {ttsActiveStates[index] && (
-                              <span className="text-xs text-yellow-600 bg-yellow-200 px-2 py-1 rounded-full">
-                                🔊 TTS Active
-                              </span>
-                            )}
-                          </>
-                        )}
-                        {exerciseStates[index] === 'in_progress' && (
-                          <>
-                            <Target className="text-blue-600" size={16} />
-                            <span className="text-blue-800 text-sm font-medium">Exercise In Progress</span>
-                            {cadenceActive && (
-                              <span className="text-xs text-blue-600 bg-blue-200 px-2 py-1 rounded-full">
-                                🎵 Cadence Active
-                              </span>
-                            )}
-                          </>
-                        )}
-                        {exerciseStates[index] === 'completed' && (
-                          <>
-                            <CheckCircle className="text-green-600" size={16} />
-                            <span className="text-green-800 text-sm font-medium">Exercise Completed</span>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Start Exercise Button */}
-                    {exerciseStates[index] !== 'in_progress' && (
-                      <button
-                        onClick={() => startExercise(index)}
-                        disabled={exerciseLoadingStates[index] || exerciseStates[index] === 'started'}
-                        className={`w-full py-2 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
-                          exerciseLoadingStates[index] || exerciseStates[index] === 'started'
-                            ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                            : exerciseStates[index] === 'completed'
-                            ? 'bg-green-600 text-white hover:bg-green-700'
-                            : 'bg-green-500 text-white hover:bg-green-600'
-                        }`}
-                      >
-                        {exerciseLoadingStates[index] || exerciseStates[index] === 'started' ? (
-                          <>
-                            <div className="inline animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            {exerciseStates[index] === 'started' ? 'Starting...' : 'Processing...'}
-                          </>
-                        ) : (
-                          <>
-                            <Play className="inline mr-2" size={16} aria-hidden="true" />
-                            {exerciseStates[index] === 'completed' ? 'Restart Exercise' : 'Start Exercise'}
-                          </>
-                        )}
-                      </button>
-                    )}
-
-                    {/* Exercise Progress Indicator */}
-                    {exerciseStates[index] === 'in_progress' && (
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-                        <div className="flex items-center justify-center space-x-2 mb-2">
-                          <Target className="text-blue-600 animate-pulse" size={20} />
-                          <span className="text-blue-800 font-medium">Exercise Active</span>
-                        </div>
-                        <p className="text-blue-700 text-sm">
-                          Complete your reps and click Save when finished.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Error Display */}
-                {saveErrorStates[index] && (
-                  <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <div className="flex items-start space-x-2">
-                      <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm text-red-700 mb-2">{saveErrorStates[index]}</p>
-                        <button
-                          onClick={() => retrySaveExercise(index)}
-                          disabled={saveLoadingStates[index]}
-                          className="text-xs text-red-600 hover:text-red-800 underline flex items-center space-x-1 disabled:opacity-50"
-                        >
-                          <RotateCcw size={12} />
-                          <span>Try Again</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => saveExercise(index)}
-                  disabled={exercise.saved || saveLoadingStates[index]}
-                  className={`w-full py-3 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ${
-                    exercise.saved
-                      ? 'btn-success cursor-default focus:ring-green-500'
-                      : saveLoadingStates[index]
-                        ? 'bg-gray-400 text-gray-600 cursor-not-allowed focus:ring-gray-400'
-                        : 'btn-primary focus:ring-orange-500'
-                  }`}
-                >
-                  {saveLoadingStates[index] ? (
-                    <>
-                      <Loader2 className="inline mr-2 animate-spin" size={16} aria-hidden="true" />
-                      Saving...
-                    </>
-                  ) : exercise.saved ? (
-                    <>
-                      <Save className="inline mr-2" size={16} aria-hidden="true" />
-                      Saved!
-                    </>
-                  ) : (
-                    <>
-                      <Save className="inline mr-2" size={16} aria-hidden="true" />
-                      Save Exercise
-                    </>
-                  )}
-                </button>
-              </article>
+              <ExerciseCard
+                key={exercise.name}
+                exercise={exercise}
+                index={index}
+                exerciseState={exerciseStates[index] || 'idle'}
+                isLoading={exerciseLoadingStates[index] || false}
+                isSaveLoading={saveLoadingStates[index] || false}
+                saveError={saveErrorStates[index] || null}
+                ttsActive={ttsActiveStates[index] || false}
+                bandColors={BAND_COLORS}
+                onUpdateExercise={updateExercise}
+                onStartExercise={startExercise}
+                onSaveExercise={saveExercise}
+                onRetrySave={retrySaveExercise}
+              />
             ))}
           </div>
         </main>

@@ -163,36 +163,6 @@ export default function DashboardPage() {
         </header>
 
         <main className="space-y-8">
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="brand-card text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Flame size={24} className="text-orange-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-primary">This Week</h3>
-              <p className="text-3xl font-bold text-orange-600">3</p>
-              <p className="text-sm text-secondary">Workouts</p>
-            </div>
-
-            <div className="brand-card text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Trophy size={24} className="text-orange-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-primary">Personal Bests</h3>
-              <p className="text-3xl font-bold text-orange-600">7</p>
-              <p className="text-sm text-secondary">This Month</p>
-            </div>
-
-            <div className="brand-card text-center">
-              <div className="flex items-center justify-center mb-2">
-                <TrendingUp size={24} className="text-orange-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-primary">Progress</h3>
-              <p className="text-3xl font-bold text-orange-600">+12%</p>
-              <p className="text-sm text-secondary">vs Last Month</p>
-            </div>
-          </div>
-
           {/* Workout Controls */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Start Workout */}
@@ -374,4 +344,4 @@ export default function DashboardPage() {
       </div>
     </AppLayout>
   )
-} 
+}
