@@ -10,6 +10,7 @@ import SimpleTTSTester from '@/components/SimpleTTSTester';
 import TestModeSettings from '@/components/TestModeSettings';
 import TTSSettings from '@/components/TTSSettings/TTSSettings';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import SupabaseConnectionTester from '@/components/SupabaseConnectionTester';
 
 const tabs = [
   { label: "Profile", value: "profile" },
@@ -440,6 +441,15 @@ export default function Settings() {
                       {/* TTS Testing */}
                       <div className="p-4 border border-gray-300 bg-white rounded-lg">
                         <SimpleTTSTester />
+                      </div>
+                      
+                      {/* Supabase Connection Testing */}
+                      <div className="p-4 border border-gray-300 bg-white rounded-lg">
+                        <h3 className="font-medium text-gray-800 mb-2">Database Connection Testing</h3>
+                        <p className="text-sm text-gray-600 mb-3">
+                          Comprehensive testing of Supabase database connectivity, authentication, and configuration.
+                        </p>
+                        <SupabaseConnectionTester />
                       </div>
                     </div>
                   ) : (
