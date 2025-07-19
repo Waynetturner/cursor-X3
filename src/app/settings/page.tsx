@@ -144,7 +144,7 @@ export default function Settings() {
           injury_history: profileData.healthConsiderations || null,
           language: 'en',
           timezone: profileData.timezone || null
-        });
+        }, { onConflict: 'user_id' });
 
       if (demoError) {
         console.error('Demographics table error:', demoError);
