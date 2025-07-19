@@ -51,13 +51,67 @@ interface UserWorkoutContext {
     exercisesCompleted: number
     totalExercises: number
   }
+  userProfile?: {
+    name: string
+    email: string
+    startDate: string
+    timezone?: string
+    subscriptionTier?: string
+    experienceLevel: string
+    programWeek: number
+    daysSinceStart: number
+  }
   userStats?: {
     totalWorkouts: number
     currentStreak: number
     longestStreak: number
     startDate: string
+    weeksSinceStart: number
+    averageWorkoutsPerWeek: number
   }
-  recentWorkouts?: any[]
+  progressMetrics?: {
+    topProgressions: Array<{
+      exercise: string
+      latestReps: number
+      oldestReps: number
+      improvement: number
+      sessions: number
+    }>
+    totalExercisesSessions: number
+    uniqueExercisesTried: number
+    mostImprovedExercise?: string
+    averageSessionLength: number
+  }
+  userGoals?: Array<{
+    type: string
+    target: any
+    current: any
+    description: string
+    deadline: string
+  }>
+  measurements?: Array<{
+    type: string
+    value: number
+    unit: string
+    date: string
+  }>
+  recentWorkouts?: Array<{
+    exercise: string
+    band: string
+    fullReps: number
+    partialReps: number
+    date: string
+    workoutType: string
+    week: number
+    notes?: string
+  }>
+  preferences?: {
+    ttsEnabled: boolean
+    ttsVoice: string
+    preferredWorkoutTime?: string
+    reminderSettings?: any
+    coachingStyle: string
+  }
   conversationHistory?: CoachMessage[]
 }
 
@@ -112,63 +166,258 @@ export function useWebLLMCoach(options: WebLLMCoachOptions = {}) {
     }
   }, [modelId, isInitializing, engine])
 
-  // Load user workout context from Supabase
+  // Load comprehensive user context from Supabase
   const loadUserContext = useCallback(async (userId: string) => {
     try {
-      // Get user profile
-      const { data: profile } = await supabase
+      console.log('🧠 Loading comprehensive user context for:', userId)
+
+      if (!userId) {
+        console.error('🧠 Cannot load context: userId is null/undefined')
+        return
+      }
+
+      // Get user profile with all available data - use defensive query
+      let { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('x3_start_date')
+        .select('*') // Select all columns to see what's actually available
         .eq('id', userId)
         .single()
 
-      // Get recent workout data
-      const { data: exercises } = await supabase
-        .from('workout_exercises')
+      console.log('🧠 Profile query result:', { profile, profileError })
+
+      if (profileError) {
+        console.error('🧠 Profile query error:', profileError)
+        // Try a simpler query as fallback
+        const { data: simpleProfile, error: simpleError } = await supabase
+          .from('profiles')
+          .select('id, email, created_at')
+          .eq('id', userId)
+          .single()
+        
+        console.log('🧠 Simple profile fallback:', { simpleProfile, simpleError })
+        
+        if (simpleProfile && !simpleError) {
+          // Use the simple profile as base and continue with basic context
+          console.log('🧠 Using simple profile for basic context')
+          profile = simpleProfile
+        }
+      }
+
+      // If we still don't have a profile, try getting user from auth
+      if (!profile) {
+        console.log('🧠 No profile found, trying auth user')
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (authUser && authUser.id === userId) {
+          console.log('🧠 Using auth user as fallback profile')
+          profile = {
+            id: authUser.id,
+            email: authUser.email,
+            created_at: authUser.created_at,
+            display_name: authUser.user_metadata?.display_name || authUser.user_metadata?.full_name,
+            full_name: authUser.user_metadata?.full_name,
+            x3_start_date: authUser.user_metadata?.x3_start_date
+          }
+        }
+      }
+
+      // Get user goals and targets
+      const { data: goals } = await supabase
+        .from('user_goals')
         .select('*')
         .eq('user_id', userId)
-        .order('workout_local_date_time', { ascending: false })
-        .limit(50)
+        .order('created_at', { ascending: false })
 
-      if (exercises && profile) {
-        const workoutDates = new Set(exercises.map(e => e.workout_local_date_time.split('T')[0]))
+      // Get user measurements/body composition
+      const { data: measurements } = await supabase
+        .from('user_measurements')
+        .select('*')
+        .eq('user_id', userId)
+        .order('measurement_date', { ascending: false })
+        .limit(10)
+
+      // Get complete workout history (last 100 exercises for analysis)
+      const { data: exercises } = await supabase
+        .from('workout_exercises')
+        .select(`
+          id,
+          exercise_name,
+          band_color,
+          full_reps,
+          partial_reps,
+          notes,
+          workout_local_date_time,
+          workout_type,
+          week_number
+        `)
+        .eq('user_id', userId)
+        .order('workout_local_date_time', { ascending: false })
+        .limit(100)
+
+      // Get user UI settings and preferences
+      const { data: uiSettings } = await supabase
+        .from('user_ui_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+
+      if (profile) {
+        // Analyze workout patterns
+        const workoutDates = new Set(exercises?.map(e => e.workout_local_date_time.split('T')[0]) || [])
         const totalWorkouts = workoutDates.size
         
-        // Calculate streaks
+        // Calculate detailed progress metrics
+        const exerciseGroups = exercises?.reduce((acc, ex) => {
+          const key = `${ex.exercise_name}-${ex.band_color}`
+          if (!acc[key]) acc[key] = []
+          acc[key].push({
+            fullReps: ex.full_reps,
+            partialReps: ex.partial_reps,
+            date: ex.workout_local_date_time,
+            week: ex.week_number
+          })
+          return acc
+        }, {} as Record<string, any[]>) || {}
+
+        // Find strongest progressions
+        const progressions = Object.entries(exerciseGroups).map(([exercise, performances]) => {
+          const sorted = performances.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          const latest = sorted[0]
+          const oldest = sorted[sorted.length - 1]
+          return {
+            exercise,
+            latestReps: latest?.fullReps + latest?.partialReps,
+            oldestReps: oldest?.fullReps + oldest?.partialReps,
+            improvement: (latest?.fullReps + latest?.partialReps) - (oldest?.fullReps + oldest?.partialReps),
+            sessions: performances.length
+          }
+        }).filter(p => p.improvement > 0).sort((a, b) => b.improvement - a.improvement)
+
+        // Calculate current program week based on start date
+        const startDate = new Date(profile.x3_start_date || profile.created_at)
+        const daysSinceStart = Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+        const programWeek = Math.floor(daysSinceStart / 7) + 1
+
+        // Calculate streaks (more sophisticated)
         const sortedDates = Array.from(workoutDates).sort()
         let currentStreak = 0
         let longestStreak = 0
         
-        // Simple streak calculation (can be enhanced)
         if (sortedDates.length > 0) {
-          currentStreak = 1
-          longestStreak = 1
+          // Calculate current streak
+          const today = new Date().toISOString().split('T')[0]
+          let checkDate = new Date()
+          while (checkDate >= new Date(sortedDates[0])) {
+            const dateStr = checkDate.toISOString().split('T')[0]
+            if (workoutDates.has(dateStr)) {
+              currentStreak++
+            } else if (currentStreak > 0) {
+              break
+            }
+            checkDate.setDate(checkDate.getDate() - 1)
+          }
+
+          // Calculate longest streak (simplified)
+          longestStreak = Math.max(currentStreak, Math.floor(sortedDates.length / 2))
         }
 
+        // Determine user level and experience
+        const weeksSinceStart = Math.floor(daysSinceStart / 7)
+        let experienceLevel = 'Beginner'
+        if (weeksSinceStart >= 12) experienceLevel = 'Intermediate'
+        if (weeksSinceStart >= 24) experienceLevel = 'Advanced'
+        if (weeksSinceStart >= 52) experienceLevel = 'Expert'
+
         const context: UserWorkoutContext = {
+          // Personal information
+          userProfile: {
+            name: profile.display_name || profile.full_name || 'X3 Warrior',
+            email: profile.email,
+            startDate: profile.x3_start_date || profile.created_at,
+            timezone: profile.timezone,
+            subscriptionTier: profile.subscription_tier,
+            experienceLevel,
+            programWeek,
+            daysSinceStart
+          },
+
+          // Workout statistics
           userStats: {
             totalWorkouts,
             currentStreak,
             longestStreak,
-            startDate: profile.x3_start_date
+            startDate: profile.x3_start_date || profile.created_at,
+            weeksSinceStart,
+            averageWorkoutsPerWeek: totalWorkouts / Math.max(weeksSinceStart, 1)
           },
-          recentWorkouts: exercises.slice(0, 10) // Keep recent 10 workouts
+
+          // Progress and achievements
+          progressMetrics: {
+            topProgressions: progressions.slice(0, 5),
+            totalExercisesSessions: exercises?.length || 0,
+            uniqueExercisesTried: Object.keys(exerciseGroups).length,
+            mostImprovedExercise: progressions[0]?.exercise,
+            averageSessionLength: exercises?.length ? Math.round(exercises.length / totalWorkouts) : 0
+          },
+
+          // Goals and targets
+          userGoals: goals?.map(g => ({
+            type: g.goal_type,
+            target: g.target_value,
+            current: g.current_value,
+            description: g.description,
+            deadline: g.target_date
+          })) || [],
+
+          // Physical measurements
+          measurements: measurements?.slice(0, 3).map(m => ({
+            type: m.measurement_type,
+            value: m.value,
+            unit: m.unit,
+            date: m.measurement_date
+          })) || [],
+
+          // Recent workout performance
+          recentWorkouts: exercises?.slice(0, 15).map(e => ({
+            exercise: e.exercise_name,
+            band: e.band_color,
+            fullReps: e.full_reps,
+            partialReps: e.partial_reps,
+            date: e.workout_local_date_time,
+            workoutType: e.workout_type,
+            week: e.week_number,
+            notes: e.notes
+          })) || [],
+
+          // User preferences
+          preferences: {
+            ttsEnabled: uiSettings?.tts_enabled || false,
+            ttsVoice: uiSettings?.tts_voice || 'alloy',
+            preferredWorkoutTime: uiSettings?.preferred_workout_time,
+            reminderSettings: uiSettings?.reminder_settings,
+            coachingStyle: uiSettings?.coaching_style || 'motivational'
+          }
         }
 
         setUserContext(context)
         contextRef.current = context
-        console.log('🧠 User context loaded:', context)
+        console.log('🧠 Comprehensive user context loaded:', {
+          name: context.userProfile?.name,
+          totalWorkouts: context.userStats?.totalWorkouts,
+          experienceLevel: context.userProfile?.experienceLevel,
+          goals: context.userGoals?.length,
+          progressions: context.progressMetrics?.topProgressions?.length
+        })
       }
     } catch (error) {
       console.error('🧠 Failed to load user context:', error)
     }
   }, [])
 
-  // Build system prompt with X3 knowledge and user context
+  // Build system prompt with X3 knowledge and comprehensive user context
   const buildSystemPrompt = useCallback((context: UserWorkoutContext) => {
-    const { userStats, workoutContext, currentExercise } = context
+    const { userProfile, userStats, workoutContext, currentExercise, progressMetrics, userGoals, measurements, recentWorkouts, preferences } = context
     
-    let systemPrompt = `You are an expert X3 fitness coach with deep knowledge of the X3 Bar system and variable resistance training. You provide personalized coaching based on the user's current workout data and progress.
+    let systemPrompt = `You are an expert X3 fitness coach with deep knowledge of the X3 Bar system and variable resistance training. You provide personalized coaching based on the user's comprehensive profile and progress data.
 
 ## CRITICAL X3 METHODOLOGY - NEVER SUGGEST TRADITIONAL WEIGHTLIFTING ADVICE:
 
@@ -191,13 +440,6 @@ export function useWebLLMCoach(options: WebLLMCoachOptions = {}) {
 - 4-second positive and 4-second negative repetitions for optimal time under tension
 - Progressive overload through band progression (changing band resistance)
 
-## X3 Exercise Knowledge:
-${JSON.stringify(X3_KNOWLEDGE_BASE.exercises, null, 2)}
-
-## X3 Program Structure:
-- Weeks 1-4: Push/Pull/Rest/Push/Pull/Rest/Rest (adaptation phase)
-- Weeks 5+: Push/Pull/Push/Pull/Push/Pull/Rest (intensification phase)
-
 ## Band Progression (Critical for advice):
 - White Band: 10-35 lbs (Beginner) - Cannot go lighter than this
 - Light Gray: 25-60 lbs (Beginner-Intermediate)  
@@ -205,39 +447,94 @@ ${JSON.stringify(X3_KNOWLEDGE_BASE.exercises, null, 2)}
 - Dark Gray: 70-150 lbs (Intermediate-Advanced)
 - Black: 100-300+ lbs (Advanced)
 
-## User's Current Context:
+## X3 Program Structure:
+- Weeks 1-4: Push/Pull/Rest/Push/Pull/Rest/Rest (adaptation phase)
+- Weeks 5+: Push/Pull/Push/Pull/Push/Pull/Rest (intensification phase)
+
+## USER PROFILE & CONTEXT:
+${userProfile ? `
+**Personal Information:**
+- Name: ${userProfile.name}
+- Experience Level: ${userProfile.experienceLevel}
+- Program Week: ${userProfile.programWeek}
+- Days Since Starting X3: ${userProfile.daysSinceStart}
+- X3 Start Date: ${userProfile.startDate}
+- Subscription: ${userProfile.subscriptionTier || 'Standard'}
+` : ''}
+
 ${userStats ? `
-- Total Workouts: ${userStats.totalWorkouts}
+**Workout Statistics:**
+- Total Workouts Completed: ${userStats.totalWorkouts}
 - Current Streak: ${userStats.currentStreak} days
-- Start Date: ${userStats.startDate}
+- Longest Streak: ${userStats.longestStreak} days
+- Average Workouts/Week: ${userStats.averageWorkoutsPerWeek.toFixed(1)}
+- Weeks in Program: ${userStats.weeksSinceStart}
+` : ''}
+
+${progressMetrics ? `
+**Progress & Achievements:**
+- Total Exercise Sessions: ${progressMetrics.totalExercisesSessions}
+- Unique Exercises Tried: ${progressMetrics.uniqueExercisesTried}
+- Most Improved Exercise: ${progressMetrics.mostImprovedExercise || 'N/A'}
+- Average Session Length: ${progressMetrics.averageSessionLength} exercises
+${progressMetrics.topProgressions?.length > 0 ? `
+- Top Progressions:
+${progressMetrics.topProgressions.map(p => `  • ${p.exercise}: +${p.improvement} total reps (${p.sessions} sessions)`).join('\n')}` : ''}
+` : ''}
+
+${userGoals && userGoals.length > 0 ? `
+**User Goals:**
+${userGoals.map(g => `- ${g.type}: ${g.description} (Target: ${g.target}, Current: ${g.current})`).join('\n')}
+` : ''}
+
+${measurements && measurements.length > 0 ? `
+**Recent Measurements:**
+${measurements.map(m => `- ${m.type}: ${m.value} ${m.unit} (${new Date(m.date).toLocaleDateString()})`).join('\n')}
 ` : ''}
 
 ${workoutContext ? `
-- Current Workout: ${workoutContext.workoutType} (Week ${workoutContext.week})
+**Current Workout Session:**
+- Workout Type: ${workoutContext.workoutType} (Week ${workoutContext.week})
 - Progress: ${workoutContext.exercisesCompleted}/${workoutContext.totalExercises} exercises completed
 ` : ''}
 
 ${currentExercise ? `
-- Current Exercise: ${currentExercise.name}
+**Current Exercise:**
+- Exercise: ${currentExercise.name}
 - Band: ${currentExercise.band}
 - Last Performance: ${currentExercise.fullReps} full reps, ${currentExercise.partialReps} partial reps
+${currentExercise.notes ? `- Notes: ${currentExercise.notes}` : ''}
 ` : ''}
 
-## Your Role:
-You are a motivational and knowledgeable X3 coach. Provide specific, actionable advice based on:
-1. X3 methodology (15-40 reps to failure, band progression)
-2. The user's current exercise and performance
-3. Their progression level and workout history
-4. X3 form principles and variable resistance concepts
-5. Appropriate band selection and progression guidance
+${recentWorkouts && recentWorkouts.length > 0 ? `
+**Recent Workout History (Last 5 sessions):**
+${recentWorkouts.slice(0, 5).map(w => `- ${w.exercise} (${w.band} band): ${w.fullReps}+${w.partialReps} reps - Week ${w.week} ${w.workoutType}`).join('\n')}
+` : ''}
 
-ALWAYS use X3-specific language:
-- "Train to failure" not "complete your sets"
-- "15-40 reps" not "8-12 reps" or "sets"
+${preferences ? `
+**User Preferences:**
+- Coaching Style: ${preferences.coachingStyle}
+- TTS Voice: ${preferences.ttsVoice}
+- Voice Enabled: ${preferences.ttsEnabled ? 'Yes' : 'No'}
+` : ''}
+
+## YOUR ROLE AS X3 AI COACH:
+You are ${userProfile?.name || 'this user'}'s personal X3 coach. Use their specific data to provide:
+
+1. **Personalized Progression Advice**: Based on their ${userProfile?.experienceLevel || 'current'} level and ${userStats?.totalWorkouts || 0} completed workouts
+2. **Context-Aware Form Coaching**: Reference their recent performance and specific exercises
+3. **Motivational Support**: Acknowledge their ${userStats?.currentStreak || 0}-day streak and progress
+4. **Goal-Oriented Guidance**: Help them work toward their specific fitness goals
+5. **X3-Specific Methodology**: Always follow 15-40 rep ranges, band progression, and train-to-failure principles
+
+ALWAYS use X3-specific language and reference their personal data:
+- "Based on your ${userStats?.totalWorkouts || 0} workouts so far..."
+- "Since you're in week ${userProfile?.programWeek || 1} of the program..."
+- "Your ${progressMetrics?.mostImprovedExercise || 'recent progress'} shows great improvement..."
+- "Train to failure between 15-40 reps" not "complete your sets"
 - "Move up/down a band" not "increase/decrease weight"
-- "Variable resistance" not "weight training"
 
-Keep responses conversational, encouraging, and focused exclusively on X3-specific coaching. Never suggest traditional weightlifting approaches.`
+Keep responses conversational, encouraging, and highly personalized to ${userProfile?.name || 'the user'}. Never suggest traditional weightlifting approaches.`
 
     return systemPrompt
   }, [])
@@ -328,11 +625,25 @@ Keep responses conversational, encouraging, and focused exclusively on X3-specif
 
   // Auto-initialize when userId is provided
   useEffect(() => {
+    console.log('🧠 WebLLM useEffect triggered:', { userId, isInitializing, hasEngine: !!engine })
     if (userId && !isInitializing && !engine) {
+      console.log('🧠 Starting WebLLM initialization for user:', userId)
       initializeEngine()
+      loadUserContext(userId)
+    } else if (userId && engine && Object.keys(userContext).length === 0) {
+      // If engine exists but no user context, load it
+      console.log('🧠 Engine ready, loading user context for:', userId)
       loadUserContext(userId)
     }
   }, [userId, initializeEngine, loadUserContext, isInitializing, engine])
+
+  // Separate effect to load user context when user becomes available
+  useEffect(() => {
+    if (userId && !userContext.userProfile) {
+      console.log('🧠 Loading user context separately for:', userId)
+      loadUserContext(userId)
+    }
+  }, [userId, userContext.userProfile, loadUserContext])
 
   return {
     // State

@@ -42,7 +42,7 @@ export const DATABASE_SCHEMA = {
     workout_type: 'text (Push|Pull)',
     week_number: 'integer',
     exercise_name: 'text',
-    band_color: 'text (White|Light Gray|Dark Gray|Black|Elite)',
+    band_color: 'text (Ultra Light|White|Light Gray|Dark Gray|Black|Elite)',
     full_reps: 'integer',
     partial_reps: 'integer',
     notes: 'text',
@@ -99,4 +99,4 @@ export const RLS_POLICIES = {
     update: 'Users can only update their own UI settings',
     delete: 'Users can only delete their own UI settings',
   },
-} 
+}

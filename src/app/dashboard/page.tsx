@@ -253,12 +253,14 @@ export default function DashboardPage() {
                       <h3 className="font-semibold text-primary">{exercise.name}</h3>
                       <div className="flex items-center space-x-2">
                         <span 
-                          className={`px-2 py-1 rounded text-xs font-medium band-color-exempt ${
-                            exercise.bandColor === 'White' ? 'bg-white text-black' :
-                            exercise.bandColor === 'Light Gray' ? 'bg-gray-300 text-black' :
-                            exercise.bandColor === 'Dark Gray' ? 'bg-gray-700 text-white' :
-                            exercise.bandColor === 'Black' ? 'bg-black text-white' :
-                            'bg-orange-500 text-white'
+                          className={`px-2 py-1 rounded text-xs font-medium ${
+                            exercise.bandColor === 'Ultra Light' ? 'band-color-ultra-light' :
+                            exercise.bandColor === 'White' ? 'band-color-white' :
+                            exercise.bandColor === 'Light Gray' ? 'band-color-light-gray' :
+                            exercise.bandColor === 'Dark Gray' ? 'band-color-dark-gray' :
+                            exercise.bandColor === 'Black' ? 'band-color-black' :
+                            exercise.bandColor === 'Elite' ? 'band-color-elite' :
+                            'band-color-elite'
                           }`}
                         >
                           {exercise.bandColor}

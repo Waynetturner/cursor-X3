@@ -7,6 +7,18 @@
   --ember-red: #D32F2F;
   --flame-gold: #FFC107;
   
+  /* Fire Orange Color System (Based on #FF6B35) */
+  --fire-orange-50: #FFF4F0;   /* Very light tint for backgrounds */
+  --fire-orange-100: #FFE4D6;  /* Light tint for subtle backgrounds */
+  --fire-orange-200: #FFCCB8;  /* Lighter tint */
+  --fire-orange-300: #FFB399;  /* Medium light tint */
+  --fire-orange-400: #FF8A5B;  /* Light tint for hover states */
+  --fire-orange-500: #FF6B35;  /* Primary brand orange */
+  --fire-orange-600: #E55A2B;  /* Dark shade for hover states */
+  --fire-orange-700: #CC4A21;  /* Darker shade for pressed states */
+  --fire-orange-800: #B33A17;  /* Very dark shade */
+  --fire-orange-900: #99290D;  /* Darkest shade */
+  
   /* Supporting Colors */
   --charcoal: #212121;
   --dark-gray: #303030;
@@ -283,6 +295,42 @@ body {
 }
 
 /* X3 Band Color Styling */
+.band-color-ultra-light {
+  background: var(--fire-orange-100);
+  border: 1px solid var(--fire-orange-200);
+  color: var(--fire-orange-700);
+}
+
+.band-color-white {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #000000;
+}
+
+.band-color-light-gray {
+  background: #d1d5db;
+  border: 1px solid #9ca3af;
+  color: #000000;
+}
+
+.band-color-dark-gray {
+  background: #6b7280;
+  border: 1px solid #4b5563;
+  color: #ffffff;
+}
+
+.band-color-black {
+  background: #000000;
+  border: 1px solid #374151;
+  color: #ffffff;
+}
+
+.band-color-elite {
+  background: var(--fire-orange);
+  border: 1px solid var(--fire-orange-600);
+  color: var(--pure-white);
+}
+
 .band-elite {
   background: var(--fire-orange);
   color: var(--pure-white);

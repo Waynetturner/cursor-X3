@@ -1,157 +1,183 @@
-# X3 Tracker - Momentum Pro Edition
+# Supabase CLI
 
-A comprehensive workout tracking application for the X3 Bar resistance training system, built with Next.js and integrated with Supabase for real-time data management.
+[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
+](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
 
-## 🏋️‍♂️ About X3 Tracker
+[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
 
-X3 Tracker helps users maximize their X3 Bar workouts with intelligent tracking, audio coaching, and progress analytics. The app follows Dr. John Jaquish's X3 Bar methodology with real-time guidance and comprehensive workout logging.
+This repository contains all the functionality for Supabase CLI.
 
-## 🚀 Recent Updates - Component Refactoring (July 2025)
+- [x] Running Supabase locally
+- [x] Managing database migrations
+- [x] Creating and deploying Supabase Functions
+- [x] Generating types directly from your database schema
+- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
 
-### Major Architecture Improvements
-- **✅ ExerciseCard Component**: Extracted 150+ lines of exercise logic into reusable, modular component
-- **✅ CadenceButton Component**: Extracted 60+ lines of cadence control into standalone component  
-- **✅ Reduced Complexity**: Main page.tsx reduced from 1000+ lines to organized, maintainable structure
-- **✅ Zero Regression**: All functionality preserved during refactoring
-- **✅ Documentation Consolidation**: Streamlined from 7+ scattered files to 4 comprehensive guides
+## Getting started
 
-### Component Architecture
-```
-src/components/
-├── ExerciseCard/          # Modular exercise tracking with band selection, reps, notes
-├── CadenceButton/         # Reusable cadence control with audio feedback
-├── layout/AppLayout.tsx   # Main navigation and layout structure
-├── WorkoutHistory/        # Historical workout data and analytics
-├── TTSSettings/           # Text-to-speech configuration
-├── RestTimer/             # 90-second rest period management
-└── AICoaching/            # AI-powered form guidance
-```
+### Install the CLI
 
-## ✨ Key Features
+Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
 
-### Workout Tracking
-- **Exercise Logging**: Track full reps, partial reps, and band selection
-- **Audio Cadence**: 2-second metronome for proper lifting tempo
-- **Rest Timer**: Automated 90-second rest periods between exercises
-- **Workout History**: Complete exercise history with progress analytics
-
-### AI & Audio Integration
-- **Text-to-Speech**: Premium TTS coaching with OpenAI.fm integration
-- **AI Form Coaching**: Real-time exercise guidance and tips
-- **Voice Selection**: Multiple voice options for personalized experience
-- **Audio Cues**: Automated workout phase announcements
-
-### User Experience
-- **Test Mode**: Purple banner development mode for testing
-- **Real-time Updates**: Live data synchronization with Supabase
-- **Responsive Design**: Mobile-optimized for gym use
-- **Accessibility**: Screen reader support and keyboard navigation
-
-## 🛠️ Tech Stack
-
-- **Frontend**: Next.js 15.3.4, React 19, TypeScript
-- **Styling**: Tailwind CSS 4.1.11
-- **Backend**: Supabase (Auth, Database, Edge Functions)
-- **Audio**: Web Speech API, OpenAI.fm TTS
-- **Animation**: Framer Motion
-- **UI Components**: Radix UI, Lucide React
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- Supabase account (for backend features)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd x3-tracker
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Environment Setup**
-   Create `.env.local` with your Supabase credentials:
-   ```env
-   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-4. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
-
-## 📁 Project Structure
-
-```
-src/
-├── app/                    # Next.js app router pages
-│   ├── page.tsx           # Main workout interface
-│   ├── dashboard/         # User dashboard and analytics  
-│   ├── calendar/          # Workout scheduling
-│   ├── goals/             # Goal setting and tracking
-│   └── auth/              # Authentication pages
-├── components/            # Reusable React components
-│   ├── ExerciseCard/      # 🆕 Modular exercise tracking
-│   ├── CadenceButton/     # 🆕 Audio cadence control
-│   ├── layout/            # Navigation and layout
-│   ├── WorkoutHistory/    # Historical data display
-│   └── [other components]
-├── hooks/                 # Custom React hooks
-├── lib/                   # Utility functions and configurations
-└── contexts/              # React context providers
-```
-
-## 🧪 Testing
-
-Use the included testing checklist:
 ```bash
-# See TESTING_CHECKLIST.md for comprehensive testing guide
+npm i supabase --save-dev
 ```
 
-### Quick Verification
-1. Start development server: `npm run dev`
-2. Test ExerciseCard: Band selection, rep inputs, save functionality  
-3. Test CadenceButton: Start/stop cadence with audio feedback
-4. Verify TTS integration for premium users
-5. Check workout history and data persistence
+To install the beta release channel:
 
-## 📚 Documentation
+```bash
+npm i supabase@beta --save-dev
+```
 
-- **TTS_COMPLETE.md** - Complete TTS & Audio Implementation Guide
-- **PROJECT_SPECS.md** - Comprehensive Project Specifications
-- **FEATURES.md** - Complete Features & Backend Integration
-- **TESTING_CHECKLIST.md** - Systematic Testing Guide
+When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
 
-## 🤝 Contributing
+```
+NODE_OPTIONS=--no-experimental-fetch yarn add supabase
+```
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+> **Note**
+For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
 
-## 📄 License
+<details>
+  <summary><b>macOS</b></summary>
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+  Available via [Homebrew](https://brew.sh). To install:
 
-## 🔗 Related Links
+  ```sh
+  brew install supabase/tap/supabase
+  ```
 
-- [X3 Bar Official Site](https://x3bar.com)
-- [Dr. John Jaquish](https://jaquishbiomedical.com)
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Supabase Documentation](https://supabase.com/docs)
+  To install the beta release channel:
+  
+  ```sh
+  brew install supabase/tap/supabase-beta
+  brew link --overwrite supabase-beta
+  ```
+  
+  To upgrade:
 
----
+  ```sh
+  brew upgrade supabase
+  ```
+</details>
 
-**Latest Update**: Component refactoring completed July 2025 - significantly improved maintainability and modularity while preserving all functionality.
+<details>
+  <summary><b>Windows</b></summary>
+
+  Available via [Scoop](https://scoop.sh). To install:
+
+  ```powershell
+  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+  scoop install supabase
+  ```
+
+  To upgrade:
+
+  ```powershell
+  scoop update supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Linux</b></summary>
+
+  Available via [Homebrew](https://brew.sh) and Linux packages.
+
+  #### via Homebrew
+
+  To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+
+  #### via Linux packages
+
+  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
+
+  ```sh
+  sudo apk add --allow-untrusted <...>.apk
+  ```
+
+  ```sh
+  sudo dpkg -i <...>.deb
+  ```
+
+  ```sh
+  sudo rpm -i <...>.rpm
+  ```
+
+  ```sh
+  sudo pacman -U <...>.pkg.tar.zst
+  ```
+</details>
+
+<details>
+  <summary><b>Other Platforms</b></summary>
+
+  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
+
+  ```sh
+  go install github.com/supabase/cli@latest
+  ```
+
+  Add a symlink to the binary in `$PATH` for easier access:
+
+  ```sh
+  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
+  ```
+
+  This works on other non-standard Linux distros.
+</details>
+
+<details>
+  <summary><b>Community Maintained Packages</b></summary>
+
+  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
+  To install in your working directory:
+
+  ```bash
+  pkgx install supabase
+  ```
+
+  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
+</details>
+
+### Run the CLI
+
+```bash
+supabase bootstrap
+```
+
+Or using npx:
+
+```bash
+npx supabase bootstrap
+```
+
+The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
+
+## Docs
+
+Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
+
+## Breaking changes
+
+We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
+
+However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
+
+## Developing
+
+To run from source:
+
+```sh
+# Go >= 1.22
+go run . help
+```

@@ -190,20 +190,75 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
 
         const responseText = await webhookResponse.text()
         
-        // Handle empty or invalid JSON responses
+        // Handle empty or invalid JSON responses - use comprehensive user data
         if (!responseText.trim()) {
-          console.log('📋 Empty response from n8n webhook, using fallback')
+          console.log('📋 Empty response from n8n webhook, generating data-driven fallback')
+          
+          // Get comprehensive user data for intelligent fallback
+          const userContextData = webLLMCoach.userContext
+          let intelligentResponse = `I'd love to help you with that! `
+          
+          if (content.toLowerCase().includes('workout') && content.toLowerCase().includes('week')) {
+            // User asking about workout history
+            if (userContextData.userStats?.totalWorkouts) {
+              intelligentResponse += `Looking at your ${userContextData.userStats.totalWorkouts} completed workouts so far, `
+              
+              if (userContextData.progressMetrics?.topProgressions && userContextData.progressMetrics.topProgressions.length > 0) {
+                const topExercise = userContextData.progressMetrics.topProgressions[0]
+                intelligentResponse += `I can see excellent progress! Your best improvement is in ${topExercise.exercise} with +${topExercise.improvement} total reps over ${topExercise.sessions} sessions. `
+              }
+              
+              if (userContextData.userStats?.currentStreak && userContextData.userStats.currentStreak > 0) {
+                intelligentResponse += `Your current ${userContextData.userStats.currentStreak}-day streak shows great consistency! `
+              }
+              
+              if (userContextData.recentWorkouts && userContextData.recentWorkouts.length > 0) {
+                const recentWorkout = userContextData.recentWorkouts[0]
+                intelligentResponse += `In your most recent session, you did ${recentWorkout.exercise} with ${recentWorkout.band} band achieving ${recentWorkout.fullReps}+${recentWorkout.partialReps} reps. `
+              }
+              
+              intelligentResponse += `Keep focusing on training to failure in that 15-40 rep range for optimal X3 results!`
+            } else {
+              intelligentResponse += `I'm still loading your workout history. In the meantime, remember that X3 is all about training to failure between 15-40 reps per exercise. Focus on controlled movements and progressive band selection!`
+            }
+          } else {
+            intelligentResponse += `Focus on controlled movements and proper form. ${currentExercise ? `For ${currentExercise.name} with ${currentExercise.band} band, ensure you're maintaining tension throughout the full range of motion.` : ''} Keep up the great work!`
+          }
+          
           response = {
-            message: `Thanks for your question about ${currentExercise?.name || 'your workout'}! While I'm processing your request, here's some quick advice: Focus on controlled movements and proper form. ${currentExercise ? `For ${currentExercise.name} with ${currentExercise.band} band, ensure you're maintaining tension throughout the full range of motion.` : ''} Keep up the great work!`,
+            message: intelligentResponse,
             success: true
           }
         } else {
           try {
             response = JSON.parse(responseText)
           } catch (parseError) {
-            console.log('📋 Invalid JSON from n8n webhook, using fallback')
+            console.log('📋 Invalid JSON from n8n webhook, generating data-driven fallback')
+            
+            // Use user context for intelligent fallback even when webhook fails
+            const userContextData = webLLMCoach.userContext
+            let contextualResponse = `I received your question! `
+            
+            if (userContextData.userProfile?.name) {
+              contextualResponse = `Hi ${userContextData.userProfile.name}! `
+            }
+            
+            if (userContextData.userProfile?.programWeek) {
+              contextualResponse += `Since you're in week ${userContextData.userProfile.programWeek} of your X3 program, `
+            }
+            
+            if (userContextData.userStats?.totalWorkouts) {
+              contextualResponse += `and you've completed ${userContextData.userStats.totalWorkouts} workouts so far, `
+            }
+            
+            contextualResponse += `you're making solid progress! ${currentExercise ? `For ${currentExercise.name}, focus on form over speed and make sure you're training to failure on those partial reps.` : 'Keep pushing towards your goals!'} `
+            
+            if (userContextData.userStats?.currentStreak && userContextData.userStats.currentStreak > 0) {
+              contextualResponse += `Your ${userContextData.userStats.currentStreak}-day streak is impressive - keep it going!`
+            }
+            
             response = {
-              message: `I received your question about your workout! Based on your current progress in week ${workoutContext?.week || 1} of your ${workoutContext?.workoutType || 'workout'} routine, you're doing great. ${currentExercise ? `For ${currentExercise.name}, focus on form over speed and make sure you're training to failure on those partial reps.` : 'Keep pushing towards your goals!'} Feel free to ask me anything else!`,
+              message: contextualResponse,
               success: true
             }
           }
@@ -300,20 +355,35 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
-      {/* Chat Toggle Button */}
+      {/* Chat Toggle Button - Larger and More Prominent */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="bg-orange-600 hover:bg-orange-700 text-white p-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
-        >
-          <MessageCircle size={24} />
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="group bg-orange-600 hover:bg-orange-700 text-white p-4 rounded-full shadow-xl transition-all duration-300 transform hover:scale-110 hover:shadow-2xl flex items-center space-x-3"
+          >
+            <Bot size={28} className="group-hover:animate-pulse" />
+            <span className="font-semibold text-lg whitespace-nowrap">X3 AI Coach</span>
+          </button>
+          
+          {/* Pulsing indicator when WebLLM is ready */}
+          {webLLMCoach.isReady && (
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-pulse border-2 border-white"></div>
+          )}
+          
+          {/* Loading indicator when WebLLM is initializing */}
+          {webLLMCoach.isInitializing && (
+            <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full animate-spin border-2 border-white">
+              <div className="w-2 h-2 bg-white rounded-full absolute top-0.5 left-0.5"></div>
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Chat Window */}
+      {/* Chat Window - Much Larger */}
       {isOpen && (
         <div className={`absolute bottom-16 right-0 bg-white rounded-lg shadow-xl border border-gray-200 transition-all duration-200 ${
-          isMinimized ? 'w-80 h-16' : 'w-96 h-96'
+          isMinimized ? 'w-80 h-16' : 'w-[32rem] h-[36rem] max-w-[90vw] max-h-[80vh]'
         }`}>
           {/* Chat Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-orange-50 rounded-t-lg">
@@ -380,7 +450,7 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
           {/* Chat Messages */}
           {!isMinimized && (
             <>
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 h-64">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 h-[28rem]">
                 {messages.map((message) => (
                   <div
                     key={message.id}

@@ -59,7 +59,7 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
           workout_type: mockWorkout.workout_type,
           exercises: mockWorkout.exercises.map(ex => ({
             exercise_name: ex.exercise_name,
-            band_color: ex.band_color as 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite',
+            band_color: ex.band_color as 'Ultra Light' | 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite',
             full_reps: ex.full_reps,
             partial_reps: ex.partial_reps
           }))
@@ -133,7 +133,7 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
         
         groupedWorkouts[key].exercises.push({
           exercise_name: exercise.exercise_name,
-          band_color: exercise.band_color as 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite',
+          band_color: exercise.band_color as 'Ultra Light' | 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite',
           full_reps: exercise.full_reps || 0,
           partial_reps: exercise.partial_reps || 0
         });

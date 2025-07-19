@@ -15,7 +15,6 @@ const tabs = [
   { label: "Profile", value: "profile" },
   { label: "Subscription", value: "subscription" },
   { label: "Preferences", value: "preferences" },
-  { label: "Measurements", value: "measurements" },
   { label: "Advanced", value: "advanced" },
 ];
 
@@ -32,88 +31,79 @@ export default function Settings() {
     startDate: '',
     fitnessExperience: '',
     primaryGoal: '',
-    preferredDays: [] as string[]
+    birthYear: '',
+    biologicalSex: '',
+    heightInches: '',
+    heightCm: '',
+    weightLbs: '',
+    weightKg: '',
+    activityLevelBeforeX3: '',
+    resistanceTrainingBackground: '',
+    x3EquipmentAvailable: [] as string[],
+    programTimelineGoal: '',
+    coachingStylePreference: 'balanced',
+    healthConsiderations: '',
+    timezone: '',
+    unitSystem: 'imperial' // for height/weight display preference
   });
   const [profileSaveLoading, setProfileSaveLoading] = useState(false);
   const [profileSaveStatus, setProfileSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   
-  // Measurement preferences
-  const [measurementTrackingEnabled, setMeasurementTrackingEnabled] = useState(false);
-  const [unitSystem, setUnitSystem] = useState('imperial'); // 'imperial' or 'metric'
-  const [enabledMeasurements, setEnabledMeasurements] = useState({
-    weight: false,
-    bodyFat: false,
-    chest: false,
-    waist: false,
-    arms: false
-  });
-  const [currentMeasurements, setCurrentMeasurements] = useState({
-    weight: '',
-    bodyFat: '',
-    chest: '',
-    waist: '',
-    arms: ''
-  });
-  const [measurementSaveLoading, setMeasurementSaveLoading] = useState(false);
-  const [measurementSaveStatus, setMeasurementSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [ttsSettingsOpen, setTtsSettingsOpen] = useState(false);
 
   useEffect(() => {
-    // Load user and measurement preferences
+    // Load user data
     const loadUserData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
         
-        // Load profile data from Supabase
+        // Load profile data from profiles table
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
+
+        // Load demographics data from user_demographics table  
+        const { data: demographics } = await supabase
+          .from('user_demographics')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
         
-        if (profile) {
-          setProfileData({
-            displayName: profile.display_name || '',
-            startDate: profile.x3_start_date || '',
-            fitnessExperience: profile.fitness_experience || '',
-            primaryGoal: profile.primary_goal || '',
-            preferredDays: profile.preferred_workout_days || []
-          });
-        } else {
-          // Fallback to localStorage for migration
-          const savedProfile = JSON.parse(localStorage.getItem('profileData') || '{}');
-          setProfileData({
-            displayName: savedProfile.displayName || '',
-            startDate: savedProfile.startDate || '',
-            fitnessExperience: savedProfile.fitnessExperience || '',
-            primaryGoal: savedProfile.primaryGoal || '',
-            preferredDays: savedProfile.preferredDays || []
-          });
-        }
-        
-        // Load measurement preferences from localStorage (will be migrated to Supabase later)
-        const measurementEnabled = localStorage.getItem('measurementTrackingEnabled') === 'true';
-        const units = localStorage.getItem('unitSystem') || 'imperial';
-        const enabled = JSON.parse(localStorage.getItem('enabledMeasurements') || '{"weight":false,"bodyFat":false,"chest":false,"waist":false,"arms":false}');
-        const measurements = JSON.parse(localStorage.getItem('currentMeasurements') || '{"weight":"","bodyFat":"","chest":"","waist":"","arms":""}');
-        
-        setMeasurementTrackingEnabled(measurementEnabled);
-        setUnitSystem(units);
-        setEnabledMeasurements(enabled);
-        setCurrentMeasurements(measurements);
+        // Combine data from both tables
+        const displayName = profile?.first_name && profile?.last_name 
+          ? `${profile.first_name} ${profile.last_name}`.trim()
+          : profile?.first_name || '';
+
+        setProfileData({
+          displayName,
+          startDate: profile?.x3_start_date || '',
+          fitnessExperience: demographics?.fitness_level || '',
+          primaryGoal: demographics?.goals || '',
+          birthYear: demographics?.age ? (new Date().getFullYear() - demographics.age).toString() : '',
+          biologicalSex: demographics?.gender === 'male' ? 'male' : 
+                         demographics?.gender === 'female' ? 'female' : '',
+          heightInches: '',
+          heightCm: '',
+          weightLbs: '', 
+          weightKg: '',
+          activityLevelBeforeX3: '',
+          resistanceTrainingBackground: '',
+          x3EquipmentAvailable: demographics?.available_equipment ? 
+            demographics.available_equipment.split(',').map((s: string) => s.trim()) : [],
+          programTimelineGoal: demographics?.session_length || '',
+          coachingStylePreference: demographics?.coach_tone || 'balanced',
+          healthConsiderations: demographics?.injury_history || '',
+          timezone: demographics?.timezone || profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          unitSystem: 'imperial'
+        });
       }
     };
     
     loadUserData();
   }, []);
-
-
-  const saveMeasurementPreferences = () => {
-    localStorage.setItem('measurementTrackingEnabled', measurementTrackingEnabled.toString());
-    localStorage.setItem('unitSystem', unitSystem);
-    localStorage.setItem('enabledMeasurements', JSON.stringify(enabledMeasurements));
-  };
 
   const saveProfileData = async () => {
     if (!user) return;
@@ -122,23 +112,45 @@ export default function Settings() {
     setProfileSaveStatus('idle');
     
     try {
-      // Save to Supabase profiles table
-      const { error } = await supabase
+      // Update profiles table (basic info)
+      const { error: profileError } = await supabase
         .from('profiles')
         .upsert({
           id: user.id,
-          display_name: profileData.displayName || null,
+          first_name: profileData.displayName.split(' ')[0] || null,
+          last_name: profileData.displayName.split(' ').slice(1).join(' ') || null,
           x3_start_date: profileData.startDate || null,
-          fitness_experience: profileData.fitnessExperience || null,
-          primary_goal: profileData.primaryGoal || null,
-          preferred_workout_days: profileData.preferredDays.length > 0 ? profileData.preferredDays : null
+          timezone: profileData.timezone || null
         });
       
-      if (error) throw error;
-      
-      // Also save to localStorage as backup
-      localStorage.setItem('profileData', JSON.stringify(profileData));
-      
+      if (profileError) {
+        console.error('Profiles table error:', profileError);
+        throw profileError;
+      }
+
+      // Update user_demographics table
+      const { error: demoError } = await supabase
+        .from('user_demographics')
+        .upsert({
+          user_id: user.id,
+          age: profileData.birthYear ? new Date().getFullYear() - parseInt(profileData.birthYear) : null,
+          gender: profileData.biologicalSex === 'male' ? 'male' : 
+                 profileData.biologicalSex === 'female' ? 'female' : null,
+          fitness_level: profileData.fitnessExperience || null,
+          goals: profileData.primaryGoal || null,
+          available_equipment: profileData.x3EquipmentAvailable.length > 0 ? profileData.x3EquipmentAvailable.join(',') : null,
+          session_length: profileData.programTimelineGoal || null,
+          coach_tone: profileData.coachingStylePreference || 'balanced',
+          injury_history: profileData.healthConsiderations || null,
+          language: 'en',
+          timezone: profileData.timezone || null
+        });
+
+      if (demoError) {
+        console.error('Demographics table error:', demoError);
+        throw demoError;
+      }
+
       setProfileSaveStatus('success');
       setTimeout(() => setProfileSaveStatus('idle'), 3000);
     } catch (error) {
@@ -150,93 +162,18 @@ export default function Settings() {
     }
   };
 
-  const saveMeasurementData = async () => {
-    setMeasurementSaveLoading(true);
-    setMeasurementSaveStatus('idle');
-    
-    try {
-      // Save current measurements with timestamp
-      const measurementEntry = {
-        ...currentMeasurements,
-        date: new Date().toISOString(),
-        unitSystem
-      };
-      
-      // Get existing measurements history
-      const existingMeasurements = JSON.parse(localStorage.getItem('measurementHistory') || '[]');
-      existingMeasurements.push(measurementEntry);
-      
-      // Save to localStorage
-      localStorage.setItem('measurementHistory', JSON.stringify(existingMeasurements));
-      localStorage.setItem('currentMeasurements', JSON.stringify(currentMeasurements));
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setMeasurementSaveStatus('success');
-      
-      // Clear current measurements after successful save
-      setCurrentMeasurements({
-        weight: '',
-        bodyFat: '',
-        chest: '',
-        waist: '',
-        arms: ''
-      });
-      
-      setTimeout(() => setMeasurementSaveStatus('idle'), 3000);
-    } catch (error) {
-      console.error('Failed to save measurements:', error);
-      setMeasurementSaveStatus('error');
-      setTimeout(() => setMeasurementSaveStatus('idle'), 3000);
-    } finally {
-      setMeasurementSaveLoading(false);
-    }
-  };
-
   const updateProfileField = (field: string, value: string | string[]) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
   };
 
-  const togglePreferredDay = (day: string) => {
+  const toggleEquipment = (equipment: string) => {
     setProfileData(prev => ({
       ...prev,
-      preferredDays: prev.preferredDays.includes(day)
-        ? prev.preferredDays.filter(d => d !== day)
-        : [...prev.preferredDays, day]
+      x3EquipmentAvailable: prev.x3EquipmentAvailable.includes(equipment)
+        ? prev.x3EquipmentAvailable.filter(e => e !== equipment)
+        : [...prev.x3EquipmentAvailable, equipment]
     }));
   };
-
-  const updateMeasurement = (measurement: string, value: string) => {
-    setCurrentMeasurements(prev => ({ ...prev, [measurement]: value }));
-  };
-
-  const toggleMeasurementTracking = () => {
-    const newValue = !measurementTrackingEnabled;
-    setMeasurementTrackingEnabled(newValue);
-    if (!newValue) {
-      // If disabling, reset all measurements to false
-      setEnabledMeasurements({
-        weight: false,
-        bodyFat: false,
-        chest: false,
-        waist: false,
-        arms: false
-      });
-    }
-  };
-
-  const toggleMeasurement = (measurement: keyof typeof enabledMeasurements) => {
-    setEnabledMeasurements(prev => ({
-      ...prev,
-      [measurement]: !prev[measurement]
-    }));
-  };
-
-  // Save preferences when they change
-  useEffect(() => {
-    saveMeasurementPreferences();
-  }, [measurementTrackingEnabled, unitSystem, enabledMeasurements]);
 
   return (
     <ProtectedRoute>
@@ -267,6 +204,7 @@ export default function Settings() {
                 </button>
               ))}
             </div>
+            
             <div className="brand-card text-gray-100 rounded-xl shadow-lg p-6 min-h-[200px]">
               {activeTab === "profile" && (
                 <div>
@@ -325,47 +263,6 @@ export default function Settings() {
                             <option value="intermediate">Intermediate (1-3 years)</option>
                             <option value="advanced">Advanced (3+ years)</option>
                           </select>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Goals & Preferences */}
-                    <div>
-                      <h3 className="font-medium text-gray-700 mb-3">Goals & Motivation</h3>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Primary Goal</label>
-                          <select 
-                            value={profileData.primaryGoal}
-                            onChange={(e) => updateProfileField('primaryGoal', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                          >
-                            <option value="">Select your primary goal</option>
-                            <option value="strength">Build Strength</option>
-                            <option value="muscle">Build Muscle</option>
-                            <option value="endurance">Improve Endurance</option>
-                            <option value="general">General Fitness</option>
-                            <option value="weight-loss">Weight Loss</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Workout Days</label>
-                          <div className="flex flex-wrap gap-2">
-                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                              <button
-                                key={day}
-                                type="button"
-                                onClick={() => togglePreferredDay(day)}
-                                className={`px-3 py-1 text-sm border rounded-lg transition-colors ${
-                                  profileData.preferredDays.includes(day)
-                                    ? 'border-orange-500 bg-orange-50 text-orange-600'
-                                    : 'border-gray-300 hover:border-orange-500 hover:text-orange-600'
-                                }`}
-                              >
-                                {day}
-                              </button>
-                            ))}
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -448,16 +345,6 @@ export default function Settings() {
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {hasFeature('measurementTracking') ? (
-                            <CheckCircle size={16} className="text-green-400" />
-                          ) : (
-                            <Lock size={16} className="text-gray-400" />
-                          )}
-                          <span className={`text-sm ${hasFeature('measurementTracking') ? 'text-gray-700' : 'text-gray-400'}`}>
-                            Measurement Tracking
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
                           {hasFeature('exportData') ? (
                             <CheckCircle size={16} className="text-green-400" />
                           ) : (
@@ -466,128 +353,6 @@ export default function Settings() {
                           <span className={`text-sm ${hasFeature('exportData') ? 'text-gray-700' : 'text-gray-400'}`}>
                             Export Data
                           </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {hasFeature('prioritySupport') ? (
-                            <CheckCircle size={16} className="text-green-400" />
-                          ) : (
-                            <Lock size={16} className="text-gray-400" />
-                          )}
-                          <span className={`text-sm ${hasFeature('prioritySupport') ? 'text-gray-700' : 'text-gray-400'}`}>
-                            Priority Support
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Plan Management */}
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-medium text-gray-700">Plan Management</h3>
-                        {/* Billing Period Toggle */}
-                        <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                          <button
-                            onClick={() => setBillingPeriod('monthly')}
-                            className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                              billingPeriod === 'monthly'
-                                ? 'bg-white text-orange-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-800'
-                            }`}
-                          >
-                            Monthly
-                          </button>
-                          <button
-                            onClick={() => setBillingPeriod('annual')}
-                            className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                              billingPeriod === 'annual'
-                                ? 'bg-white text-orange-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-800'
-                            }`}
-                          >
-                            Annual
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Foundation Plan */}
-                        <div className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
-                          tier === 'foundation' ? 'border-orange-500 bg-orange-50' : 'border-gray-300'
-                        }`}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Zap size={20} className="text-orange-400" />
-                            <h4 className="font-medium text-gray-800">Foundation</h4>
-                            {tier === 'foundation' && <span className="text-xs bg-orange-500 text-white px-2 py-1 rounded">Current</span>}
-                          </div>
-                          <p className="text-sm text-gray-600 mb-2">Essential X3 tracking features</p>
-                          <p className="text-lg font-bold text-gray-800 mb-3">
-                            ${billingPeriod === 'monthly' ? TIER_PRICING.foundation : TIER_PRICING_ANNUAL.foundation}
-                            <span className="text-sm font-normal text-gray-600">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
-                          </p>
-                          {tier !== 'foundation' && (
-                            <button
-                              onClick={() => upgradeTo('foundation')}
-                              className="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                            >
-                              Downgrade to Foundation
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Momentum Plan */}
-                        <div className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
-                          tier === 'momentum' ? 'border-orange-500 bg-orange-50' : 'border-gray-300'
-                        }`}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Star size={20} className="text-orange-400" />
-                            <h4 className="font-medium text-gray-800">Momentum</h4>
-                            {tier === 'momentum' && <span className="text-xs bg-orange-500 text-white px-2 py-1 rounded">Current</span>}
-                          </div>
-                          <p className="text-sm text-gray-600 mb-2">AI coaching, analytics, and tracking</p>
-                          <p className="text-lg font-bold text-gray-800 mb-3">
-                            ${billingPeriod === 'monthly' ? TIER_PRICING.momentum : TIER_PRICING_ANNUAL.momentum}
-                            <span className="text-sm font-normal text-gray-600">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
-                          </p>
-                          {tier === 'foundation' && (
-                            <button
-                              onClick={() => upgradeTo('momentum')}
-                              className="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                            >
-                              Upgrade to Momentum
-                            </button>
-                          )}
-                          {tier === 'mastery' && (
-                            <button
-                              onClick={() => upgradeTo('momentum')}
-                              className="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                            >
-                              Downgrade to Momentum
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Mastery Plan */}
-                        <div className={`border rounded-lg p-4 hover:shadow-md transition-shadow ${
-                          tier === 'mastery' ? 'border-orange-500 bg-orange-50' : 'border-gray-300'
-                        }`}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Crown size={20} className="text-orange-400" />
-                            <h4 className="font-medium text-gray-800">Mastery</h4>
-                            {tier === 'mastery' && <span className="text-xs bg-orange-500 text-white px-2 py-1 rounded">Current</span>}
-                          </div>
-                          <p className="text-sm text-gray-600 mb-2">Complete X3 experience with premium features</p>
-                          <p className="text-lg font-bold text-gray-800 mb-3">
-                            ${billingPeriod === 'monthly' ? TIER_PRICING.mastery : TIER_PRICING_ANNUAL.mastery}
-                            <span className="text-sm font-normal text-gray-600">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
-                          </p>
-                          {tier !== 'mastery' && (
-                            <button
-                              onClick={() => upgradeTo('mastery')}
-                              className="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                            >
-                              Upgrade to Mastery
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -651,226 +416,7 @@ export default function Settings() {
                         </button>
                       </div>
                     )}
-
-                    {/* Workout Settings */}
-                    <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
-                      <h3 className="font-medium text-gray-700 mb-3">Workout Preferences</h3>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <label className="text-sm font-medium text-gray-700">Auto-save Workouts</label>
-                            <p className="text-xs text-gray-500">Automatically save workout data</p>
-                          </div>
-                          <button
-                            className="relative inline-flex h-6 w-11 items-center rounded-full bg-orange-500"
-                          >
-                            <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-6" />
-                          </button>
-                        </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <label className="text-sm font-medium text-gray-700">Workout Reminders</label>
-                            <p className="text-xs text-gray-500">Get notified for scheduled workouts</p>
-                          </div>
-                          <button
-                            className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200"
-                          >
-                            <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
                   </div>
-                </div>
-              )}
-
-              {activeTab === "measurements" && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-4 brand-fire">Measurement Tracking</h2>
-                  
-                  {!hasFeature('measurementTracking') && (
-                    <div className="text-center py-8">
-                      <Lock size={48} className="text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-800 mb-2">Measurement Tracking Locked</h3>
-                      <p className="text-gray-600 mb-4">
-                        Upgrade to Momentum or Mastery to track your body measurements and progress over time.
-                      </p>
-                      <button
-                        onClick={() => setActiveTab('subscription')}
-                        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-medium"
-                      >
-                        View Subscription Plans
-                      </button>
-                    </div>
-                  )}
-                  
-                  {hasFeature('measurementTracking') && (
-                  <div className="space-y-6">
-                    {/* Privacy Notice */}
-                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                      <h3 className="font-medium text-blue-400 mb-2">🔒 Privacy First</h3>
-                      <p className="text-sm text-blue-300">
-                        Measurement tracking is completely optional. Your data is stored securely and only you can access it. 
-                        You can disable tracking or delete your data at any time.
-                      </p>
-                    </div>
-
-                    {/* Main Toggle */}
-                    <div className="flex items-center justify-between p-4 border border-gray-600 bg-gray-700/50 rounded-lg">
-                      <div>
-                        <label className="text-sm font-medium text-gray-200">Enable Measurement Tracking</label>
-                        <p className="text-xs text-gray-400">Track body measurements and progress over time</p>
-                      </div>
-                      <button
-                        onClick={toggleMeasurementTracking}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          measurementTrackingEnabled ? 'bg-orange-500' : 'bg-gray-600'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full transition-transform ${
-                            measurementTrackingEnabled ? 'bg-gray-900 translate-x-6' : 'bg-white translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {measurementTrackingEnabled && (
-                      <>
-                        {/* Unit System */}
-                        <div className="p-4 border border-gray-600 bg-gray-700/50 rounded-lg">
-                          <label className="text-sm font-medium text-gray-200 mb-2 block">Unit System</label>
-                          <div className="flex space-x-4">
-                            <label className="flex items-center">
-                              <input
-                                type="radio"
-                                value="imperial"
-                                checked={unitSystem === 'imperial'}
-                                onChange={(e) => setUnitSystem(e.target.value)}
-                                className="mr-2 text-orange-400"
-                              />
-                              <span className="text-sm text-gray-300">Imperial (lbs, inches)</span>
-                            </label>
-                            <label className="flex items-center">
-                              <input
-                                type="radio"
-                                value="metric"
-                                checked={unitSystem === 'metric'}
-                                onChange={(e) => setUnitSystem(e.target.value)}
-                                className="mr-2 text-orange-400"
-                              />
-                              <span className="text-sm text-gray-300">Metric (kg, cm)</span>
-                            </label>
-                          </div>
-                        </div>
-
-                        {/* Measurement Selection */}
-                        <div className="p-4 border border-gray-600 bg-gray-700/50 rounded-lg">
-                          <label className="text-sm font-medium text-gray-200 mb-3 block">Choose Measurements to Track</label>
-                          <div className="space-y-3">
-                            {Object.entries(enabledMeasurements).map(([key, enabled]) => (
-                              <div key={key} className="flex items-center justify-between">
-                                <span className="text-sm text-gray-300 capitalize">
-                                  {key === 'bodyFat' ? 'Body Fat %' : key}
-                                  {key === 'weight' && ` (${unitSystem === 'imperial' ? 'lbs' : 'kg'})`}
-                                  {['chest', 'waist', 'arms'].includes(key) && ` (${unitSystem === 'imperial' ? 'inches' : 'cm'})`}
-                                </span>
-                                <button
-                                  onClick={() => toggleMeasurement(key as keyof typeof enabledMeasurements)}
-                                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                                    enabled ? 'bg-orange-500' : 'bg-gray-600'
-                                  }`}
-                                >
-                                  <span
-                                    className={`inline-block h-3 w-3 transform rounded-full transition-transform ${
-                                      enabled ? 'bg-gray-900 translate-x-5' : 'bg-white translate-x-1'
-                                    }`}
-                                  />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Current Measurements */}
-                        {Object.values(enabledMeasurements).some(enabled => enabled) && (
-                          <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
-                            <h3 className="text-sm font-medium text-gray-700 mb-4">Record Your Measurements</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {Object.entries(enabledMeasurements).map(([key, enabled]) => 
-                                enabled && (
-                                  <div key={key}>
-                                    <label className="block text-sm font-medium text-gray-600 mb-1 capitalize">
-                                      {key === 'bodyFat' ? 'Body Fat %' : key}
-                                      {key === 'weight' && ` (${unitSystem === 'imperial' ? 'lbs' : 'kg'})`}
-                                      {['chest', 'waist', 'arms'].includes(key) && ` (${unitSystem === 'imperial' ? 'inches' : 'cm'})`}
-                                    </label>
-                                    <input
-                                      type="number"
-                                      step="0.1"
-                                      value={currentMeasurements[key as keyof typeof currentMeasurements]}
-                                      onChange={(e) => updateMeasurement(key, e.target.value)}
-                                      placeholder={`Enter ${key} measurement`}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                                    />
-                                  </div>
-                                )
-                              )}
-                            </div>
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <div className="flex items-center gap-4 mb-2">
-                                <button 
-                                  onClick={saveMeasurementData}
-                                  disabled={measurementSaveLoading || !Object.values(currentMeasurements).some(v => v.trim())}
-                                  className="bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-                                >
-                                  {measurementSaveLoading && (
-                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                  )}
-                                  {measurementSaveLoading ? 'Saving...' : 'Save Measurements'}
-                                </button>
-                                
-                                {measurementSaveStatus === 'success' && (
-                                  <span className="text-green-600 text-sm font-medium">✓ Measurements saved!</span>
-                                )}
-                                {measurementSaveStatus === 'error' && (
-                                  <span className="text-red-600 text-sm font-medium">✗ Failed to save measurements</span>
-                                )}
-                              </div>
-                              <p className="text-xs text-gray-500">
-                                Measurements are saved with today&apos;s date. You can track changes over time in your progress charts.
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Measurement History */}
-                        {Object.values(enabledMeasurements).some(enabled => enabled) && (
-                          <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
-                            <h3 className="text-sm font-medium text-gray-700 mb-3">Recent Measurements</h3>
-                            <div className="text-sm text-gray-500 text-center py-4">
-                              No measurements recorded yet. Add your first measurement above.
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Data Control */}
-                        <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
-                          <h3 className="text-sm font-medium text-gray-700 mb-2">Data Control</h3>
-                          <div className="space-y-2">
-                            <button className="text-sm text-blue-600 hover:text-blue-500 underline">
-                              Export My Data
-                            </button>
-                            <button className="text-sm text-red-600 hover:text-red-500 underline block">
-                              Delete All Measurement Data
-                            </button>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  )}
                 </div>
               )}
 
@@ -894,30 +440,6 @@ export default function Settings() {
                       {/* TTS Testing */}
                       <div className="p-4 border border-gray-300 bg-white rounded-lg">
                         <SimpleTTSTester />
-                      </div>
-                      
-                      {/* Future Features */}
-                      <div className="p-4 border border-gray-300 bg-gray-50 rounded-lg">
-                        <h3 className="font-medium text-gray-800 mb-2">Coming Soon</h3>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h4 className="text-sm font-medium text-gray-700">Workout Data Export</h4>
-                              <p className="text-xs text-gray-500">Export your workout history as CSV/JSON</p>
-                            </div>
-                            <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Coming Soon</span>
-                          </div>
-                          
-                          {hasFeature('prioritySupport') && (
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="text-sm font-medium text-gray-700">Priority Support</h4>
-                                <p className="text-xs text-gray-500">Direct access to priority support channels</p>
-                              </div>
-                              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded">Coming Soon</span>
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
                   ) : (

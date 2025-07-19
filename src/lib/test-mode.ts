@@ -19,7 +19,7 @@ export interface MockWorkoutData {
   workout_type: 'Push' | 'Pull'
   exercises: Array<{
     exercise_name: string
-    band_color: string
+    band_color: 'Ultra Light' | 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite'
     full_reps: number
     partial_reps: number
   }>
