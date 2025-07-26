@@ -73,6 +73,7 @@ const colorMap = {
 }
 
 export default function BottomNavigation({ currentPath, onNavigate }: BottomNavProps) {
+  console.log('🍎 BottomNavigation rendering with path:', currentPath)
   const [pressedItem, setPressedItem] = useState<string | null>(null)
 
   const handleItemPress = (item: NavItem) => {

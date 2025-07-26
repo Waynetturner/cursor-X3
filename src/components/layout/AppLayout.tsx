@@ -122,6 +122,7 @@ export default function AppLayout({
         </main>
 
         {/* Mobile Navigation Components */}
+        {console.log('🍎 Apple Design: Rendering mobile components', { pathname, onStartExercise: !!onStartExercise })}
         <BottomNavigation 
           currentPath={pathname}
           onNavigate={handleNavigate}
