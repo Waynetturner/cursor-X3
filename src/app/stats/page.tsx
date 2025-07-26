@@ -257,22 +257,6 @@ export default function StatsPage() {
               <p className="text-body text-secondary">Track your X3 progress and achievements</p>
             </div>
 
-            {/* Streak Info - Moved up */}
-            <div className="brand-card mb-8">
-              <h3 className="text-body-large font-semibold mb-4">🔥 Streak Information</h3>
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <p className="text-body-small text-gray-700 mb-2">
-                  <strong>Current Streak:</strong> {stats?.currentStreak || 0} consecutive days following the X3 schedule
-                </p>
-                <p className="text-body-small text-gray-600 mb-2">
-                  Your streak includes both workout days and scheduled rest days. Missing a scheduled workout breaks the streak.
-                </p>
-                <p className="text-body-small text-gray-600">
-                  <strong>Schedule:</strong> Weeks 1-4: Push/Pull/Rest/Push/Pull/Rest/Rest • Weeks 5+: Push/Pull/Push/Pull/Push/Pull/Rest
-                </p>
-              </div>
-            </div>
-
             {/* Key Stats Bento Grid */}
             <div className="stats-grid mb-8">
               <div className="brand-card text-center">
@@ -314,6 +298,22 @@ export default function StatsPage() {
                 <h3 className="text-body-large font-semibold mb-2">Longest Streak</h3>
                 <p className="text-headline brand-fire">{stats?.longestStreak || 0} days</p>
                 <p className="text-body-small text-gray-500 mt-1">All time</p>
+              </div>
+            </div>
+
+            {/* Streak Info - Moved below the four buttons */}
+            <div className="brand-card mb-8">
+              <h3 className="text-body-large font-semibold mb-4">🔥 Streak Information</h3>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <p className="text-body-small text-gray-700 mb-2">
+                  <strong>Current Streak:</strong> {stats?.currentStreak || 0} consecutive days following the X3 schedule
+                </p>
+                <p className="text-body-small text-gray-600 mb-2">
+                  Your streak includes both workout days and scheduled rest days. Missing a scheduled workout breaks the streak.
+                </p>
+                <p className="text-body-small text-gray-600">
+                  <strong>Schedule:</strong> Weeks 1-4: Push/Pull/Rest/Push/Pull/Rest/Rest • Weeks 5+: Push/Pull/Push/Pull/Push/Pull/Rest
+                </p>
               </div>
             </div>
 

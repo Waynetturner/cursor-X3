@@ -66,17 +66,60 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
 
   return (
     <article className="brand-card">
-      <header className="flex justify-between items-start mb-4">
-        <h3 className="text-body-large font-semibold brand-fire">{exercise.name}</h3>
-        <a
-          href={getExerciseInfoUrl(exercise.name)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="p-2 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-secondary hover:text-fire transition-colors"
-          aria-label={`Learn more about ${exercise.name} on Jaquish Biomedical website`}
-        >
-          <Info size={16} aria-hidden="true" />
-        </a>
+      <header className="mb-4">
+        {/* NEW DESIGN: Exercise title - 25% larger, centered, ALLCAPS with rep count */}
+        <div className="text-center mb-4">
+          <h3 
+            className="font-semibold brand-fire mb-4"
+            style={{
+              fontSize: '22.5px', // 25% larger than 18px text-body-large
+              lineHeight: '1.3',
+              letterSpacing: '0.5px'
+            }}
+          >
+            {exercise.name}
+          </h3>
+          
+          {/* Info button moved to top right corner */}
+          <div className="absolute top-4 right-4">
+            <a
+              href={getExerciseInfoUrl(exercise.name)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 hover:bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-secondary hover:text-fire transition-colors"
+              aria-label={`Learn more about ${exercise.name} on Jaquish Biomedical website`}
+            >
+              <Info size={16} aria-hidden="true" />
+            </a>
+          </div>
+          
+          {/* NEW DESIGN: Start Exercise button moved directly below title */}
+          {!exercise.saved && exerciseState !== 'in_progress' && (
+            <button
+              onClick={() => onStartExercise(index)}
+              disabled={isLoading || exerciseState === 'started'}
+              className={`w-full py-2 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mb-4 ${
+                isLoading || exerciseState === 'started'
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                  : exerciseState === 'completed'
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-green-500 text-white hover:bg-green-600'
+              }`}
+            >
+              {isLoading || exerciseState === 'started' ? (
+                <>
+                  <div className="inline animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {exerciseState === 'started' ? 'Starting...' : 'Processing...'}
+                </>
+              ) : (
+                <>
+                  <Play className="inline mr-2" size={16} aria-hidden="true" />
+                  {exerciseState === 'completed' ? 'Restart Exercise' : 'Start Exercise'}
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </header>
       
       <div className="mb-4">
@@ -178,32 +221,6 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
             </div>
           )}
 
-          {/* Start Exercise Button */}
-          {exerciseState !== 'in_progress' && (
-            <button
-              onClick={() => onStartExercise(index)}
-              disabled={isLoading || exerciseState === 'started'}
-              className={`w-full py-2 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
-                isLoading || exerciseState === 'started'
-                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                  : exerciseState === 'completed'
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-green-500 text-white hover:bg-green-600'
-              }`}
-            >
-              {isLoading || exerciseState === 'started' ? (
-                <>
-                  <div className="inline animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {exerciseState === 'started' ? 'Starting...' : 'Processing...'}
-                </>
-              ) : (
-                <>
-                  <Play className="inline mr-2" size={16} aria-hidden="true" />
-                  {exerciseState === 'completed' ? 'Restart Exercise' : 'Start Exercise'}
-                </>
-              )}
-            </button>
-          )}
 
           {/* Exercise Progress Indicator */}
           {exerciseState === 'in_progress' && (

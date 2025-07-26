@@ -17,6 +17,7 @@ import { ttsPhaseService } from '@/lib/tts-phrases'
 import CoachChat from '@/components/CoachChat/CoachChat'
 import ExerciseCard from '@/components/ExerciseCard'
 import CadenceButton from '@/components/CadenceButton'
+import { getWorkoutHistoryData } from '@/lib/exercise-history'
 
 // Helper to get local ISO string with timezone offset
 // Updated to use Central time with proper DST handling
@@ -340,53 +341,73 @@ export default function HomePage() {
       return
     }
     
-    console.log('Setting up exercises for:', workoutType, 'User ID:', user.id)
+    console.log('🏋️ Setting up exercises with band hierarchy logic for:', workoutType, 'User ID:', user.id)
     
     const exerciseNames = X3_EXERCISES[workoutType]
+    console.log('📋 Exercise names:', exerciseNames)
     
-    console.log('Looking for exercises:', exerciseNames)
+    // Get exercise history data for ALL exercises using our band hierarchy logic
+    console.log('📊 Getting workout history data for all exercises...')
+    const historyData = await getWorkoutHistoryData(exerciseNames)
+    console.log('📈 History data received:', historyData)
     
-    // Get the most recent workout data for this workout type (no date filter)
+    // Get recent workout data for other fields (notes, dates, etc.)
     const { data: previousData, error } = await supabase
       .from('workout_exercises')
       .select('*')
       .eq('user_id', user.id)
       .eq('workout_type', workoutType)
       .order('workout_local_date_time', { ascending: false })
-      .limit(16) // get more history in case of duplicates
+      .limit(16)
     
-    console.log('Previous workout data:', previousData)
-    console.log('Query error:', error)
+    console.log('📋 Previous workout data for context:', previousData)
+    console.log('❌ Query error:', error)
     
+    // Create exercise data using history data with band hierarchy
     const exerciseData = exerciseNames.map(name => {
-      const previous = previousData?.find(p => p.exercise_name === name);
+      const history = historyData[name]
+      const previous = previousData?.find(p => p.exercise_name === name)
+      
+      console.log(`🎯 Processing ${name}:`)
+      console.log(`  - History data:`, history)
+      console.log(`  - Previous data:`, previous)
+      
       return {
         id: previous?.id || '',
         exercise_name: name,
-        band_color: previous?.band_color || 'White',
+        band_color: history?.highestBand || previous?.band_color || 'White',
         full_reps: previous?.full_reps || 0,
         partial_reps: previous?.partial_reps || 0,
         notes: '',
         saved: false,
         previousData: previous || null,
         workout_local_date_time: previous?.workout_local_date_time || '',
-        // UI fields
-        name: name,
-        band: previous?.band_color || 'White',
+        // UI fields with enhanced display names
+        name: history?.displayText || name.toUpperCase(), // "CHEST PRESS (16)" or "CHEST PRESS"
+        band: history?.highestBand || previous?.band_color || 'White', // Pre-select highest band used
         fullReps: previous?.full_reps || 0,
         partialReps: previous?.partial_reps || 0,
         lastWorkout: previous ? `${previous.full_reps}+${previous.partial_reps} reps with ${previous.band_color} band` : '',
         lastWorkoutDate: previous ? formatWorkoutDate(previous.workout_local_date_time) : ''
-      };
-    });
+      }
+    })
     
-    console.log('Final exercise data:', exerciseData)
+    console.log('✅ Final exercise data with band hierarchy:', exerciseData)
     setExercises(exerciseData)
     
     if (previousData && previousData.length > 0) {
       const lastWorkoutDate = formatWorkoutDate(previousData[0].workout_local_date_time)
       announceToScreenReader(`Previous ${workoutType} workout data loaded from ${lastWorkoutDate}`)
     }
+    
+    // Log success for each exercise
+    exerciseData.forEach(exercise => {
+      if (exercise.name.includes('(')) {
+        console.log(`✨ ${exercise.exercise_name}: Display "${exercise.name}", Band pre-selected: ${exercise.band}`)
+      } else {
+        console.log(`📝 ${exercise.exercise_name}: No history - Display "${exercise.name}", Default band: ${exercise.band}`)
+      }
+    })
   }
 
   const updateExercise = (index: number, field: string, value: any) => {
@@ -1071,33 +1092,6 @@ export default function HomePage() {
           </div>
         </main>
 
-        {/* Recent Workouts Section */}
-        <div className="mt-8">
-          <WorkoutHistory 
-            refreshTrigger={refreshTrigger}
-            maxDisplay={2}
-            defaultRange="last-two"
-            showTitle={true}
-            compact={true}
-          />
-        </div>
-
-        {/* Coach Chat Component */}
-        <CoachChat
-          currentExercise={exercises.find((ex, index) => !ex.saved) ? {
-            name: exercises.find((ex, index) => !ex.saved)?.name || '',
-            band: exercises.find((ex, index) => !ex.saved)?.band || '',
-            fullReps: exercises.find((ex, index) => !ex.saved)?.fullReps || 0,
-            partialReps: exercises.find((ex, index) => !ex.saved)?.partialReps || 0,
-            notes: exercises.find((ex, index) => !ex.saved)?.notes || ''
-          } : undefined}
-          workoutContext={{
-            workoutType: todaysWorkout.workoutType,
-            week: todaysWorkout.week,
-            exercisesCompleted: exercises.filter(ex => ex.saved).length,
-            totalExercises: exercises.length
-          }}
-        />
       </div>
     </AppLayout>
   )
