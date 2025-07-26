@@ -52,14 +52,14 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
 }) => {
   const getExerciseInfoUrl = (exerciseName: string) => {
     const exerciseUrls: { [key: string]: string } = {
-      'Chest Press': 'https://www.jaquishbiomedical.com/exercise/chest-press/',
-      'Tricep Press': 'https://www.jaquishbiomedical.com/exercise/tricep-press/',
-      'Overhead Press': 'https://www.jaquishbiomedical.com/exercise/overhead-press/',
-      'Front Squat': 'https://www.jaquishbiomedical.com/exercise/front-squat/',
-      'Deadlift': 'https://www.jaquishbiomedical.com/exercise/deadlift/',
-      'Bent Row': 'https://www.jaquishbiomedical.com/exercise/bent-row/',
-      'Bicep Curl': 'https://www.jaquishbiomedical.com/exercise/bicep-curl/',
-      'Calf Raise': 'https://www.jaquishbiomedical.com/exercise/calf-raise/'
+      'Chest Press': 'https://www.jaquishbiomedical.com/x3-program/exercise-form/x3-chest-press/',
+      'Tricep Press': 'https://www.jaquishbiomedical.com/x3-program/exercise-form/x3-tricep-press/',
+      'Overhead Press': 'https://www.jaquishbiomedical.com/x3-program/exercise-form/x3-overhead-press/',
+      'Front Squat': 'https://www.jaquishbiomedical.com/x3-program/exercise-form/x3-front-squat/',
+      'Deadlift': 'https://www.jaquishbiomedical.com/x3-program/exercise-form/x3-deadlift/',
+      'Bent Row': 'https://www.jaquishbiomedical.com/x3-program/exercise-form/x3-bent-row/',
+      'Bicep Curl': 'https://www.jaquishbiomedical.com/x3-program/exercise-form/x3-bicep-curl/',
+      'Calf Raise': 'https://www.jaquishbiomedical.com/x3-program/exercise-form/x3-calf-raise/'
     }
     return exerciseUrls[exerciseName] || 'https://www.jaquishbiomedical.com/x3-program/'
   }
