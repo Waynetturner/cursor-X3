@@ -6,13 +6,31 @@ import { ReactNode } from 'react'
 import X3MomentumWordmark from '../X3MomentumWordmark'
 import { supabase } from '@/lib/supabase'
 import { useTestMode } from '@/lib/test-mode'
+import BottomNavigation from './BottomNavigation'
+import ContextualFAB from './FloatingActionButton'
 
 interface AppLayoutProps {
   children: ReactNode
   title?: string
+  onStartExercise?: () => void
+  onLogWorkout?: () => void
+  onAddGoal?: () => void
+  onScheduleWorkout?: () => void
+  onViewStats?: () => void
+  exerciseInProgress?: boolean
+  workoutCompleted?: boolean
 }
 
-export default function AppLayout({ children }: AppLayoutProps) {
+export default function AppLayout({ 
+  children,
+  onStartExercise,
+  onLogWorkout, 
+  onAddGoal,
+  onScheduleWorkout,
+  onViewStats,
+  exerciseInProgress = false,
+  workoutCompleted = false
+}: AppLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { isEnabled: testModeEnabled, indicator } = useTestMode()
@@ -32,6 +50,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     } else {
       router.push('/auth/signin')
     }
+  }
+
+  const handleNavigate = (path: string) => {
+    router.push(path)
   }
 
   return (
@@ -57,18 +79,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
         )}
 
-        {/* Navigation - moved under hero banner */}
-        <nav className="w-full bg-white/90 backdrop-blur-lg border-b border-gray-200 p-4 shadow-lg">
+        {/* Desktop Navigation - hidden on mobile */}
+        <nav className="w-full bg-white/90 backdrop-blur-lg border-b border-gray-200 p-4 shadow-lg hidden md:block">
           <div className="max-w-6xl mx-auto px-4">
             <div className="flex justify-between items-center">
               <div className="flex space-x-2 flex-wrap gap-y-2">
                 {navItems.map((item) => {
-                  const isActive = pathname === item.route
+                  const isActive = pathname === item.route || 
+                    (item.route === '/workout' && pathname === '/')
                   return (
                     <button
                       key={item.label}
                       onClick={() => router.push(item.route)}
-                      className={`flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow text-sm md:text-base md:px-4 ${
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow text-base ${
                         isActive 
                           ? 'bg-orange-500 text-white' 
                           : 'bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-orange-600'
@@ -84,7 +107,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               {/* Sign Out Button */}
               <button
                 onClick={handleSignOut}
-                className="flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow text-sm md:text-base md:px-4 bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-800"
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow text-base bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-800"
               >
                 <LogOut size={16} />
                 <span>Sign Out</span>
@@ -97,6 +120,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <main className="flex-1 overflow-auto">
           {children}
         </main>
+
+        {/* Mobile Navigation Components */}
+        <BottomNavigation 
+          currentPath={pathname}
+          onNavigate={handleNavigate}
+        />
+        
+        <ContextualFAB
+          onStartExercise={onStartExercise}
+          onLogWorkout={onLogWorkout}
+          onAddGoal={onAddGoal}
+          onScheduleWorkout={onScheduleWorkout}
+          onViewStats={onViewStats}
+          exerciseInProgress={exerciseInProgress}
+          workoutCompleted={workoutCompleted}
+        />
       </div>
     </div>
   )
