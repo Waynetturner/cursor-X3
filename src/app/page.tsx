@@ -932,8 +932,22 @@ export default function HomePage() {
   }
 
  if (todaysWorkout.workoutType === 'Rest') {
+  const handleStartExercise = () => router.push('/workout')
+  const handleLogWorkout = () => router.push('/workout')
+  const handleAddGoal = () => router.push('/goals')
+  const handleScheduleWorkout = () => router.push('/calendar')
+  const handleViewStats = () => router.push('/stats')
+
   return (
-    <AppLayout>
+    <AppLayout 
+      onStartExercise={handleStartExercise}
+      onLogWorkout={handleLogWorkout}
+      onAddGoal={handleAddGoal}
+      onScheduleWorkout={handleScheduleWorkout}
+      onViewStats={handleViewStats}
+      exerciseInProgress={false}
+      workoutCompleted={false}
+    >
       <div className="container mx-auto px-4 py-8">
         <main>
           <div className="max-w-2xl mx-auto">
@@ -989,9 +1003,45 @@ export default function HomePage() {
     <CadenceButton cadenceActive={cadenceActive} setCadenceActive={setCadenceActive} />
   );
 
+  const handleStartExercise = () => {
+    // Navigate to first exercise or start workout flow
+    router.push('/workout')
+  }
+
+  const handleLogWorkout = () => {
+    // Navigate to workout logging
+    router.push('/workout')
+  }
+
+  const handleAddGoal = () => {
+    // Navigate to goals page
+    router.push('/goals')
+  }
+
+  const handleScheduleWorkout = () => {
+    // Navigate to calendar
+    router.push('/calendar')
+  }
+
+  const handleViewStats = () => {
+    // Navigate to stats
+    router.push('/stats')
+  }
+
+  // Determine current exercise state
+  const exerciseInProgress = exercises.some(ex => exerciseStates[Object.keys(exerciseStates).find(key => exerciseStates[parseInt(key)] === 'in_progress') as any] === 'in_progress')
+  const workoutCompleted = exercises.length > 0 && exercises.every(ex => ex.saved)
 
   return (
-    <AppLayout>
+    <AppLayout 
+      onStartExercise={handleStartExercise}
+      onLogWorkout={handleLogWorkout}
+      onAddGoal={handleAddGoal}
+      onScheduleWorkout={handleScheduleWorkout}
+      onViewStats={handleViewStats}
+      exerciseInProgress={exerciseInProgress}
+      workoutCompleted={workoutCompleted}
+    >
       <div className="container mx-auto px-4 py-8">
 
         {/* Motivational Greeting */}
