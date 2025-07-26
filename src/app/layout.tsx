@@ -17,6 +17,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "X3 Momentum Pro – AI-Powered X3 Resistance Band Tracker",
   description: "Motivation. Progress. Results. The ultimate X3 tracking app with AI coaching and smart analytics.",
+  icons: {
+    icon: '/x3-avatar.svg',
+    shortcut: '/x3-avatar.svg',
+    apple: '/x3-avatar.svg',
+  },
 };
 
 export default function RootLayout({
