@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { Play, Save, Info, Target, CheckCircle, AlertCircle, RotateCcw, Loader2 } from 'lucide-react'
+import { Save, Info, Target, CheckCircle, Loader2 } from 'lucide-react'
 
 interface Exercise {
   id?: string;
@@ -11,7 +10,7 @@ interface Exercise {
   partial_reps: number;
   notes: string;
   saved: boolean;
-  previousData?: any;
+  previousData?: unknown;
   workout_local_date_time: string;
   name: string;
   band: string;
@@ -25,30 +24,28 @@ export interface ExerciseCardProps {
   exercise: Exercise;
   index: number;
   exerciseState: 'idle' | 'started' | 'in_progress' | 'completed';
-  isLoading: boolean;
   isSaveLoading: boolean;
   saveError: string | null;
   ttsActive: boolean;
   bandColors: string[];
-  onUpdateExercise: (index: number, field: string, value: any) => void;
-  onStartExercise: (index: number) => void;
+  onUpdateExercise: (index: number, field: string, value: string | number) => void;
   onSaveExercise: (index: number) => void;
   onRetrySave: (index: number) => void;
+  onStartExercise?: (index: number) => void;
 }
 
 const ExerciseCard: React.FC<ExerciseCardProps> = ({
   exercise,
   index,
   exerciseState,
-  isLoading,
   isSaveLoading,
   saveError,
   ttsActive,
   bandColors,
   onUpdateExercise,
-  onStartExercise,
   onSaveExercise,
-  onRetrySave
+  onRetrySave,
+  onStartExercise
 }) => {
   const getExerciseInfoUrl = (exerciseName: string) => {
     const exerciseUrls: { [key: string]: string } = {
@@ -67,8 +64,8 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
   return (
     <article className="brand-card">
       <header className="mb-4">
-        {/* NEW DESIGN: Exercise title - 25% larger, centered, ALLCAPS with rep count */}
-        <div className="text-center mb-4">
+        {/* NEW DESIGN: Exercise title - 25% larger, centered, ALLCAPS with highest rep count */}
+        <div className="text-center mb-4 relative">
           <h3 
             className="font-semibold brand-fire mb-4"
             style={{
@@ -77,11 +74,11 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
               letterSpacing: '0.5px'
             }}
           >
-            {exercise.name}
+            {exercise.name.toUpperCase()}
           </h3>
           
           {/* Info button moved to top right corner */}
-          <div className="absolute top-4 right-4">
+          <div className="absolute top-0 right-0">
             <a
               href={getExerciseInfoUrl(exercise.name)}
               target="_blank"
@@ -93,32 +90,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
             </a>
           </div>
           
-          {/* NEW DESIGN: Start Exercise button moved directly below title */}
-          {!exercise.saved && exerciseState !== 'in_progress' && (
-            <button
-              onClick={() => onStartExercise(index)}
-              disabled={isLoading || exerciseState === 'started'}
-              className={`w-full py-2 rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mb-4 ${
-                isLoading || exerciseState === 'started'
-                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                  : exerciseState === 'completed'
-                  ? 'bg-green-600 text-white hover:bg-green-700'
-                  : 'bg-green-500 text-white hover:bg-green-600'
-              }`}
-            >
-              {isLoading || exerciseState === 'started' ? (
-                <>
-                  <div className="inline animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {exerciseState === 'started' ? 'Starting...' : 'Processing...'}
-                </>
-              ) : (
-                <>
-                  <Play className="inline mr-2" size={16} aria-hidden="true" />
-                  {exerciseState === 'completed' ? 'Restart Exercise' : 'Start Exercise'}
-                </>
-              )}
-            </button>
-          )}
+          
         </div>
       </header>
       
@@ -234,26 +206,6 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
               </p>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Error Display */}
-      {saveError && (
-        <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-start space-x-2">
-            <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm text-red-700 mb-2">{saveError}</p>
-              <button
-                onClick={() => onRetrySave(index)}
-                disabled={isSaveLoading}
-                className="text-xs text-red-600 hover:text-red-800 underline flex items-center space-x-1 disabled:opacity-50"
-              >
-                <RotateCcw size={12} />
-                <span>Try Again</span>
-              </button>
-            </div>
-          </div>
         </div>
       )}
 

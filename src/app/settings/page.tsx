@@ -358,6 +358,79 @@ export default function Settings() {
                       </div>
                     </div>
 
+                    {/* Upgrade Options */}
+                    {tier !== 'mastery' && (
+                      <div>
+                        <h3 className="font-medium text-gray-700 mb-3">Available Upgrades</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {tier === 'foundation' && (
+                            <>
+                              {/* Momentum Upgrade */}
+                              <div className="border border-orange-300 rounded-lg p-4 bg-orange-50">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Star size={20} className="text-orange-600" />
+                                  <h4 className="font-medium text-orange-800">Momentum</h4>
+                                </div>
+                                <p className="text-sm text-orange-700 mb-3">
+                                  Add TTS audio cues, rest timer, AI coaching, and analytics
+                                </p>
+                                <p className="text-sm font-bold text-orange-800 mb-3">
+                                  ${TIER_PRICING.momentum}/month
+                                </p>
+                                <button
+                                  onClick={() => upgradeTo('momentum')}
+                                  className="w-full bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                >
+                                  Upgrade to Momentum
+                                </button>
+                              </div>
+                              
+                              {/* Mastery Upgrade */}
+                              <div className="border border-purple-300 rounded-lg p-4 bg-purple-50">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Crown size={20} className="text-purple-600" />
+                                  <h4 className="font-medium text-purple-800">Mastery</h4>
+                                </div>
+                                <p className="text-sm text-purple-700 mb-3">
+                                  All features + premium voices, unlimited history, API access
+                                </p>
+                                <p className="text-sm font-bold text-purple-800 mb-3">
+                                  ${TIER_PRICING.mastery}/month
+                                </p>
+                                <button
+                                  onClick={() => upgradeTo('mastery')}
+                                  className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                >
+                                  Upgrade to Mastery
+                                </button>
+                              </div>
+                            </>
+                          )}
+                          
+                          {tier === 'momentum' && (
+                            <div className="border border-purple-300 rounded-lg p-4 bg-purple-50">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Crown size={20} className="text-purple-600" />
+                                <h4 className="font-medium text-purple-800">Mastery</h4>
+                              </div>
+                              <p className="text-sm text-purple-700 mb-3">
+                                Premium voices, unlimited history, priority support, API access
+                              </p>
+                              <p className="text-sm font-bold text-purple-800 mb-3">
+                                ${TIER_PRICING.mastery}/month
+                              </p>
+                              <button
+                                onClick={() => upgradeTo('mastery')}
+                                className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                              >
+                                Upgrade to Mastery
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* MVP Testing Notice */}
                     <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
                       <h3 className="font-medium text-blue-400 mb-2">🚀 MVP Testing</h3>

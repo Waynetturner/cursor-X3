@@ -1,4 +1,4 @@
-# Claude Code Session Records
+# Code Session Records
 
 This file contains important information about the X3 Momentum Pro application and previous development sessions for context in future interactions.
 
@@ -44,23 +44,37 @@ npm run lint            # Run ESLint
 # Test mode available in Advanced settings for safe iteration
 ```
 
-## Claude Development Rules
+## Development Rules
 
-**7 Core Rules for Future Development Sessions:**
+## Core Rules for Future Development Sessions
 
-1. **Think and Plan First**: Always start by thinking through the problem, reading the codebase for relevant files, and writing a comprehensive plan to `tasks/todo.md`.
-
-2. **Create Actionable Todo Lists**: The plan should contain a clear list of todo items that can be checked off as work progresses, ensuring accountability and progress tracking.
-
-3. **Verify Before Executing**: Before beginning any work, check in with the user to verify the plan is correct and approved. Never start coding without plan approval.
-
-4. **Track Progress Incrementally**: Work through todo items systematically, marking them as complete as you go. Provide real-time progress updates.
-
-5. **Communicate Changes Clearly**: At every step, provide high-level explanations of what changes were made, avoiding technical jargon while maintaining clarity.
-
-6. **Prioritize Simplicity**: Make every task and code change as simple as possible. Avoid massive or complex changes. Every modification should impact as little code as possible. Everything is about simplicity and minimal disruption.
-
-7. **Document and Review**: Finally, add a review section to the `tasks/todo.md` file with a summary of the changes made and any other relevant information for future reference.
+1. **Think and Plan First**
+    - Always start by thoroughly thinking through the problem and reading the codebase to identify relevant files.
+    - Write a comprehensive plan to `tasks/todo.md` before taking any action.
+2. **Create Actionable Todo Lists**
+    - The plan must contain a clear, actionable checklist of todo items that can be checked off as work progresses to ensure accountability and effective tracking.
+3. **Verify Before Executing**
+    - Before beginning any implementation, review and confirm the plan with the user.
+    - NEVER start coding or making changes without receiving explicit approval for the plan.
+4. **Track Progress Incrementally**
+    - Work through each todo item systematically, marking each one complete as you proceed.
+    - Provide real-time, high-level progress updates throughout the process.
+5. **Communicate Changes Clearly**
+    - At every step, communicate what has changed in clear, jargon-free language.
+    - Ensure your explanations are accessible and easy to understand.
+6. **Prioritize Simplicity**
+    - Make all tasks and code changes as simple as possible—avoid massive or complex modifications.
+    - Changes should impact only the minimum necessary code relevant to the task, minimizing risk and disruption.
+    - Your goal is to avoid introducing any bugs; *simplicity is paramount*.
+7. **Document and Review**
+    - Add a "review" section to `tasks/todo.md` summarizing all changes made and any relevant findings or notes for future reference.
+8. **Avoid Laziness and Temporary Fixes**
+    - NEVER be lazy: Always find and fix the root cause of any bug—no temporary or superficial fixes.
+    - Approach each task as a senior developer would, with thoroughness and diligence.
+9. **Simplicity in Fixes and Modifications**
+    - Ensure every fix and code change is as simple and limited in scope as possible.
+    - Code changes must only affect what is strictly necessary for the task, never more.
+    - The primary objectives are minimal impact, no unnecessary changes, and a bug-free result.
 
 **Security and Learning Requirements:**
 - **Security Review**: Always check code for security best practices, ensure no sensitive information in frontend, and verify no exploitable vulnerabilities

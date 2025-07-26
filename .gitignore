@@ -46,4 +46,3 @@ next-env.d.ts
 # Add to your .gitignore
 .claude.json
 
-shared-data/Weight Lifting Is a Waste of Time.mp3

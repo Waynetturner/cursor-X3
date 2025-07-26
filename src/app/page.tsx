@@ -3,18 +3,16 @@
 import { useState, useEffect } from 'react'
 import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkout } from '@/lib/supabase'
 import { announceToScreenReader } from '@/lib/accessibility'
-import { Play, Pause, Save, Info, BarChart3, Flame, Target, Calendar, Settings, ArrowRight, Sparkles, TrendingUp, Users, Shield, Loader2, AlertCircle, RotateCcw, CheckCircle } from 'lucide-react'
+import { Play, Flame, Calendar, ArrowRight, Sparkles, TrendingUp, Users, Shield } from 'lucide-react'
 import React from 'react'
 import X3MomentumWordmark from '@/components/X3MomentumWordmark'
 import AppLayout from '@/components/layout/AppLayout'
 import { useSubscription } from '@/contexts/SubscriptionContext'
 import { useX3TTS } from '@/hooks/useX3TTS'
-import { WorkoutHistory } from '@/components/WorkoutHistory'
 import { useRouter } from 'next/navigation'
 import { testModeService } from '@/lib/test-mode'
 import { getCurrentCentralISOString } from '@/lib/timezone'
 import { ttsPhaseService } from '@/lib/tts-phrases'
-import CoachChat from '@/components/CoachChat/CoachChat'
 import ExerciseCard from '@/components/ExerciseCard'
 import CadenceButton from '@/components/CadenceButton'
 import { getWorkoutHistoryData } from '@/lib/exercise-history'
@@ -113,8 +111,62 @@ export default function HomePage() {
     return 'Push';
   }
 
+  const startExercise = async (index: number) => {
+    const exercise = exercises[index]
+    
+    console.log('🚀 Starting exercise:', exercise.name)
+    
+    // Set exercise state to started
+    setExerciseStates(prev => ({ ...prev, [index]: 'started' }))
+    setExerciseLoadingStates(prev => ({ ...prev, [index]: true }))
+    
+    try {
+      // Only use TTS for premium users
+      if (hasFeature('ttsAudioCues')) {
+        setTtsActiveStates(prev => ({ ...prev, [index]: true }))
+        
+        // Get exercise start phrase from phrase library
+        const startPhrase = ttsPhaseService.getExerciseStartPhrase(
+          exercise.name, 
+          tier === 'mastery' ? 'mastery' : 'momentum'
+        )
+        
+        // Speak the start phrase with exercise context
+        await speak(startPhrase, 'exercise')
+        
+        setTtsActiveStates(prev => ({ ...prev, [index]: false }))
+        
+        // Screen reader announcement with audio guidance
+        announceToScreenReader(`Starting ${exercise.name} with audio guidance. Exercise is now in progress.`, 'assertive')
+      } else {
+        // Basic screen reader announcement for Foundation users
+        announceToScreenReader(`Starting ${exercise.name}. Exercise is now in progress.`, 'assertive')
+      }
+      
+      // Set exercise state to in progress after TTS completes (or immediately for Foundation users)
+      setExerciseStates(prev => ({ ...prev, [index]: 'in_progress' }))
+      
+      // Start cadence automatically
+      if (!cadenceActive) {
+        setCadenceActive(true)
+        console.log('🎵 Auto-starting cadence for exercise')
+      }
+      
+    } catch (error) {
+      console.error('Error starting exercise:', error)
+      setExerciseStates(prev => ({ ...prev, [index]: 'idle' }))
+      setTtsActiveStates(prev => ({ ...prev, [index]: false }))
+    } finally {
+      // Clear loading state for this exercise button
+      setExerciseLoadingStates(prev => ({ ...prev, [index]: false }))
+    }
+  }
+
   // Metronome beep effect: always call useEffect at the top level
   useEffect(() => {
+    console.log('🎵 Cadence useEffect triggered - cadenceActive:', cadenceActive);
+    console.log('🎵 useEffect values - hasFeature:', typeof hasFeature, 'tier:', tier, 'speak:', typeof speak);
+    
     // Clear any existing interval first to prevent multiple instances
     if (cadenceInterval) {
       clearInterval(cadenceInterval);
@@ -123,8 +175,20 @@ export default function HomePage() {
 
     if (cadenceActive) {
       playBeep(); // play immediately
-      const cadencePhrase = ttsPhaseService.getCadencePhrase(tier === 'mastery' ? 'mastery' : 'momentum');
-      speak(cadencePhrase, 'exercise');
+      
+      // TTS for cadence start - debug logging
+      console.log('🎵 TTS Debug: hasFeature(ttsAudioCues):', hasFeature('ttsAudioCues'));
+      console.log('🎵 TTS Debug: tier:', tier);
+      console.log('🎵 TTS Debug: speak function available:', typeof speak);
+      
+      if (hasFeature('ttsAudioCues')) {
+        const cadencePhrase = ttsPhaseService.getCadencePhrase(tier === 'mastery' ? 'mastery' : 'momentum');
+        console.log('🎵 TTS Debug: cadencePhrase:', cadencePhrase);
+        speak(cadencePhrase, 'exercise');
+        console.log('🎵 TTS Debug: speak() called for cadence');
+      } else {
+        console.log('🎵 TTS Debug: ttsAudioCues feature not available - skipping TTS');
+      }
       
       // Use the state-managed interval for consistency
       const interval = setInterval(() => {
@@ -251,7 +315,7 @@ export default function HomePage() {
         }
       }
     }
-  }, [restTimer, exercises, exerciseStates]); // Watch for restTimer becoming null
+  }, [restTimer, exercises, exerciseStates, startExercise]); // Watch for restTimer becoming null
 
   useEffect(() => {
     console.log('useEffect running, setting mounted to true')
@@ -375,7 +439,7 @@ export default function HomePage() {
       return {
         id: previous?.id || '',
         exercise_name: name,
-        band_color: history?.highestBand || previous?.band_color || 'White',
+        band_color: (history?.highestBand || previous?.band_color || 'White') as 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite' | 'Ultra Light',
         full_reps: previous?.full_reps || 0,
         partial_reps: previous?.partial_reps || 0,
         notes: '',
@@ -384,7 +448,7 @@ export default function HomePage() {
         workout_local_date_time: previous?.workout_local_date_time || '',
         // UI fields with enhanced display names
         name: history?.displayText || name.toUpperCase(), // "CHEST PRESS (16)" or "CHEST PRESS"
-        band: history?.highestBand || previous?.band_color || 'White', // Pre-select highest band used
+        band: (history?.highestBand || previous?.band_color || 'White') as 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite' | 'Ultra Light', // Pre-select highest band used
         fullReps: previous?.full_reps || 0,
         partialReps: previous?.partial_reps || 0,
         lastWorkout: previous ? `${previous.full_reps}+${previous.partial_reps} reps with ${previous.band_color} band` : '',
@@ -433,57 +497,6 @@ export default function HomePage() {
     }
   }
 
-  const startExercise = async (index: number) => {
-    const exercise = exercises[index]
-    
-    console.log('🚀 Starting exercise:', exercise.name)
-    
-    // Set exercise state to started
-    setExerciseStates(prev => ({ ...prev, [index]: 'started' }))
-    setExerciseLoadingStates(prev => ({ ...prev, [index]: true }))
-    
-    try {
-      // Only use TTS for premium users
-      if (hasFeature('ttsAudioCues')) {
-        setTtsActiveStates(prev => ({ ...prev, [index]: true }))
-        
-        // Get exercise start phrase from phrase library
-        const startPhrase = ttsPhaseService.getExerciseStartPhrase(
-          exercise.name, 
-          tier === 'mastery' ? 'mastery' : 'momentum'
-        )
-        
-        // Speak the start phrase with exercise context
-        await speak(startPhrase, 'exercise')
-        
-        setTtsActiveStates(prev => ({ ...prev, [index]: false }))
-        
-        // Screen reader announcement with audio guidance
-        announceToScreenReader(`Starting ${exercise.name} with audio guidance. Exercise is now in progress.`, 'assertive')
-      } else {
-        // Basic screen reader announcement for Foundation users
-        announceToScreenReader(`Starting ${exercise.name}. Exercise is now in progress.`, 'assertive')
-      }
-      
-      // Set exercise state to in progress after TTS completes (or immediately for Foundation users)
-      setExerciseStates(prev => ({ ...prev, [index]: 'in_progress' }))
-      
-      // Start cadence automatically
-      if (!cadenceActive) {
-        setCadenceActive(true)
-        console.log('🎵 Auto-starting cadence for exercise')
-      }
-      
-    } catch (error) {
-      console.error('Error starting exercise:', error)
-      setExerciseStates(prev => ({ ...prev, [index]: 'idle' }))
-      setTtsActiveStates(prev => ({ ...prev, [index]: false }))
-    } finally {
-      // Clear loading state for this exercise button
-      setExerciseLoadingStates(prev => ({ ...prev, [index]: false }))
-    }
-  }
-
   const saveExercise = async (index: number) => {
     console.log('💾 Starting save for exercise index:', index)
     
@@ -518,8 +531,8 @@ export default function HomePage() {
       workout_local_date_time: workoutLocalDateTime,
       workout_type: todaysWorkout.workoutType,
       week_number: todaysWorkout.week,
-      exercise_name: exercise.name,
-      band_color: exercise.band,
+      exercise_name: exercise.exercise_name,
+      band_color: exercise.band as 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite' | 'Ultra Light',
       full_reps: exercise.fullReps,
       partial_reps: exercise.partialReps,
       notes: exercise.notes
@@ -540,8 +553,8 @@ export default function HomePage() {
         date: workoutLocalDateTime.split('T')[0],
         workout_type: todaysWorkout.workoutType,
         exercises: [{
-          exercise_name: exercise.name,
-          band_color: exercise.band,
+          exercise_name: exercise.exercise_name,
+          band_color: exercise.band as 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite' | 'Ultra Light',
           full_reps: exercise.fullReps,
           partial_reps: exercise.partialReps
         }]
@@ -597,7 +610,7 @@ export default function HomePage() {
       const { data: profileCheck, error: profileCheckError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .limit(1)
       
       console.log('📋 User profile:', profileCheck)
@@ -1044,6 +1057,36 @@ export default function HomePage() {
           <p id="cadence-description" className="text-body-small text-secondary mt-2">
             Audio metronome to help maintain proper exercise timing
           </p>
+          
+          {/* Start Exercise Button */}
+          {exercises.length > 0 && !Object.values(exerciseStates).some(state => state !== 'idle' && state !== 'completed') && (
+            <div className="mt-6">
+              <button
+                onClick={() => startExercise(0)}
+                disabled={exerciseLoadingStates[0] || exerciseStates[0] === 'started'}
+                className={`py-3 px-8 rounded-xl font-bold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                  exerciseLoadingStates[0] || exerciseStates[0] === 'started'
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                    : 'bg-green-500 text-white hover:bg-green-600'
+                }`}
+              >
+                {exerciseLoadingStates[0] || exerciseStates[0] === 'started' ? (
+                  <>
+                    <div className="inline animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Starting Workout...
+                  </>
+                ) : (
+                  <>
+                    <Play className="inline mr-2" size={16} aria-hidden="true" />
+                    Start Exercise
+                  </>
+                )}
+              </button>
+              <p className="text-body-small text-secondary mt-2">
+                Begin the full {todaysWorkout.workoutType} workout sequence
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Rest Timer Display */}
@@ -1078,13 +1121,11 @@ export default function HomePage() {
                 exercise={exercise}
                 index={index}
                 exerciseState={exerciseStates[index] || 'idle'}
-                isLoading={exerciseLoadingStates[index] || false}
                 isSaveLoading={saveLoadingStates[index] || false}
                 saveError={saveErrorStates[index] || null}
                 ttsActive={ttsActiveStates[index] || false}
                 bandColors={BAND_COLORS}
                 onUpdateExercise={updateExercise}
-                onStartExercise={startExercise}
                 onSaveExercise={saveExercise}
                 onRetrySave={retrySaveExercise}
               />

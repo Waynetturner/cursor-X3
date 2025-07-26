@@ -28,10 +28,10 @@ const CadenceButton: React.FC<CadenceButtonProps> = ({
   }
 
   return (
-    <div className="w-full">
+    <div className="flex flex-col items-center">
       <button
         onClick={handleCadenceToggle}
-        className={`w-full px-8 py-4 font-bold flex items-center justify-center space-x-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transform hover:scale-105 ${
+        className={`py-3 px-8 rounded-xl font-bold flex items-center justify-center space-x-3 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transform hover:scale-105 ${
           cadenceActive 
             ? 'bg-ember-red hover:bg-red-600 text-white border-none' 
             : 'btn-primary'
