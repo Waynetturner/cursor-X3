@@ -1,8 +1,75 @@
 'use client'
 
+/**
+ * ExerciseCard Component - CRITICAL DATA DISPLAY REQUIREMENTS
+ * 
+ * ⚠️  WARNING TO FUTURE AI ASSISTANTS: READ THIS BEFORE MAKING ANY CHANGES ⚠️
+ * 
+ * This component displays exercise data with specific requirements that MUST NOT be broken:
+ * 
+ * 1. EXERCISE NAME DISPLAY (Line ~90):
+ *    - MUST show: {exercise.name.toUpperCase()} 
+ *    - The exercise.name comes from src/lib/exercise-history.ts getExerciseHistoryData()
+ *    - Format: "FRONT SQUAT (37)" where 37 is the historical best full reps
+ *    - The displayText is pre-formatted in exercise-history.ts, DO NOT modify it here
+ *    - DO NOT add prefixes like "PR:" - user specifically requested clean format
+ * 
+ * 2. DATA FLOW CHAIN (CRITICAL - DO NOT BREAK):
+ *    src/lib/exercise-history.ts → src/app/page.tsx → ExerciseCard.tsx
+ *    
+ *    - exercise-history.ts: Queries ALL historical data (NO 7-day filter!)
+ *    - exercise-history.ts: Calculates bestFullReps from highest band used
+ *    - exercise-history.ts: Returns recent data for input fields + best for display
+ *    - page.tsx: Calls getWorkoutHistoryData() and passes data to ExerciseCard
+ *    - ExerciseCard: Displays exercise.name (pre-formatted) and uses recent data for inputs
+ * 
+ * 3. INPUT FIELD PRE-POPULATION:
+ *    - exercise.fullReps: From mostRecentRecord.full_reps (recent workout data)
+ *    - exercise.partialReps: From mostRecentRecord.partial_reps (recent workout data)  
+ *    - exercise.band: From mostRecentRecord.band_color (recent workout data)
+ *    - These should be pre-filled with the user's most recent workout data
+ * 
+ * 4. PERSONAL RECORD CALCULATION:
+ *    - Handled in exercise-history.ts getExerciseHistoryData()
+ *    - Uses band hierarchy: Ultra Light < White < Light Gray < Dark Gray < Black < Elite
+ *    - Finds highest band used, then best full reps achieved with that band
+ *    - Example: 37 reps with Light Gray beats 40 reps with White band
+ * 
+ * 5. WHAT NOT TO CHANGE:
+ *    - DO NOT add date filters to exercise-history.ts queries
+ *    - DO NOT modify the exercise.name display format here
+ *    - DO NOT change the band hierarchy logic
+ *    - DO NOT break the data flow chain above
+ *    - DO NOT add "PR:" or other prefixes to exercise names
+ * 
+ * 6. TESTING REQUIREMENTS:
+ *    - Front Squat must show actual best (37) not recent best (33)
+ *    - Input fields must be pre-populated with recent workout data
+ *    - Exercise names must show clean format: "EXERCISE NAME (best_reps)"
+ *    - All exercises must display correct personal records regardless of date
+ * 
+ * If you need to modify data logic, check src/lib/exercise-history.ts first.
+ * If you need to modify data flow, check src/app/page.tsx setupExercises function.
+ * This component should primarily handle UI display, not data calculation.
+ */
+
 import { Save, Info, Target, CheckCircle, Loader2 } from 'lucide-react'
 import ApplePicker from '@/components/ui/ApplePicker'
 
+/**
+ * Exercise Interface - Data Structure Documentation
+ * 
+ * This interface defines the exercise data structure passed from page.tsx.
+ * The data originates from src/lib/exercise-history.ts and is processed in page.tsx.
+ * 
+ * Key Properties:
+ * - name: Exercise name with personal record (e.g., "FRONT SQUAT (37)")
+ * - band: Recent workout band color for input pre-population
+ * - fullReps: Recent workout full reps for input pre-population  
+ * - partialReps: Recent workout partial reps for input pre-population
+ * - notes: User notes for the exercise
+ * - saved: Whether the current workout data has been saved
+ */
 interface Exercise {
   id?: string;
   exercise_name: string;
@@ -13,10 +80,10 @@ interface Exercise {
   saved: boolean;
   previousData?: unknown;
   workout_local_date_time: string;
-  name: string;
-  band: string;
-  fullReps: number;
-  partialReps: number;
+  name: string; // CRITICAL: Pre-formatted display text from exercise-history.ts
+  band: string; // Recent workout band for input pre-population
+  fullReps: number; // Recent workout full reps for input pre-population
+  partialReps: number; // Recent workout partial reps for input pre-population
   lastWorkout: string;
   lastWorkoutDate: string;
 }
@@ -84,7 +151,20 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
       }}
     >
       <header className="mb-4">
-        {/* NEW DESIGN: Exercise title - 25% larger, centered, ALLCAPS with highest rep count */}
+        {/* 
+          CRITICAL: Exercise title display - DO NOT MODIFY THIS LOGIC
+          
+          The exercise.name is pre-formatted in src/lib/exercise-history.ts as:
+          "FRONT SQUAT (37)" where 37 is the historical best full reps
+          
+          This displayText includes:
+          - Exercise name in uppercase
+          - Personal record in parentheses (best full reps with highest band)
+          - Clean format without "PR:" prefix (user requested removal)
+          
+          DO NOT add additional formatting, prefixes, or modify this display logic.
+          The personal record calculation is handled in exercise-history.ts.
+        */}
         <div className="text-center mb-4 relative">
           <h3 className="text-title-large brand-fire mb-4 font-bold tracking-wide">
             {exercise.name.toUpperCase()}
