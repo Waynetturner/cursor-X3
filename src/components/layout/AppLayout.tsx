@@ -21,10 +21,10 @@ interface AppLayoutProps {
   workoutCompleted?: boolean
 }
 
-export default function AppLayout({ 
+export default function AppLayout({
   children,
   onStartExercise,
-  onLogWorkout, 
+  onLogWorkout,
   onAddGoal,
   onScheduleWorkout,
   onViewStats,
@@ -36,7 +36,7 @@ export default function AppLayout({
   const { isEnabled: testModeEnabled, indicator } = useTestMode()
 
   const navItems = [
-    { icon: <Flame size={20} />, label: 'Workout', tooltip: 'Workout', route: '/' },
+    { icon: <Flame size={20} />, label: 'Workout', tooltip: 'Workout', route: '/workout' },
     { icon: <BarChart3 size={20} />, label: 'Stats', tooltip: 'Stats', route: '/stats' },
     { icon: <Calendar size={20} />, label: 'Calendar', tooltip: 'Calendar', route: '/calendar' },
     { icon: <Target size={20} />, label: 'Goals', tooltip: 'Goals', route: '/goals' },
@@ -89,8 +89,8 @@ export default function AppLayout({
             <div className="flex justify-center items-center">
               <div className="flex space-x-2 flex-wrap gap-y-2">
                 {navItems.map((item) => {
-                  const isActive = pathname === item.route || 
-                    (item.label === 'Workout' && pathname === '/')
+                  const isActive = pathname === item.route ||
+                    (item.label === 'Workout' && (pathname === '/' || pathname === '/workout'))
                   const isSignOut = item.label === 'Sign Out'
                   return (
                     <button
@@ -99,8 +99,8 @@ export default function AppLayout({
                       className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow text-base ${
                         isSignOut
                           ? 'bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-800'
-                          : isActive 
-                            ? 'bg-orange-500 text-white' 
+                          : isActive
+                            ? 'bg-orange-500 text-white'
                             : 'bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-orange-600'
                       }`}
                     >
@@ -113,18 +113,18 @@ export default function AppLayout({
             </div>
           </div>
         </nav>
-        
+
         {/* Main content area */}
         <main className="flex-1 overflow-auto">
           {children}
         </main>
 
         {/* Mobile Navigation Components */}
-        <BottomNavigation 
+        <BottomNavigation
           currentPath={pathname}
           onNavigate={handleNavigate}
         />
-        
+
         <ContextualFAB
           onStartExercise={onStartExercise}
           onLogWorkout={onLogWorkout}

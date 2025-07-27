@@ -19,41 +19,41 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { 
-    icon: Flame, 
-    label: 'Workout', 
-    path: '/', 
-    color: 'fire' 
+  {
+    icon: Flame,
+    label: 'Workout',
+    path: '/workout',
+    color: 'fire'
   },
-  { 
-    icon: BarChart3, 
-    label: 'Stats', 
-    path: '/stats', 
-    color: 'blue' 
+  {
+    icon: BarChart3,
+    label: 'Stats',
+    path: '/stats',
+    color: 'blue'
   },
-  { 
-    icon: Calendar, 
-    label: 'Calendar', 
-    path: '/calendar', 
-    color: 'green' 
+  {
+    icon: Calendar,
+    label: 'Calendar',
+    path: '/calendar',
+    color: 'green'
   },
-  { 
-    icon: Target, 
-    label: 'Goals', 
-    path: '/goals', 
-    color: 'purple' 
+  {
+    icon: Target,
+    label: 'Goals',
+    path: '/goals',
+    color: 'purple'
   },
-  { 
-    icon: Settings, 
-    label: 'Settings', 
-    path: '/settings', 
-    color: 'gray' 
+  {
+    icon: Settings,
+    label: 'Settings',
+    path: '/settings',
+    color: 'gray'
   },
-  { 
-    icon: LogOut, 
-    label: 'Sign Out', 
-    path: '/auth/signin', 
-    color: 'red' 
+  {
+    icon: LogOut,
+    label: 'Sign Out',
+    path: '/auth/signin',
+    color: 'red'
   }
 ]
 
@@ -100,12 +100,12 @@ export default function BottomNavigation({ currentPath, onNavigate }: BottomNavP
   const handleItemPress = (item: NavItem) => {
     // Apple-style bounce animation
     setPressedItem(item.path)
-    
+
     // Add haptic feedback if available
     if ('vibrate' in navigator) {
       navigator.vibrate(10) // Short haptic feedback
     }
-    
+
     // Handle sign out differently
     if (item.label === 'Sign Out') {
       setTimeout(() => {
@@ -124,7 +124,7 @@ export default function BottomNavigation({ currentPath, onNavigate }: BottomNavP
   return (
     <>
       {/* Bottom Navigation - Mobile Only */}
-      <nav 
+      <nav
         className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 px-4 py-2 z-50 md:hidden"
         style={{
           paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
@@ -132,11 +132,11 @@ export default function BottomNavigation({ currentPath, onNavigate }: BottomNavP
       >
         <div className="flex items-center justify-around max-w-lg mx-auto">
           {navItems.map((item) => {
-            const isActive = currentPath === item.path || 
-              (item.path === '/' && (currentPath === '/' || currentPath === '/workout'))
+            const isActive = currentPath === item.path ||
+              (item.path === '/workout' && (currentPath === '/' || currentPath === '/workout'))
             const isPressed = pressedItem === item.path
             const colors = colorMap[item.color as keyof typeof colorMap]
-            
+
             return (
               <button
                 key={item.label}
@@ -159,13 +159,13 @@ export default function BottomNavigation({ currentPath, onNavigate }: BottomNavP
                   transition-transform duration-200 mb-1
                   ${isPressed ? 'scale-90' : 'scale-100'}
                 `}>
-                  <item.icon 
-                    size={22} 
+                  <item.icon
+                    size={22}
                     strokeWidth={isActive ? 2.5 : 2}
                     className="transition-all duration-200"
                   />
                 </div>
-                
+
                 {/* Label */}
                 <span className={`
                   text-xs font-medium leading-none transition-all duration-200
@@ -192,8 +192,8 @@ export default function BottomNavigation({ currentPath, onNavigate }: BottomNavP
       </nav>
 
       {/* Spacer for bottom navigation on mobile */}
-      <div 
-        className="h-20 md:hidden" 
+      <div
+        className="h-20 md:hidden"
         style={{
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
