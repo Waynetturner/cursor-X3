@@ -81,7 +81,7 @@ export function calculateStreak(startDate: string, workoutDates: string[]) {
   // If start date is in the future, return 0
   if (start > today) return 0
   
-  let streakEndDate = new Date(today)
+  const streakEndDate = new Date(today)
   let streakLength = 0
   
   // Work backwards from today to find where the streak breaks

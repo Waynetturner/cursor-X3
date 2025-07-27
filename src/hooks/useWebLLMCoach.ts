@@ -305,7 +305,7 @@ export function useWebLLMCoach(options: WebLLMCoachOptions = {}) {
         if (sortedDates.length > 0) {
           // Calculate current streak
           const today = new Date().toISOString().split('T')[0]
-          let checkDate = new Date()
+          const checkDate = new Date()
           while (checkDate >= new Date(sortedDates[0])) {
             const dateStr = checkDate.toISOString().split('T')[0]
             if (workoutDates.has(dateStr)) {
@@ -417,7 +417,7 @@ export function useWebLLMCoach(options: WebLLMCoachOptions = {}) {
   const buildSystemPrompt = useCallback((context: UserWorkoutContext) => {
     const { userProfile, userStats, workoutContext, currentExercise, progressMetrics, userGoals, measurements, recentWorkouts, preferences } = context
     
-    let systemPrompt = `You are an expert X3 fitness coach with deep knowledge of the X3 Bar system and variable resistance training. You provide personalized coaching based on the user's comprehensive profile and progress data.
+    const systemPrompt = `You are an expert X3 fitness coach with deep knowledge of the X3 Bar system and variable resistance training. You provide personalized coaching based on the user's comprehensive profile and progress data.
 
 ## CRITICAL X3 METHODOLOGY - NEVER SUGGEST TRADITIONAL WEIGHTLIFTING ADVICE:
 
