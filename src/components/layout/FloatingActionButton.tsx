@@ -116,6 +116,7 @@ export function FloatingActionButton({
         ${isPressed ? 'scale-90' : 'scale-100'}
         ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}
         ${!disabled && !isPressed ? 'hover:scale-110 hover:shadow-xl' : ''}
+        md:hidden
         ${className}
       `}
       style={{

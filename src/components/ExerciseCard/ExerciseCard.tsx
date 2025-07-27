@@ -1,6 +1,7 @@
 'use client'
 
 import { Save, Info, Target, CheckCircle, Loader2 } from 'lucide-react'
+import ApplePicker from '@/components/ui/ApplePicker'
 
 interface Exercise {
   id?: string;
@@ -107,21 +108,16 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
       </header>
       
       <div className="mb-5">
-        <label htmlFor={`band-${exercise.name}`} className="block text-label-large mb-3 text-secondary font-medium">
-          Band Color
-        </label>
-        <select
-          id={`band-${exercise.name}`}
-          value={exercise.band}
-          onChange={(e) => onUpdateExercise(index, 'band', e.target.value)}
-          className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-body focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-primary transition-all duration-200 hover:border-gray-300 cursor-pointer min-h-[44px]"
-        >
-          {bandColors.map(color => (
-            <option key={color} value={color} className="bg-white text-primary py-2">
-              {color} Band
-            </option>
-          ))}
-        </select>
+        <ApplePicker
+          options={bandColors.map(color => `${color} Band`)}
+          value={`${exercise.band} Band`}
+          onChange={(value) => {
+            const bandColor = value.replace(' Band', '')
+            onUpdateExercise(index, 'band', bandColor)
+          }}
+          label="Band Color"
+          color="fire"
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-5">
@@ -134,7 +130,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
             type="number"
             value={exercise.fullReps || ''}
             onChange={(e) => onUpdateExercise(index, 'fullReps', parseInt(e.target.value) || 0)}
-            className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-center text-body-large font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-primary transition-all duration-200 hover:border-gray-300 min-h-[44px]"
+            className="input-apple-style w-full text-center text-body-large font-semibold text-primary min-h-[44px]"
             min="0"
             max="999"
             inputMode="numeric"
@@ -149,7 +145,7 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
             type="number"
             value={exercise.partialReps || ''}
             onChange={(e) => onUpdateExercise(index, 'partialReps', parseInt(e.target.value) || 0)}
-            className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-center text-body-large font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-primary transition-all duration-200 hover:border-gray-300 min-h-[44px]"
+            className="input-apple-style w-full text-center text-body-large font-semibold text-primary min-h-[44px]"
             min="0"
             max="999"
             inputMode="numeric"
@@ -165,9 +161,9 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
           id={`notes-${exercise.name}`}
           value={exercise.notes}
           onChange={(e) => onUpdateExercise(index, 'notes', e.target.value)}
-          className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-3 text-body focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-primary placeholder-gray-400 transition-all duration-200 hover:border-gray-300 resize-none"
+          className="input-apple-style w-full text-body-small text-primary placeholder-gray-400 resize-none"
           rows={2}
-          placeholder="Add comments about this exercise..."
+          placeholder="Notes..."
         />
       </div>
 
@@ -227,15 +223,14 @@ const ExerciseCard: React.FC<ExerciseCardProps> = ({
         onClick={() => onSaveExercise(index)}
         disabled={exercise.saved || isSaveLoading}
         className={`
-          w-full py-4 rounded-xl font-bold text-body-emphasized
+          btn-apple-style w-full py-4 rounded-xl font-bold text-body-emphasized
           focus:outline-none focus:ring-4 focus:ring-offset-2 
-          transition-all duration-200 transform active:scale-95
           min-h-[52px] flex items-center justify-center
           ${exercise.saved
             ? 'bg-green-500 text-white cursor-default focus:ring-green-500/30 shadow-lg'
             : isSaveLoading
               ? 'bg-gray-400 text-gray-600 cursor-not-allowed focus:ring-gray-400/30'
-              : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white focus:ring-orange-500/30 shadow-lg hover:shadow-xl hover:scale-[1.02]'
+              : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white focus:ring-orange-500/30 shadow-lg hover:shadow-xl'
           }
         `}
         style={{

@@ -381,6 +381,8 @@ export default function HomePage() {
         }
       } else {
         console.log('👤 No user found')
+        router.push('/auth/signin')
+        return
       }
     }
     
@@ -769,7 +771,7 @@ export default function HomePage() {
             <h1 className="mb-4 flex justify-center">
               <X3MomentumWordmark size="lg" />
             </h1>
-            <h2 className="text-subhead mb-2 text-secondary">AI-Powered X3 Resistance Band Tracker</h2>
+            <h2 className="text-headline-medium mb-2 text-secondary">AI-Powered X3 Resistance Band Tracker</h2>
             <p className="text-body italic text-secondary">Motivation. Progress. Results.</p>
           </div>
         </header>
@@ -910,10 +912,10 @@ export default function HomePage() {
     return (
       <div className="min-h-screen brand-gradient">
         <div className="flex items-center justify-center min-h-screen p-4">
-          <div className="brand-card text-center max-w-md mx-4">
+          <div className="card-elevation-2 bg-white rounded-xl p-6 text-center max-w-md mx-4">
             <div className="mb-6">
               <X3MomentumWordmark size="md" className="mx-auto mb-4" />
-              <h2 className="text-subhead mb-2 text-secondary">Loading...</h2>
+              <h2 className="text-headline-medium mb-2 text-secondary">Loading...</h2>
             </div>
             <div className="text-body mb-4" role="status" aria-live="polite">
               {user ? 'Loading your workout...' : 'Please sign in to continue'}
@@ -951,9 +953,9 @@ export default function HomePage() {
       <div className="container mx-auto px-4 py-8">
         <main>
           <div className="max-w-2xl mx-auto">
-            <div className="brand-card text-center">
+            <div className="card-elevation-2 bg-white rounded-xl p-6 text-center">
               <div className="text-6xl mb-6" role="img" aria-label="Rest day relaxation emoji">🛋️</div>
-              <h1 className="text-headline mb-4 brand-gold">Today&apos;s Rest Day</h1>
+              <h1 className="text-headline-large mb-4 brand-gold">Today&apos;s Rest Day</h1>
               <p className="text-body mb-8">Focus on recovery, hydration, and nutrition</p>
               
               <div className="text-left space-y-3 mb-6">
@@ -1028,21 +1030,22 @@ export default function HomePage() {
     router.push('/stats')
   }
 
+
   // Determine current exercise state
   const exerciseInProgress = exercises.some(ex => exerciseStates[Object.keys(exerciseStates).find(key => exerciseStates[parseInt(key)] === 'in_progress') as any] === 'in_progress')
   const workoutCompleted = exercises.length > 0 && exercises.every(ex => ex.saved)
 
   return (
-    <AppLayout 
-      onStartExercise={handleStartExercise}
-      onLogWorkout={handleLogWorkout}
-      onAddGoal={handleAddGoal}
-      onScheduleWorkout={handleScheduleWorkout}
-      onViewStats={handleViewStats}
-      exerciseInProgress={exerciseInProgress}
-      workoutCompleted={workoutCompleted}
-    >
-      <div className="container mx-auto px-4 py-8">
+      <AppLayout 
+        onStartExercise={handleStartExercise}
+        onLogWorkout={handleLogWorkout}
+        onAddGoal={handleAddGoal}
+        onScheduleWorkout={handleScheduleWorkout}
+        onViewStats={handleViewStats}
+        exerciseInProgress={exerciseInProgress}
+        workoutCompleted={workoutCompleted}
+      >
+      <div className="container mx-auto px-6 py-12 max-w-7xl">
 
         {/* Motivational Greeting */}
         {/* Test Mode Banner */}
@@ -1061,17 +1064,26 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="brand-card text-center mb-8">
-          <h1 className="text-headline mb-2">
-            Today&apos;s <span className="brand-fire">{todaysWorkout.workoutType}</span> Workout
-          </h1>
-          <p className="text-body">Week <span className="brand-gold font-bold">{todaysWorkout.week}</span> • <span className="italic">&quot;Train to failure, not to a number&quot;</span></p>
+        <div className="relative overflow-hidden bg-gradient-to-br from-white via-orange-50/50 to-red-50/30 border border-orange-200/50 rounded-3xl spacing-apple-spacious mb-12 shadow-2xl transform hover:scale-[1.02] transition-all duration-500 visual-depth-2 animate-on-load animate-apple-scale-in">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-red-500/5 rounded-3xl"></div>
+          <div className="relative z-10 text-center">
+            <div className="mb-4">
+              <div className="inline-flex items-center space-x-3 bg-white/80 backdrop-blur-sm rounded-full px-6 py-3 shadow-lg">
+                <div className="w-3 h-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Week {todaysWorkout?.week || 'Loading'}</span>
+              </div>
+            </div>
+            <h1 className="text-display-medium mb-6 leading-tight bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
+              Today's <span className="bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 bg-clip-text text-transparent font-black">{todaysWorkout?.workoutType || 'Loading'}</span> Workout
+            </h1>
+            <p className="text-title-large text-gray-700 font-medium italic tracking-wide">"Train to failure, not to a number"</p>
+          </div>
         </div>
 
 
         {/* TTS Status Indicator */}
         {hasFeature('ttsAudioCues') && (
-          <div className="brand-card text-center mb-4">
+          <div className="card-elevation-1 bg-apple-card spacing-apple-comfortable text-center mb-8 visual-depth-1 animate-on-load animate-apple-fade-in-up animate-delay-100">
             <div className="flex items-center justify-center space-x-2">
               {ttsLoading && (
                 <div className="flex items-center space-x-2">
@@ -1101,8 +1113,8 @@ export default function HomePage() {
         )}
 
         {/* Cadence Control */}
-        <div className="brand-card text-center mb-8">
-          <h3 className="text-body-large mb-4">🎵 Workout Cadence</h3>
+        <div className="card-elevation-1 bg-apple-card spacing-apple-comfortable text-center mb-12 visual-depth-1 animate-on-load animate-apple-fade-in-up animate-delay-200">
+          <h3 className="text-title-large mb-4 text-gradient-fire">🎵 Workout Cadence</h3>
           {CadenceButtonComponent}
           <p id="cadence-description" className="text-body-small text-secondary mt-2">
             Audio metronome to help maintain proper exercise timing
@@ -1114,7 +1126,7 @@ export default function HomePage() {
               <button
                 onClick={() => startExercise(0)}
                 disabled={exerciseLoadingStates[0] || exerciseStates[0] === 'started'}
-                className={`py-3 px-8 rounded-xl font-bold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                className={`btn-apple-style py-3 px-8 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
                   exerciseLoadingStates[0] || exerciseStates[0] === 'started'
                     ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
                     : 'bg-green-500 text-white hover:bg-green-600'
@@ -1141,8 +1153,8 @@ export default function HomePage() {
 
         {/* Rest Timer Display */}
         {restTimer && hasFeature('restTimer') && (
-          <div className="brand-card text-center mb-8">
-            <h3 className="text-body-large mb-4">⏱️ Rest Timer</h3>
+          <div className="card-elevation-1 bg-apple-card spacing-apple-comfortable text-center mb-12 visual-depth-1 animate-on-load animate-apple-fade-in-up animate-delay-300">
+            <h3 className="text-title-large mb-4 text-gradient-fire">⏱️ Rest Timer</h3>
             <div className="text-4xl font-bold brand-fire mb-2">
               {Math.floor(restTimer.timeLeft / 60)}:{(restTimer.timeLeft % 60).toString().padStart(2, '0')}
             </div>
@@ -1151,7 +1163,7 @@ export default function HomePage() {
             </p>
             <button
               onClick={() => setRestTimer(null)}
-              className="btn-secondary"
+              className="btn-apple-style btn-secondary"
             >
               Skip Rest
             </button>
@@ -1164,7 +1176,7 @@ export default function HomePage() {
         {/* Exercise Grid */}
         <main>
           <h2 className="sr-only">Exercise tracking cards</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-10 visual-depth-floating animate-on-load animate-apple-fade-in-up animate-delay-400">
             {exercises.map((exercise, index) => (
               <ExerciseCard
                 key={exercise.name}

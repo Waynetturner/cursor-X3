@@ -1,7 +1,9 @@
 'use client'
 
-import { Flame, BarChart3, Calendar, Target, Settings } from 'lucide-react'
+import { Flame, BarChart3, Calendar, Target, Settings, LogOut } from 'lucide-react'
 import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 interface BottomNavProps {
   currentPath: string
@@ -46,6 +48,12 @@ const navItems: NavItem[] = [
     label: 'Settings', 
     path: '/settings', 
     color: 'gray' 
+  },
+  { 
+    icon: LogOut, 
+    label: 'Sign Out', 
+    path: '/auth/signin', 
+    color: 'red' 
   }
 ]
 
@@ -69,11 +77,25 @@ const colorMap = {
   gray: {
     active: 'text-gray-600 bg-gray-100',
     inactive: 'text-gray-600 hover:text-gray-700 hover:bg-gray-50'
+  },
+  red: {
+    active: 'text-red-600 bg-red-100',
+    inactive: 'text-gray-600 hover:text-red-600 hover:bg-red-50'
   }
 }
 
 export default function BottomNavigation({ currentPath, onNavigate }: BottomNavProps) {
   const [pressedItem, setPressedItem] = useState<string | null>(null)
+  const router = useRouter()
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Error signing out:', error)
+    } else {
+      router.push('/auth/signin')
+    }
+  }
 
   const handleItemPress = (item: NavItem) => {
     // Apple-style bounce animation
@@ -84,23 +106,31 @@ export default function BottomNavigation({ currentPath, onNavigate }: BottomNavP
       navigator.vibrate(10) // Short haptic feedback
     }
     
-    // Navigate after animation
-    setTimeout(() => {
-      onNavigate(item.path)
-      setPressedItem(null)
-    }, 150)
+    // Handle sign out differently
+    if (item.label === 'Sign Out') {
+      setTimeout(() => {
+        handleSignOut()
+        setPressedItem(null)
+      }, 150)
+    } else {
+      // Navigate after animation
+      setTimeout(() => {
+        onNavigate(item.path)
+        setPressedItem(null)
+      }, 150)
+    }
   }
 
   return (
     <>
       {/* Bottom Navigation - Mobile Only */}
       <nav 
-        className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 px-4 py-2 z-50"
+        className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-gray-200 px-4 py-2 z-50 md:hidden"
         style={{
           paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
         }}
       >
-        <div className="flex items-center justify-around max-w-sm mx-auto">
+        <div className="flex items-center justify-around max-w-lg mx-auto">
           {navItems.map((item) => {
             const isActive = currentPath === item.path || 
               (item.path === '/' && (currentPath === '/' || currentPath === '/workout'))
@@ -163,7 +193,7 @@ export default function BottomNavigation({ currentPath, onNavigate }: BottomNavP
 
       {/* Spacer for bottom navigation on mobile */}
       <div 
-        className="h-20" 
+        className="h-20 md:hidden" 
         style={{
           paddingBottom: 'env(safe-area-inset-bottom)',
         }}
