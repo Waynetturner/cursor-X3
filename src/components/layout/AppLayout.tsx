@@ -90,7 +90,7 @@ export default function AppLayout({
               <div className="flex space-x-2 flex-wrap gap-y-2">
                 {navItems.map((item) => {
                   const isActive = pathname === item.route || 
-                    (item.route === '/workout' && pathname === '/')
+                    (item.label === 'Workout' && pathname === '/')
                   const isSignOut = item.label === 'Sign Out'
                   return (
                     <button

@@ -326,8 +326,22 @@ export default function HomePage() {
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       
       if (authError) {
-        console.error('❌ Auth error:', authError)
-        return
+        console.error('❌ Auth error details:', {
+          message: authError.message,
+          status: authError.status,
+          code: authError.code,
+          details: authError
+        })
+        // Try to get session instead
+        console.log('🔄 Trying to get session instead...')
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError || !session?.user) {
+          console.log('👤 No user found - redirecting to sign in')
+          router.push('/auth/signin')
+          return
+        }
+        console.log('✅ Found user via session:', session.user.id)
+        setUser(session.user)
       }
       
       console.log('👤 User data:', user)
@@ -337,7 +351,7 @@ export default function HomePage() {
         announceToScreenReader('Welcome to X3 Tracker. Loading your workout data.')
         
         // Get user's start date
-        console.log('📅 Fetching user profile for ID:', user.id)
+        console.log('� Fetching user profile for ID:', user.id)
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('x3_start_date')
@@ -429,36 +443,43 @@ export default function HomePage() {
     console.log('📋 Previous workout data for context:', previousData)
     console.log('❌ Query error:', error)
     
-    // Create exercise data using history data with band hierarchy
+    // Create exercise data using recent workout data for input fields and historical best for display
     const exerciseData = exerciseNames.map(name => {
       const history = historyData[name]
-      const previous = previousData?.find(p => p.exercise_name === name)
       
       console.log(`🎯 Processing ${name}:`)
       console.log(`  - History data:`, history)
-      console.log(`  - Previous data:`, previous)
       
       return {
-        id: previous?.id || '',
+        id: '',
         exercise_name: name,
-        band_color: (history?.highestBand || previous?.band_color || 'White') as 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite' | 'Ultra Light',
-        full_reps: previous?.full_reps || 0,
-        partial_reps: previous?.partial_reps || 0,
+        band_color: (history?.recentBand || 'White') as 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite' | 'Ultra Light',
+        full_reps: history?.recentFullReps || 0,
+        partial_reps: history?.recentPartialReps || 0,
         notes: '',
         saved: false,
-        previousData: previous || null,
-        workout_local_date_time: previous?.workout_local_date_time || '',
-        // UI fields with enhanced display names
-        name: history?.displayText || name.toUpperCase(), // "CHEST PRESS (16)" or "CHEST PRESS"
-        band: (history?.highestBand || previous?.band_color || 'White') as 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite' | 'Ultra Light', // Pre-select highest band used
-        fullReps: previous?.full_reps || 0,
-        partialReps: previous?.partial_reps || 0,
-        lastWorkout: previous ? `${previous.full_reps}+${previous.partial_reps} reps with ${previous.band_color} band` : '',
-        lastWorkoutDate: previous ? formatWorkoutDate(previous.workout_local_date_time) : ''
+        previousData: null,
+        workout_local_date_time: history?.recentWorkoutDate || '',
+        // UI fields - name shows historical PR, input fields use recent data
+        name: history?.displayText || name.toUpperCase(), // "CHEST PRESS (PR: 16)" or "CHEST PRESS"
+        band: (history?.recentBand || 'White') as 'White' | 'Light Gray' | 'Dark Gray' | 'Black' | 'Elite' | 'Ultra Light', // Pre-fill with recent band
+        fullReps: history?.recentFullReps || 0, // Pre-fill with recent full reps
+        partialReps: history?.recentPartialReps || 0, // Pre-fill with recent partial reps
+        lastWorkout: history?.recentWorkoutDate ? `${history.recentFullReps}+${history.recentPartialReps} reps with ${history.recentBand} band` : '',
+        lastWorkoutDate: history?.recentWorkoutDate ? formatWorkoutDate(history.recentWorkoutDate) : ''
       }
     })
     
     console.log('✅ Final exercise data with band hierarchy:', exerciseData)
+    
+    // Debug: Log what will be passed to ExerciseCard for each exercise
+    exerciseData.forEach((exercise, index) => {
+      console.log(`🔍 Exercise ${index} (${exercise.name}) will show in card:`)
+      console.log(`  - Band: ${exercise.band} (from recent: ${historyData[exercise.exercise_name]?.recentBand})`)
+      console.log(`  - Full Reps: ${exercise.fullReps} (from recent: ${historyData[exercise.exercise_name]?.recentFullReps})`)
+      console.log(`  - Partial Reps: ${exercise.partialReps} (from recent: ${historyData[exercise.exercise_name]?.recentPartialReps})`)
+    })
+    
     setExercises(exerciseData)
     
     if (previousData && previousData.length > 0) {
@@ -468,10 +489,10 @@ export default function HomePage() {
     
     // Log success for each exercise
     exerciseData.forEach(exercise => {
-      if (exercise.name.includes('(')) {
-        console.log(`✨ ${exercise.exercise_name}: Display "${exercise.name}", Band pre-selected: ${exercise.band}`)
+      if (exercise.name.includes('PR:')) {
+        console.log(`✨ ${exercise.exercise_name}: Display "${exercise.name}", Recent data - Band: ${exercise.band}, Reps: ${exercise.fullReps}+${exercise.partialReps}`)
       } else {
-        console.log(`📝 ${exercise.exercise_name}: No history - Display "${exercise.name}", Default band: ${exercise.band}`)
+        console.log(`📝 ${exercise.exercise_name}: No history - Display "${exercise.name}", Default values`)
       }
     })
   }
