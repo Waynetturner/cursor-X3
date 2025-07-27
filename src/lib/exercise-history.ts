@@ -1,6 +1,8 @@
 import { supabase } from './supabase'
 
 // Band hierarchy from X3 documentation: Ultra Light < White < Light Gray < Dark Gray < Black < Elite
+// DO NOT DELETE: This hierarchy is essential for calculating true personal bests
+// A PR with Dark Gray band is better than a higher rep count with White band
 const BAND_HIERARCHY = {
   'Ultra Light': 1,
   'White': 2,
@@ -10,10 +12,12 @@ const BAND_HIERARCHY = {
   'Elite': 6
 }
 
+// DO NOT DELETE: Used to determine band strength ranking for PR calculations
 function getBandRank(bandColor: string): number {
   return BAND_HIERARCHY[bandColor as keyof typeof BAND_HIERARCHY] || 0
 }
 
+// DO NOT DELETE: Finds the strongest band used across all workouts
 function getHighestBand(bandColors: string[]): string | null {
   if (bandColors.length === 0) return null
   return bandColors.reduce((highest, current) => {
@@ -23,8 +27,13 @@ function getHighestBand(bandColors: string[]): string | null {
 
 export interface ExerciseHistoryData {
   exerciseName: string
-  highestBand: string | null
-  bestRepCount: number
+  // Recent workout data for pre-filling input fields
+  recentBand: string | null
+  recentFullReps: number
+  recentPartialReps: number
+  recentWorkoutDate: string | null
+  // Historical best for display in exercise name
+  bestFullReps: number
   displayText: string
 }
 
@@ -38,13 +47,18 @@ export async function getExerciseHistoryData(exerciseName: string): Promise<Exer
       return null
     }
     
-    // Query all records for this exercise and user
+    console.log(`🔍 [${exerciseName}] Querying exercise history for user:`, user.id)
+    
+    // We need all data to calculate the true personal best, but will use recent data for input fields
     const { data: exerciseData, error } = await supabase
       .from('workout_exercises')
       .select('band_color, full_reps, partial_reps, workout_local_date_time, created_at_utc')
       .eq('user_id', user.id)
       .eq('exercise_name', exerciseName)
-      .order('created_at_utc', { ascending: false })
+      .order('workout_local_date_time', { ascending: false })
+
+    console.log(`🔍 [${exerciseName}] Raw query results:`, exerciseData)
+    console.log(`🔍 [${exerciseName}] Query error:`, error)
 
     if (error) {
       console.error('Database error:', error)
@@ -52,48 +66,52 @@ export async function getExerciseHistoryData(exerciseName: string): Promise<Exer
     }
 
     if (!exerciseData || exerciseData.length === 0) {
+      console.log(`🔍 [${exerciseName}] No history found - returning defaults`)
       // No history - return defaults
       return {
         exerciseName,
-        highestBand: null,
-        bestRepCount: 0,
+        recentBand: null,
+        recentFullReps: 0,
+        recentPartialReps: 0,
+        recentWorkoutDate: null,
+        bestFullReps: 0,
         displayText: exerciseName.toUpperCase()
       }
     }
 
-    // Extract all unique bands used
-    const bandsUsed = [...new Set(exerciseData.map(record => record.band_color).filter(Boolean))]
+    // Log the first few records to see the order
+    console.log(`🔍 [${exerciseName}] First 3 records by date:`)
+    exerciseData.slice(0, 3).forEach((record: any, index: number) => {
+      console.log(`  ${index}: ${record.workout_local_date_time} - ${record.full_reps}+${record.partial_reps} reps (${record.band_color})`)
+    })
+
+    // Get most recent workout data for pre-filling input fields
+    const mostRecentRecord = exerciseData[0]
+    console.log(`🔍 [${exerciseName}] Using most recent record:`, mostRecentRecord)
     
-    if (bandsUsed.length === 0) {
-      return {
-        exerciseName,
-        highestBand: null,
-        bestRepCount: 0,
-        displayText: exerciseName.toUpperCase()
+    // Find TRUE personal best: highest full reps achieved with the highest band
+    const bandsUsed = [...new Set(exerciseData.map((record: any) => record.band_color).filter(Boolean))] as string[]
+    let bestFullReps = 0
+    
+    if (bandsUsed.length > 0) {
+      const highestBand = getHighestBand(bandsUsed)
+      if (highestBand) {
+        // Find the best full reps achieved with the highest band
+        const highestBandRecords = exerciseData.filter((record: any) => record.band_color === highestBand)
+        bestFullReps = Math.max(...highestBandRecords.map((record: any) => record.full_reps || 0))
       }
     }
-    
-    // Find the highest band used
-    const highestBand = getHighestBand(bandsUsed)
-    
-    if (!highestBand) {
-      return {
-        exerciseName,
-        highestBand: null,
-        bestRepCount: 0,
-        displayText: exerciseName.toUpperCase()
-      }
-    }
-    
-    // Find the best rep count for that highest band
-    const highestBandRecords = exerciseData.filter(record => record.band_color === highestBand)
-    const bestRepCount = Math.max(...highestBandRecords.map(record => record.full_reps || 0))
     
     return {
       exerciseName,
-      highestBand,
-      bestRepCount,
-      displayText: bestRepCount > 0 ? `${exerciseName.toUpperCase()} (${bestRepCount})` : exerciseName.toUpperCase()
+      recentBand: mostRecentRecord.band_color,
+      recentFullReps: mostRecentRecord.full_reps || 0,
+      recentPartialReps: mostRecentRecord.partial_reps || 0,
+      recentWorkoutDate: mostRecentRecord.workout_local_date_time,
+      bestFullReps,
+      displayText: bestFullReps > 0 
+        ? `${exerciseName.toUpperCase()} (${bestFullReps})` 
+        : exerciseName.toUpperCase()
     }
     
   } catch (error) {

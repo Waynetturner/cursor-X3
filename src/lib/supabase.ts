@@ -7,7 +7,7 @@ export const X3_EXERCISES = {
   Pull: ['Deadlift', 'Bent Row', 'Bicep Curl', 'Calf Raise']
 }
 
-export const BAND_COLORS = ['White', 'Light Gray', 'Dark Gray', 'Black', 'Elite']
+export const BAND_COLORS = ['Ultra Light', 'White', 'Light Gray', 'Dark Gray', 'Black', 'Elite']
 
 // Calculate what workout should be today
 export function getTodaysWorkout(startDate: string) {

@@ -6,23 +6,42 @@ import { ReactNode } from 'react'
 import X3MomentumWordmark from '../X3MomentumWordmark'
 import { supabase } from '@/lib/supabase'
 import { useTestMode } from '@/lib/test-mode'
+import BottomNavigation from './BottomNavigation'
+import ContextualFAB from './FloatingActionButton'
 
 interface AppLayoutProps {
   children: ReactNode
   title?: string
+  onStartExercise?: () => void
+  onLogWorkout?: () => void
+  onAddGoal?: () => void
+  onScheduleWorkout?: () => void
+  onViewStats?: () => void
+  exerciseInProgress?: boolean
+  workoutCompleted?: boolean
 }
 
-export default function AppLayout({ children }: AppLayoutProps) {
+export default function AppLayout({ 
+  children,
+  onStartExercise,
+  onLogWorkout, 
+  onAddGoal,
+  onScheduleWorkout,
+  onViewStats,
+  exerciseInProgress = false,
+  workoutCompleted = false
+}: AppLayoutProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { isEnabled: testModeEnabled, indicator } = useTestMode()
 
   const navItems = [
-    { icon: <Flame size={20} />, label: 'Workout', tooltip: 'Workout', route: '/workout' },
+    { icon: <Flame size={20} />, label: 'Workout', tooltip: 'Workout', route: '/' },
     { icon: <BarChart3 size={20} />, label: 'Stats', tooltip: 'Stats', route: '/stats' },
     { icon: <Calendar size={20} />, label: 'Calendar', tooltip: 'Calendar', route: '/calendar' },
     { icon: <Target size={20} />, label: 'Goals', tooltip: 'Goals', route: '/goals' },
     { icon: <Settings size={20} />, label: 'Settings', tooltip: 'Settings', route: '/settings' },
+    { icon: <LogOut size={20} />, label: 'Sign Out', tooltip: 'Sign Out', route: '/auth/signin' },
   ]
 
   const handleSignOut = async () => {
@@ -34,16 +53,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
+  const handleNavigate = (path: string) => {
+    router.push(path)
+  }
+
   return (
-    <div className="min-h-screen brand-gradient">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50/20 via-white to-red-50/20">
       <div className="flex flex-col h-screen">
-        {/* Hero banner with prominent X3 MOMENTUM branding as H1 */}
-        <header className="w-full bg-white/90 backdrop-blur-lg border-b border-gray-200 p-8 text-center shadow-lg">
+        {/* Apple-style Hero Header */}
+        <header className="w-full bg-gradient-to-b from-white via-orange-50/30 to-white backdrop-blur-xl border-b border-orange-200/30 px-8 py-12 text-center shadow-2xl">
           <div className="max-w-6xl mx-auto">
-            <h1 className="mb-4 flex justify-center">
+            <div className="mb-6 transform hover:scale-105 transition-all duration-500 ease-out flex justify-center">
               <X3MomentumWordmark size="lg" />
-            </h1>
-            <h2 className="text-subhead mb-2 text-secondary">AI-Powered Resistance Band Tracking</h2>
+            </div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-orange-600 via-red-500 to-orange-700 bg-clip-text text-transparent mb-3">
+              AI-Powered Resistance Band Tracking
+            </h2>
+            <p className="text-lg text-gray-600 font-medium">Precision. Progress. Performance.</p>
           </div>
         </header>
 
@@ -57,21 +83,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
         )}
 
-        {/* Navigation - moved under hero banner */}
-        <nav className="w-full bg-white/90 backdrop-blur-lg border-b border-gray-200 p-4 shadow-lg">
+        {/* Desktop Navigation - hidden on mobile */}
+        <nav className="w-full bg-white/90 backdrop-blur-lg border-b border-gray-200 p-4 shadow-lg hidden md:block">
           <div className="max-w-6xl mx-auto px-4">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-center items-center">
               <div className="flex space-x-2 flex-wrap gap-y-2">
                 {navItems.map((item) => {
-                  const isActive = pathname === item.route
+                  const isActive = pathname === item.route || 
+                    (item.label === 'Workout' && pathname === '/')
+                  const isSignOut = item.label === 'Sign Out'
                   return (
                     <button
                       key={item.label}
-                      onClick={() => router.push(item.route)}
-                      className={`flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow text-sm md:text-base md:px-4 ${
-                        isActive 
-                          ? 'bg-orange-500 text-white' 
-                          : 'bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-orange-600'
+                      onClick={() => isSignOut ? handleSignOut() : router.push(item.route)}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow text-base ${
+                        isSignOut
+                          ? 'bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-800'
+                          : isActive 
+                            ? 'bg-orange-500 text-white' 
+                            : 'bg-gray-200 hover:bg-gray-300 text-gray-700 hover:text-orange-600'
                       }`}
                     >
                       {item.icon}
@@ -80,15 +110,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
                   )
                 })}
               </div>
-              
-              {/* Sign Out Button */}
-              <button
-                onClick={handleSignOut}
-                className="flex items-center space-x-2 px-3 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow text-sm md:text-base md:px-4 bg-red-100 hover:bg-red-200 text-red-700 hover:text-red-800"
-              >
-                <LogOut size={16} />
-                <span>Sign Out</span>
-              </button>
             </div>
           </div>
         </nav>
@@ -97,6 +118,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <main className="flex-1 overflow-auto">
           {children}
         </main>
+
+        {/* Mobile Navigation Components */}
+        <BottomNavigation 
+          currentPath={pathname}
+          onNavigate={handleNavigate}
+        />
+        
+        <ContextualFAB
+          onStartExercise={onStartExercise}
+          onLogWorkout={onLogWorkout}
+          onAddGoal={onAddGoal}
+          onScheduleWorkout={onScheduleWorkout}
+          onViewStats={onViewStats}
+          exerciseInProgress={exerciseInProgress}
+          workoutCompleted={workoutCompleted}
+        />
       </div>
     </div>
   )

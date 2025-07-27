@@ -7,6 +7,7 @@ import X3MomentumWordmark from '@/components/X3MomentumWordmark'
 import AppLayout from '@/components/layout/AppLayout'
 import { WorkoutHistory } from '@/components/WorkoutHistory'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import { useRouter } from 'next/navigation'
 
 interface WorkoutStats {
   totalWorkouts: number
@@ -34,10 +35,17 @@ interface WorkoutStats {
 }
 
 export default function StatsPage() {
+  const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [stats, setStats] = useState<WorkoutStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState<'7days' | '1month' | '3months' | 'alltime'>('7days')
+
+  const handleStartExercise = () => router.push('/workout')
+  const handleLogWorkout = () => router.push('/workout')
+  const handleAddGoal = () => router.push('/goals')
+  const handleScheduleWorkout = () => router.push('/calendar')
+  const handleViewStats = () => router.push('/stats')
 
   useEffect(() => {
     const getUser = async () => {
@@ -232,7 +240,15 @@ export default function StatsPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <AppLayout>
+        <AppLayout 
+          onStartExercise={handleStartExercise}
+          onLogWorkout={handleLogWorkout}
+          onAddGoal={handleAddGoal}
+          onScheduleWorkout={handleScheduleWorkout}
+          onViewStats={handleViewStats}
+          exerciseInProgress={false}
+          workoutCompleted={false}
+        >
           <div className="container mx-auto px-4 py-8">
             <div className="brand-card text-center">
               <h2 className="text-subhead brand-gold mb-4">Loading Stats...</h2>
@@ -246,7 +262,15 @@ export default function StatsPage() {
 
   return (
     <ProtectedRoute>
-      <AppLayout>
+      <AppLayout 
+        onStartExercise={handleStartExercise}
+        onLogWorkout={handleLogWorkout}
+        onAddGoal={handleAddGoal}
+        onScheduleWorkout={handleScheduleWorkout}
+        onViewStats={handleViewStats}
+        exerciseInProgress={false}
+        workoutCompleted={false}
+      >
         <div className="container mx-auto px-4 py-8">
           <main className="max-w-6xl mx-auto">
             {/* Page Header */}

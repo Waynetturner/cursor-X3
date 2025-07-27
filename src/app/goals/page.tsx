@@ -5,6 +5,7 @@ import AppLayout from '@/components/layout/AppLayout'
 import { supabase } from '@/lib/supabase'
 import { Target, Trophy, CheckCircle, Calendar, Flame, Clock, BarChart } from 'lucide-react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import { useRouter } from 'next/navigation'
 
 interface Goal {
   id: string
@@ -30,11 +31,18 @@ interface UserStats {
 }
 
 export default function GoalsPage() {
+  const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [goals, setGoals] = useState<Goal[]>([])
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'create'>('active')
+
+  const handleStartExercise = () => router.push('/workout')
+  const handleLogWorkout = () => router.push('/workout')
+  const handleAddGoal = () => setActiveTab('create')
+  const handleScheduleWorkout = () => router.push('/calendar')
+  const handleViewStats = () => router.push('/stats')
 
   useEffect(() => {
     const getUser = async () => {
@@ -204,7 +212,15 @@ export default function GoalsPage() {
   if (loading) {
     return (
       <ProtectedRoute>
-        <AppLayout>
+        <AppLayout 
+          onStartExercise={handleStartExercise}
+          onLogWorkout={handleLogWorkout}
+          onAddGoal={handleAddGoal}
+          onScheduleWorkout={handleScheduleWorkout}
+          onViewStats={handleViewStats}
+          exerciseInProgress={false}
+          workoutCompleted={false}
+        >
           <div className="container mx-auto px-4 py-8">
             <div className="brand-card text-center">
               <h2 className="text-subhead brand-gold mb-4">Loading Goals...</h2>
@@ -218,7 +234,15 @@ export default function GoalsPage() {
 
   return (
     <ProtectedRoute>
-      <AppLayout>
+      <AppLayout 
+        onStartExercise={handleStartExercise}
+        onLogWorkout={handleLogWorkout}
+        onAddGoal={handleAddGoal}
+        onScheduleWorkout={handleScheduleWorkout}
+        onViewStats={handleViewStats}
+        exerciseInProgress={false}
+        workoutCompleted={false}
+      >
         <div className="container mx-auto px-4 py-8">
           {/* Page Header */}
           <div className="brand-card text-center mb-8">
