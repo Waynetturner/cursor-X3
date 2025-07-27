@@ -110,7 +110,7 @@ export async function getExerciseHistoryData(exerciseName: string): Promise<Exer
       recentWorkoutDate: mostRecentRecord.workout_local_date_time,
       bestFullReps,
       displayText: bestFullReps > 0 
-        ? `${exerciseName.toUpperCase()} (PR: ${bestFullReps})` 
+        ? `${exerciseName.toUpperCase()} (${bestFullReps})` 
         : exerciseName.toUpperCase()
     }
     
