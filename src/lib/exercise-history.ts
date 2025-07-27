@@ -49,21 +49,12 @@ export async function getExerciseHistoryData(exerciseName: string): Promise<Exer
     
     console.log(`🔍 [${exerciseName}] Querying exercise history for user:`, user.id)
     
-    // Add date filtering - only fetch data from last 7 days to match stats page behavior
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    sevenDaysAgo.setHours(0, 0, 0, 0) // Start of day 7 days ago
-    const dateFilter = sevenDaysAgo.toISOString().split('T')[0] + 'T00:00:00'
-    
-    console.log(`🔍 [${exerciseName}] Date filter applied: ${dateFilter} (last 7 days)`)
-    
-    // Query records for this exercise and user from last 7 days, ordered by most recent first
+    // We need all data to calculate the true personal best, but will use recent data for input fields
     const { data: exerciseData, error } = await supabase
       .from('workout_exercises')
       .select('band_color, full_reps, partial_reps, workout_local_date_time, created_at_utc')
       .eq('user_id', user.id)
       .eq('exercise_name', exerciseName)
-      .gte('workout_local_date_time', dateFilter)
       .order('workout_local_date_time', { ascending: false })
 
     console.log(`🔍 [${exerciseName}] Raw query results:`, exerciseData)
@@ -90,7 +81,7 @@ export async function getExerciseHistoryData(exerciseName: string): Promise<Exer
 
     // Log the first few records to see the order
     console.log(`🔍 [${exerciseName}] First 3 records by date:`)
-    exerciseData.slice(0, 3).forEach((record, index) => {
+    exerciseData.slice(0, 3).forEach((record: any, index: number) => {
       console.log(`  ${index}: ${record.workout_local_date_time} - ${record.full_reps}+${record.partial_reps} reps (${record.band_color})`)
     })
 
@@ -99,15 +90,15 @@ export async function getExerciseHistoryData(exerciseName: string): Promise<Exer
     console.log(`🔍 [${exerciseName}] Using most recent record:`, mostRecentRecord)
     
     // Find TRUE personal best: highest full reps achieved with the highest band
-    const bandsUsed = [...new Set(exerciseData.map(record => record.band_color).filter(Boolean))]
+    const bandsUsed = [...new Set(exerciseData.map((record: any) => record.band_color).filter(Boolean))] as string[]
     let bestFullReps = 0
     
     if (bandsUsed.length > 0) {
       const highestBand = getHighestBand(bandsUsed)
       if (highestBand) {
         // Find the best full reps achieved with the highest band
-        const highestBandRecords = exerciseData.filter(record => record.band_color === highestBand)
-        bestFullReps = Math.max(...highestBandRecords.map(record => record.full_reps || 0))
+        const highestBandRecords = exerciseData.filter((record: any) => record.band_color === highestBand)
+        bestFullReps = Math.max(...highestBandRecords.map((record: any) => record.full_reps || 0))
       }
     }
     
@@ -119,7 +110,7 @@ export async function getExerciseHistoryData(exerciseName: string): Promise<Exer
       recentWorkoutDate: mostRecentRecord.workout_local_date_time,
       bestFullReps,
       displayText: bestFullReps > 0 
-        ? `${exerciseName.toUpperCase()} (${bestFullReps})` 
+        ? `${exerciseName.toUpperCase()} (PR: ${bestFullReps})` 
         : exerciseName.toUpperCase()
     }
     
