@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation'
 
 export default function RootPage() {
   const router = useRouter()
-  
+
   useEffect(() => {
     // Redirect to workout page which contains the actual workout functionality
-    router.replace('/workout')
+    router.push('/workout')
   }, [router])
 
   return (
