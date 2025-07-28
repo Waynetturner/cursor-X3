@@ -594,7 +594,7 @@ export default function HomePage() {
         .from('workout_exercises')
         .select('*')
         .eq('user_id', user.id)
-        .eq('exercise_name', exercise.name)
+        .eq('exercise_name', exercise.exercise_name)
         .order('workout_local_date_time', { ascending: false })
         .limit(3)
       
@@ -623,7 +623,7 @@ export default function HomePage() {
         .select('*')
         .eq('user_id', user.id)
         .eq('workout_local_date_time', workoutLocalDateTime)
-        .eq('exercise_name', exercise.name)
+        .eq('exercise_name', exercise.exercise_name)
         .limit(5)
       
       console.log('📋 Recent records in workout_exercises:', checkData)
