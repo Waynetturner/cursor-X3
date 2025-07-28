@@ -37,7 +37,7 @@ export interface ExerciseHistoryData {
   displayText: string
 }
 
-export async function getExerciseHistoryData(exerciseName: string): Promise<ExerciseHistoryData | null> {
+export async function getExerciseHistoryData(exerciseName: string, workoutType?: 'Push' | 'Pull'): Promise<ExerciseHistoryData | null> {
   try {
     // Get the authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -47,15 +47,16 @@ export async function getExerciseHistoryData(exerciseName: string): Promise<Exer
       return null
     }
     
-    console.log(`🔍 [${exerciseName}] Querying exercise history for user:`, user.id)
+    console.log(`🔍 [${exerciseName}] Querying exercise history for user:`, user.id, 'workout type:', workoutType)
     
     // We need all data to calculate the true personal best, but will use recent data for input fields
+    // Using created_at_utc instead of workout_local_date_time for consistency
     const { data: exerciseData, error } = await supabase
       .from('workout_exercises')
-      .select('band_color, full_reps, partial_reps, workout_local_date_time, created_at_utc')
+      .select('band_color, full_reps, partial_reps, created_at_utc, workout_type')
       .eq('user_id', user.id)
       .eq('exercise_name', exerciseName)
-      .order('workout_local_date_time', { ascending: false })
+      .order('created_at_utc', { ascending: false })
 
     console.log(`🔍 [${exerciseName}] Raw query results:`, exerciseData)
     console.log(`🔍 [${exerciseName}] Query error:`, error)
@@ -82,11 +83,22 @@ export async function getExerciseHistoryData(exerciseName: string): Promise<Exer
     // Log the first few records to see the order
     console.log(`🔍 [${exerciseName}] First 3 records by date:`)
     exerciseData.slice(0, 3).forEach((record: any, index: number) => {
-      console.log(`  ${index}: ${record.workout_local_date_time} - ${record.full_reps}+${record.partial_reps} reps (${record.band_color})`)
+      console.log(`  ${index}: ${record.created_at_utc} - ${record.full_reps}+${record.partial_reps} reps (${record.band_color}) [${record.workout_type}]`)
     })
 
     // Get most recent workout data for pre-filling input fields
-    const mostRecentRecord = exerciseData[0]
+    // If workoutType is specified, filter to get the most recent record for that workout type
+    let mostRecentRecord = exerciseData[0]
+    if (workoutType) {
+      const workoutTypeRecords = exerciseData.filter((record: any) => record.workout_type === workoutType)
+      if (workoutTypeRecords.length > 0) {
+        mostRecentRecord = workoutTypeRecords[0]
+        console.log(`🔍 [${exerciseName}] Found ${workoutTypeRecords.length} records for ${workoutType} workouts`)
+        console.log(`🔍 [${exerciseName}] Most recent ${workoutType} record:`, mostRecentRecord)
+      } else {
+        console.log(`🔍 [${exerciseName}] No records found for ${workoutType} workouts, using most recent overall`)
+      }
+    }
     console.log(`🔍 [${exerciseName}] Using most recent record:`, mostRecentRecord)
     
     // Find TRUE personal best: highest full reps achieved with the highest band
@@ -107,7 +119,7 @@ export async function getExerciseHistoryData(exerciseName: string): Promise<Exer
       recentBand: mostRecentRecord.band_color,
       recentFullReps: mostRecentRecord.full_reps || 0,
       recentPartialReps: mostRecentRecord.partial_reps || 0,
-      recentWorkoutDate: mostRecentRecord.workout_local_date_time,
+      recentWorkoutDate: mostRecentRecord.created_at_utc,
       bestFullReps,
       displayText: bestFullReps > 0 
         ? `${exerciseName.toUpperCase()} (${bestFullReps})` 
@@ -121,11 +133,11 @@ export async function getExerciseHistoryData(exerciseName: string): Promise<Exer
 }
 
 // Get history data for all exercises in a workout
-export async function getWorkoutHistoryData(exercises: string[]): Promise<Record<string, ExerciseHistoryData>> {
+export async function getWorkoutHistoryData(exercises: string[], workoutType?: 'Push' | 'Pull'): Promise<Record<string, ExerciseHistoryData>> {
   const results: Record<string, ExerciseHistoryData> = {}
   
   for (const exercise of exercises) {
-    const data = await getExerciseHistoryData(exercise)
+    const data = await getExerciseHistoryData(exercise, workoutType)
     if (data) {
       results[exercise] = data
     }

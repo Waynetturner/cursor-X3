@@ -428,7 +428,7 @@ export default function HomePage() {
     
     // Get exercise history data for ALL exercises using our band hierarchy logic
     console.log('📊 Getting workout history data for all exercises...')
-    const historyData = await getWorkoutHistoryData(exerciseNames)
+    const historyData = await getWorkoutHistoryData(exerciseNames, workoutType)
     console.log('📈 History data received:', historyData)
     
     // Get recent workout data for other fields (notes, dates, etc.)
@@ -437,7 +437,7 @@ export default function HomePage() {
       .select('*')
       .eq('user_id', user.id)
       .eq('workout_type', workoutType)
-      .order('workout_local_date_time', { ascending: false })
+      .order('created_at_utc', { ascending: false })
       .limit(16)
     
     console.log('📋 Previous workout data for context:', previousData)
@@ -595,7 +595,7 @@ export default function HomePage() {
         .select('*')
         .eq('user_id', user.id)
         .eq('exercise_name', exercise.exercise_name)
-        .order('workout_local_date_time', { ascending: false })
+        .order('created_at_utc', { ascending: false })
         .limit(3)
       
       console.log('🔍 Existing records for this exercise:', existingRecords)
