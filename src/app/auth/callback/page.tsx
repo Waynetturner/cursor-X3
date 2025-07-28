@@ -48,7 +48,7 @@ export default function AuthCallbackPage() {
 
           // Redirect to home page after a short delay
           setTimeout(() => {
-            router.push('/')
+            router.push('/workout')
           }, 1500)
         } else {
           setStatus('error')

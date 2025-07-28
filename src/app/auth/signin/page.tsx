@@ -31,7 +31,7 @@ export default function SignInPage() {
         announceToScreenReader(`Sign in error: ${error.message}`, 'assertive')
       } else {
         announceToScreenReader('Signed in successfully!')
-        router.push('/')
+        router.push('/workout')
       }
     } catch (err) {
       setError('An unexpected error occurred')
