@@ -488,12 +488,14 @@ export async function getWorkoutForDateWithCompletion(
   dayInWeek: number
   isShifted: boolean
 }> {
-  console.log('🎯 getWorkoutForDateWithCompletion called for', targetDate, 'user:', userId)
-  
   const todayForCheck = (() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   })()
+  
+  console.log('🎯 getWorkoutForDateWithCompletion called for', targetDate, 'user:', userId, 'today calculated as:', todayForCheck)
+  
+  // Check if this is tomorrow's date specifically
   const tomorrowForCheck = (() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -504,8 +506,8 @@ export async function getWorkoutForDateWithCompletion(
     console.log('🚨 TOMORROW DETECTED! Processing', targetDate, 'today is', todayForCheck)
   }
   
-  if (targetDate === '2025-08-03') {
-    console.log('🚨 AUGUST 3RD DETECTED! This should be tomorrow if today is Aug 2nd')
+  if (targetDate === '2025-08-02' || targetDate === '2025-08-03') {
+    console.log('🚨 CURRENT WEEK DATE DETECTED!', targetDate, 'should be processed for current calendar view')
   }
   try {
     // Get the original calendar-based workout for this date
@@ -625,7 +627,7 @@ export async function getWorkoutForDateWithCompletion(
     
   } catch (error) {
     console.error('🚨 ERROR in getWorkoutForDateWithCompletion for date', targetDate, ':', error)
-    console.error('🚨 Error stack:', error.stack)
+    console.error('🚨 Error stack:', error instanceof Error ? error.stack : 'No stack trace available')
     // Fallback to original calendar logic
     const original = getWorkoutForDate(startDate, targetDate)
     console.log('🔄 Using fallback logic for', targetDate, ':', original)
