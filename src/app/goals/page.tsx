@@ -194,6 +194,7 @@ export default function GoalsPage() {
         workoutCompleted={false}
       >
         <div className="container mx-auto px-4 py-8">
+          <main className="max-w-6xl mx-auto">
           {/* Page Header */}
           <div className="brand-card text-center mb-8">
               <h1 className="text-headline mb-2">
@@ -202,7 +203,7 @@ export default function GoalsPage() {
             <p className="text-body text-secondary">Track your progress and celebrate achievements</p>
           </div>
 
-          <main className="max-w-6xl mx-auto">
+          
             {/* Stats Overview */}
             {userStats && (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
