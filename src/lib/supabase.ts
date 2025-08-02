@@ -488,6 +488,7 @@ export async function getWorkoutForDateWithCompletion(
   dayInWeek: number
   isShifted: boolean
 }> {
+  console.log('🎯 getWorkoutForDateWithCompletion called for', targetDate, 'user:', userId)
   try {
     // Get the original calendar-based workout for this date
     const originalWorkout = getWorkoutForDate(startDate, targetDate)
@@ -601,9 +602,11 @@ export async function getWorkoutForDateWithCompletion(
     }
     
   } catch (error) {
-    console.error('Error in getWorkoutForDateWithCompletion:', error)
+    console.error('🚨 ERROR in getWorkoutForDateWithCompletion for date', targetDate, ':', error)
+    console.error('🚨 Error stack:', error.stack)
     // Fallback to original calendar logic
     const original = getWorkoutForDate(startDate, targetDate)
+    console.log('🔄 Using fallback logic for', targetDate, ':', original)
     return {
       originalWorkout: original.workoutType,
       actualWorkout: original.workoutType,
