@@ -534,30 +534,37 @@ export async function getWorkoutForDateWithCompletion(
     
     // For today and future dates, show shifted schedule based on actual completion
     else {
+      // For today, show what workout is actually needed (could be catch up)
+      if (targetDate === today) {
+        return {
+          originalWorkout: originalWorkout.workoutType,
+          actualWorkout: currentWorkout.workoutType,
+          status: currentWorkout.status === 'catch_up' ? 'scheduled' : 'scheduled',
+          week: originalWorkout.week,
+          dayInWeek: originalWorkout.dayInWeek,
+          isShifted: originalWorkout.workoutType !== currentWorkout.workoutType
+        }
+      }
+      
+      // but we need to calculate it correctly based on the completion sequence
+      
       const daysDifference = Math.floor((targetDateObj.getTime() - todayObj.getTime()) / (1000 * 60 * 60 * 24))
       
-      // Calculate what workout should be shown based on current actual position
-      const currentDayInWeek = currentWorkout.dayInWeek
+      let currentWorkoutDay = currentWorkout.dayInWeek
       
-      // Project forward from current actual position
-      let projectedDay = currentDayInWeek + daysDifference
-      
-      // Handle week overflow/underflow
-      while (projectedDay >= 7) {
-        projectedDay -= 7
-      }
-      while (projectedDay < 0) {
-        projectedDay += 7
+      // Project forward day by day, following the X3 schedule pattern
+      let projectedDay = currentWorkoutDay
+      for (let i = 0; i < daysDifference; i++) {
+        projectedDay = (projectedDay + 1) % 7
       }
       
-      // IMPORTANT: Use the original target date's week to determine schedule pattern
-      // This ensures August 2025 uses weeks 5+ schedule regardless of completion position
+      // Use the original target date's week to determine schedule pattern
       const originalTargetWeek = originalWorkout.week
       const schedule = originalTargetWeek <= 4 
         ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
         : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
       
-      // Use projected day position with the correct schedule pattern
+      // Get the workout type for this projected day
       const projectedWorkout = schedule[projectedDay]
       
       // Check if this represents a shift from the original schedule
@@ -566,9 +573,8 @@ export async function getWorkoutForDateWithCompletion(
       return {
         originalWorkout: originalWorkout.workoutType,
         actualWorkout: projectedWorkout,
-        status: targetDate === today ? 
-          (currentWorkout.status === 'catch_up' ? 'scheduled' : 'scheduled') : 'scheduled',
-        week: originalTargetWeek, // Use original target week for proper calendar display
+        status: 'scheduled',
+        week: originalTargetWeek,
         dayInWeek: projectedDay,
         isShifted
       }
