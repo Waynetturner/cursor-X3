@@ -488,27 +488,7 @@ export async function getWorkoutForDateWithCompletion(
   dayInWeek: number
   isShifted: boolean
 }> {
-  const todayForCheck = (() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  })()
-  
-  console.log('🎯 getWorkoutForDateWithCompletion called for', targetDate, 'user:', userId, 'today calculated as:', todayForCheck)
-  
-  // Check if this is tomorrow's date specifically
-  const tomorrowForCheck = (() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
-  })()
-  
-  if (targetDate === tomorrowForCheck) {
-    console.log('🚨 TOMORROW DETECTED! Processing', targetDate, 'today is', todayForCheck)
-  }
-  
-  if (targetDate === '2025-08-02' || targetDate === '2025-08-03') {
-    console.log('🚨 CURRENT WEEK DATE DETECTED!', targetDate, 'should be processed for current calendar view')
-  }
+  console.log('🎯 getWorkoutForDateWithCompletion called for', targetDate, 'user:', userId)
   try {
     // Get the original calendar-based workout for this date
     const originalWorkout = getWorkoutForDate(startDate, targetDate)
@@ -518,8 +498,14 @@ export async function getWorkoutForDateWithCompletion(
     
     const today = (() => {
       const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      // Use local date to match calendar component's date calculation
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1; // getMonth() returns 0-11, so add 1
+      const day = now.getDate();
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     })()
+    
+    console.log('📅 Date sync check - today calculated as:', today, 'target date:', targetDate)
     const targetDateObj = new Date(targetDate)
     const todayObj = new Date(today)
     

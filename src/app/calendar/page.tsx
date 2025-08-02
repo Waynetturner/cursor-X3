@@ -84,6 +84,8 @@ export default function CalendarPage() {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
     
+    console.log('📅 Calendar generating data for:', { year, month: month + 1, monthName: new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long' }) })
+    
     // Get first day of month and determine starting date for calendar
     const firstDayOfMonth = new Date(year, month, 1)
     const startDayOfWeek = firstDayOfMonth.getDay() // 0 = Sunday, 1 = Monday, etc.
@@ -92,11 +94,20 @@ export default function CalendarPage() {
     const startDate = new Date(firstDayOfMonth)
     startDate.setDate(startDate.getDate() - startDayOfWeek)
 
+    console.log('📅 Calendar date range:', {
+      firstDayOfMonth: firstDayOfMonth.toISOString().split('T')[0],
+      startDayOfWeek,
+      calendarStartDate: startDate.toISOString().split('T')[0]
+    })
+
     // Generate 35 days (5 weeks × 7 days) instead of 42
     const calendarDays: WorkoutDay[] = []
     const today = (() => {
       const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1; // getMonth() returns 0-11, so add 1
+      const day = now.getDate();
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     })()
     
     for (let i = 0; i < 35; i++) {
