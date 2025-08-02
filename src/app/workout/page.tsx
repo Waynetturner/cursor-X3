@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkout } from '@/lib/supabase'
+import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkoutWithCompletion } from '@/lib/supabase'
 import { announceToScreenReader } from '@/lib/accessibility'
 import { Play, Flame, Calendar, ArrowRight, Sparkles, TrendingUp, Users, Shield } from 'lucide-react'
 import React from 'react'
@@ -382,13 +382,13 @@ export default function HomePage() {
               console.error('❌ Error creating profile:', insertError)
             } else {
               console.log('✅ Profile created successfully')
-              const workout = getTodaysWorkout(today)
+              const workout = await getTodaysWorkoutWithCompletion(today, user.id)
               setTodaysWorkout(workout)
             }
           }
         } else if (profile?.x3_start_date) {
           console.log('✅ Found start date:', profile.x3_start_date)
-          const workout = getTodaysWorkout(profile.x3_start_date)
+          const workout = await getTodaysWorkoutWithCompletion(profile.x3_start_date, user.id)
           setTodaysWorkout(workout)
         } else {
           console.log('⚠️ No start date found in profile')
@@ -1095,7 +1095,11 @@ export default function HomePage() {
               </div>
             </div>
             <h1 className="text-display-medium mb-6 leading-tight bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 bg-clip-text text-transparent">
-              Today's <span className="bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 bg-clip-text text-transparent font-black">{todaysWorkout?.workoutType || 'Loading'}</span> Workout
+              {todaysWorkout?.status === 'catch_up' ? (
+                <>Catch up: <span className="bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 bg-clip-text text-transparent font-black">{todaysWorkout?.workoutType || 'Loading'}</span> Workout</>
+              ) : (
+                <>Today's <span className="bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 bg-clip-text text-transparent font-black">{todaysWorkout?.workoutType || 'Loading'}</span> Workout</>
+              )}
             </h1>
             <p className="text-title-large text-gray-700 font-medium italic tracking-wide">"Train to failure, not to a number"</p>
           </div>

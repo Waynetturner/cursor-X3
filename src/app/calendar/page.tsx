@@ -2,22 +2,25 @@
 
 import { useState, useEffect } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
-import { supabase, getWorkoutForDate, X3_EXERCISES } from '@/lib/supabase'
-import { ChevronLeft, ChevronRight, Flame, Dumbbell, Coffee, CheckCircle } from 'lucide-react'
+import { supabase, getWorkoutForDate, getWorkoutForDateWithCompletion } from '@/lib/supabase'
+import { ChevronLeft, ChevronRight, Flame, Dumbbell, Coffee, CheckCircle, AlertTriangle } from 'lucide-react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
 interface WorkoutDay {
   date: string
   dayOfMonth: number
-  workoutType: 'Push' | 'Pull' | 'Rest'
+  workoutType: 'Push' | 'Pull' | 'Rest' | 'Missed'
+  originalWorkout: 'Push' | 'Pull' | 'Rest'
   isCompleted: boolean
   isToday: boolean
   isThisMonth: boolean
   week: number
+  isShifted: boolean
+  status: 'complete' | 'partial' | 'missed' | 'scheduled'
 }
 
 export default function CalendarPage() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{ id: string } | null>(null)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>([])
   const [completedWorkouts, setCompletedWorkouts] = useState<Set<string>>(new Set())
@@ -75,8 +78,8 @@ export default function CalendarPage() {
     }
   }
 
-  const generateCalendarData = () => {
-    if (!userStartDate) return
+  const generateCalendarData = async () => {
+    if (!userStartDate || !user) return
 
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
@@ -101,18 +104,41 @@ export default function CalendarPage() {
       currentCalendarDate.setDate(startDate.getDate() + i)
       
       const dateStr = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}-${String(currentCalendarDate.getDate()).padStart(2, '0')}`
-      const workout = getWorkoutForDate(userStartDate, dateStr)
       const isThisMonth = currentCalendarDate.getMonth() === month
       
-      calendarDays.push({
-        date: dateStr,
-        dayOfMonth: currentCalendarDate.getDate(),
-        workoutType: workout.workoutType,
-        isCompleted: completedWorkouts.has(dateStr),
-        isToday: dateStr === today,
-        isThisMonth: isThisMonth,
-        week: workout.week
-      })
+      try {
+        // Use completion-based logic for calendar display
+        const workoutInfo = await getWorkoutForDateWithCompletion(dateStr, user.id, userStartDate)
+        
+        calendarDays.push({
+          date: dateStr,
+          dayOfMonth: currentCalendarDate.getDate(),
+          workoutType: workoutInfo.actualWorkout,
+          originalWorkout: workoutInfo.originalWorkout,
+          isCompleted: workoutInfo.status === 'complete',
+          isToday: dateStr === today,
+          isThisMonth: isThisMonth,
+          week: workoutInfo.week,
+          isShifted: workoutInfo.isShifted,
+          status: workoutInfo.status
+        })
+      } catch (error) {
+        console.error('Error getting workout for date:', dateStr, error)
+        // Fallback to original logic
+        const workout = getWorkoutForDate(userStartDate, dateStr)
+        calendarDays.push({
+          date: dateStr,
+          dayOfMonth: currentCalendarDate.getDate(),
+          workoutType: workout.workoutType,
+          originalWorkout: workout.workoutType,
+          isCompleted: completedWorkouts.has(dateStr),
+          isToday: dateStr === today,
+          isThisMonth: isThisMonth,
+          week: workout.week,
+          isShifted: false,
+          status: completedWorkouts.has(dateStr) ? 'complete' : 'scheduled'
+        })
+      }
     }
 
     setWorkoutDays(calendarDays)
@@ -130,7 +156,7 @@ export default function CalendarPage() {
     })
   }
 
-  const getWorkoutIcon = (type: 'Push' | 'Pull' | 'Rest') => {
+  const getWorkoutIcon = (type: 'Push' | 'Pull' | 'Rest' | 'Missed') => {
     switch (type) {
       case 'Push':
         return <Dumbbell size={16} className="text-orange-400" />
@@ -138,21 +164,11 @@ export default function CalendarPage() {
         return <Flame size={16} className="text-red-400" />
       case 'Rest':
         return <Coffee size={16} className="text-blue-400" />
+      case 'Missed':
+        return <AlertTriangle size={16} className="text-gray-400" />
     }
   }
 
-  const getWorkoutTypeColor = (type: 'Push' | 'Pull' | 'Rest', isCompleted: boolean) => {
-    if (isCompleted) return 'bg-green-500/20 border-green-500 text-green-400'
-    
-    switch (type) {
-      case 'Push':
-        return 'bg-orange-500/20 border-orange-500 text-orange-400'
-      case 'Pull':
-        return 'bg-red-500/20 border-red-500 text-red-400'
-      case 'Rest':
-        return 'bg-blue-500/20 border-blue-500 text-blue-400'
-    }
-  } // ← Make sure this closing brace exists!
 
   if (loading) {
     return (
@@ -224,7 +240,7 @@ export default function CalendarPage() {
 
                 {/* Calendar Days - Full Width */}
                 <div className="grid grid-cols-7 gap-3 w-full max-w-4xl">
-                  {workoutDays.map((day, index) => (
+                  {workoutDays.map((day) => (
                     <div
                       key={day.date}
                       className={`
@@ -234,7 +250,9 @@ export default function CalendarPage() {
                         ${day.workoutType === 'Push' ? 'border-orange-500 bg-orange-100 dark:bg-orange-900/30' : ''}
                         ${day.workoutType === 'Pull' ? 'border-red-500 bg-red-100 dark:bg-red-900/30' : ''}
                         ${day.workoutType === 'Rest' ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/30' : ''}
+                        ${day.workoutType === 'Missed' ? 'border-gray-500 bg-gray-100 dark:bg-gray-900/30' : ''}
                         ${day.isCompleted ? 'border-green-500' : ''}
+                        ${day.isShifted && day.isThisMonth ? 'ring-1 ring-yellow-400' : ''}
                       `}
                     >
                       <div className="flex flex-col h-full">

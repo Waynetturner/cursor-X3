@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import { supabase } from '@/lib/supabase'
-import { Target, Trophy, CheckCircle, Calendar, Flame, Clock, BarChart } from 'lucide-react'
+import { getUserStats } from '@/lib/user-stats'
+import { Target, Trophy, CheckCircle, Calendar, Flame, BarChart } from 'lucide-react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import { useRouter } from 'next/navigation'
 
@@ -32,7 +33,7 @@ interface UserStats {
 
 export default function GoalsPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{ id: string } | null>(null)
   const [goals, setGoals] = useState<Goal[]>([])
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -58,84 +59,33 @@ export default function GoalsPage() {
 
   const loadUserData = async (userId: string) => {
     try {
-      // Get user profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('x3_start_date')
-        .eq('id', userId)
-        .single()
-
-      // Get workout data
-      const { data: exercises } = await supabase
-        .from('workout_exercises')
-        .select('*')
-        .eq('user_id', userId)
-        .order('workout_local_date_time', { ascending: false })
-
-      if (exercises && profile) {
-        const stats = calculateUserStats(exercises, profile.x3_start_date)
+      console.log('📊 Loading Goals page data using unified service')
+      
+      // Use unified stats service
+      const unifiedStats = await getUserStats(userId)
+      
+      if (unifiedStats) {
+        // Convert to Goals page format
+        const stats = {
+          totalWorkouts: unifiedStats.totalWorkouts,
+          currentWeek: unifiedStats.currentWeek,
+          completedThisWeek: unifiedStats.completedThisWeek,
+          longestStreak: unifiedStats.longestStreak,
+          currentStreak: unifiedStats.currentStreak,
+          totalExercises: unifiedStats.totalExercises,
+          startDate: unifiedStats.startDate
+        }
+        
         setUserStats(stats)
         generateDefaultGoals(stats)
+        
+        console.log('✅ Goals page using unified stats:', stats)
       }
     } catch (error) {
-      console.error('Error loading user data:', error)
+      console.error('❌ Error loading user data with unified service:', error)
     }
   }
 
-  const calculateUserStats = (exercises: any[], startDate: string): UserStats => {
-    const workoutDates = new Set(exercises.map(e => e.workout_local_date_time.split('T')[0]))
-    const totalWorkouts = workoutDates.size
-    
-    const today = new Date()
-    const start = new Date(startDate)
-    const daysSinceStart = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-    const currentWeek = Math.floor(daysSinceStart / 7) + 1
-
-    // Calculate current week progress
-    const weekStart = new Date(today)
-    weekStart.setDate(today.getDate() - today.getDay())
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekStart.getDate() + 6)
-    
-    const thisWeekWorkouts = exercises.filter(e => {
-      const workoutDate = new Date(e.workout_local_date_time)
-      return workoutDate >= weekStart && workoutDate <= weekEnd
-    })
-    const completedThisWeek = new Set(thisWeekWorkouts.map(e => e.workout_local_date_time.split('T')[0])).size
-
-    // Calculate streaks
-    const sortedDates = Array.from(workoutDates).sort()
-    let currentStreak = 0
-    let longestStreak = 0
-    let tempStreak = 0
-
-    for (let i = 0; i < sortedDates.length; i++) {
-      const currentDate = new Date(sortedDates[i])
-      const prevDate = i > 0 ? new Date(sortedDates[i - 1]) : null
-      
-      if (prevDate && (currentDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24) === 1) {
-        tempStreak++
-      } else {
-        tempStreak = 1
-      }
-      
-      longestStreak = Math.max(longestStreak, tempStreak)
-      
-      if (i === sortedDates.length - 1) {
-        currentStreak = tempStreak
-      }
-    }
-
-    return {
-      totalWorkouts,
-      currentWeek,
-      completedThisWeek,
-      longestStreak,
-      currentStreak,
-      totalExercises: exercises.length,
-      startDate
-    }
-  }
 
   const generateDefaultGoals = (stats: UserStats) => {
     const defaultGoals: Goal[] = [

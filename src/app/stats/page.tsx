@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase, getTodaysWorkout, calculateStreak } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import { getUserStats } from '@/lib/user-stats'
 import { BarChart3, Calendar, Flame, Trophy } from 'lucide-react'
-import X3MomentumWordmark from '@/components/X3MomentumWordmark'
 import AppLayout from '@/components/layout/AppLayout'
 import { WorkoutHistory } from '@/components/WorkoutHistory'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
@@ -36,7 +36,7 @@ interface WorkoutStats {
 
 export default function StatsPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
   const [stats, setStats] = useState<WorkoutStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState<'7days' | '1month' | '3months' | 'alltime'>('7days')
@@ -68,46 +68,13 @@ export default function StatsPage() {
 
   const loadStats = async (userId: string) => {
     try {
-      // Calculate date range based on selected time range
-      const now = new Date()
-      now.setHours(23, 59, 59, 999) // End of today
-      let startDate: Date | null = null
+      console.log('📊 Loading stats using unified service for time range:', timeRange)
       
-      switch (timeRange) {
-        case '7days':
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-          startDate.setHours(0, 0, 0, 0) // Start of day 7 days ago
-          break
-        case '1month':
-          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-          startDate.setHours(0, 0, 0, 0)
-          break
-        case '3months':
-          startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
-          startDate.setHours(0, 0, 0, 0)
-          break
-        case 'alltime':
-          startDate = null // No filter
-          break
-      }
-
-      // Build query with optional date filter
-      let query = supabase
-        .from('workout_exercises')
-        .select('*')
-        .eq('user_id', userId)
-
-      if (startDate) {
-        // Use date-only comparison to avoid timezone issues
-        const startDateStr = startDate.toISOString().split('T')[0]
-        query = query.gte('workout_local_date_time', startDateStr + 'T00:00:00')
-      }
-
-      const { data: exercises, error } = await query.order('workout_local_date_time', { ascending: false })
-
-      if (error) throw error
-
-      if (!exercises || exercises.length === 0) {
+      // Get unified stats from single source of truth
+      const userStats = await getUserStats(userId)
+      
+      if (!userStats) {
+        console.error('❌ Failed to get user stats')
         setStats({
           totalWorkouts: 0,
           currentWeek: 1,
@@ -121,119 +88,126 @@ export default function StatsPage() {
         })
         return
       }
-
-      // Get user profile for current week calculation
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('x3_start_date')
-        .eq('id', userId)
-        .single()
-
-      const currentWeek = profile?.x3_start_date 
-        ? getTodaysWorkout(profile.x3_start_date).week 
-        : 1
-
-      // Calculate stats for the selected time range
-      const workoutDates = [...new Set(exercises.map(e => e.workout_local_date_time.split('T')[0]))]
-      const totalWorkouts = workoutDates.length
-
-      // Calculate streak using ALL workout data (not filtered by time range)
-      let allTimeWorkoutDates: string[] = []
-      if (profile?.x3_start_date) {
-        const { data: allExercises } = await supabase
+      
+      // For time-range filtered data, we still need to query exercises
+      let filteredTotalWorkouts = userStats.totalWorkouts
+      let filteredTotalExercises = userStats.totalExercises
+      let recentWorkouts: Array<{
+        date: string
+        type: string
+        exercises: number
+        exerciseDetails: Array<{
+          name: string
+          fullReps: number
+          partialReps: number
+          bandColor: string
+        }>
+      }> = []
+      
+      // Apply time range filter for specific stats
+      if (timeRange !== 'alltime') {
+        const now = new Date()
+        now.setHours(23, 59, 59, 999)
+        let startDate: Date
+        
+        switch (timeRange) {
+          case '7days':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+            break
+          case '1month':
+            startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+            break
+          case '3months':
+            startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+            break
+          default:
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        }
+        
+        startDate.setHours(0, 0, 0, 0)
+        const startDateStr = startDate.toISOString().split('T')[0]
+        
+        // Get filtered exercises
+        const { data: filteredExercises } = await supabase
           .from('workout_exercises')
-          .select('workout_local_date_time')
+          .select('*')
           .eq('user_id', userId)
+          .gte('workout_local_date_time', startDateStr + 'T00:00:00')
           .order('workout_local_date_time', { ascending: false })
         
-        if (allExercises) {
-          allTimeWorkoutDates = [...new Set(allExercises.map(e => e.workout_local_date_time.split('T')[0]))]
-        }
-      }
-
-      // Test streak calculation with known values
-      let currentStreak = 0
-      if (profile?.x3_start_date) {
-        currentStreak = calculateStreak(profile.x3_start_date, allTimeWorkoutDates)
-        
-        // Debug: Calculate expected days from May 28, 2025 to today
-        const startTest = new Date('2025-05-28')
-        const todayTest = new Date()
-        const expectedDays = Math.floor((todayTest.getTime() - startTest.getTime()) / (1000 * 60 * 60 * 24))
-        
-        // If the calculated streak is 0 but we expect ~51 days, there's likely an issue
-        if (currentStreak === 0 && expectedDays > 50) {
-          // Fallback: if the user has been working out regularly, assume they've been consistent
-          // This is a temporary fix until we can debug the actual issue
-          const hasRecentWorkouts = allTimeWorkoutDates.some(date => {
-            const workoutDate = new Date(date)
-            const daysAgo = (todayTest.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24)
-            return daysAgo <= 7 // Has workout in last 7 days
-          })
+        if (filteredExercises) {
+          const filteredWorkoutDates = [...new Set(filteredExercises.map(e => e.workout_local_date_time.split('T')[0]))]
+          filteredTotalWorkouts = filteredWorkoutDates.length
+          filteredTotalExercises = filteredExercises.length
           
-          if (hasRecentWorkouts && profile.x3_start_date === '2025-05-28') {
-            // User started on May 28 and has recent workouts, likely been consistent
-            currentStreak = expectedDays
-          }
+          // Build recent workouts from filtered data
+          const sortedDates = filteredWorkoutDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+          recentWorkouts = sortedDates.slice(0, 5).map(date => {
+            const dayExercises = filteredExercises.filter(e => e.workout_local_date_time.startsWith(date))
+            return {
+              date,
+              type: dayExercises[0]?.workout_type || 'Mixed',
+              exercises: [...new Set(dayExercises.map(e => e.exercise_name))].length,
+              exerciseDetails: dayExercises.map(ex => ({
+                name: ex.exercise_name,
+                fullReps: ex.full_reps || 0,
+                partialReps: ex.partial_reps || 0,
+                bandColor: ex.band_color || 'White'
+              }))
+            }
+          })
+        }
+      } else {
+        // For 'alltime', build recent workouts from all data
+        const { data: allExercises } = await supabase
+          .from('workout_exercises')
+          .select('*')
+          .eq('user_id', userId)
+          .order('workout_local_date_time', { ascending: false })
+          .limit(50) // Limit for performance
+        
+        if (allExercises) {
+          const allWorkoutDates = [...new Set(allExercises.map(e => e.workout_local_date_time.split('T')[0]))]
+          const sortedDates = allWorkoutDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+          recentWorkouts = sortedDates.slice(0, 5).map(date => {
+            const dayExercises = allExercises.filter(e => e.workout_local_date_time.startsWith(date))
+            return {
+              date,
+              type: dayExercises[0]?.workout_type || 'Mixed',
+              exercises: [...new Set(dayExercises.map(e => e.exercise_name))].length,
+              exerciseDetails: dayExercises.map(ex => ({
+                name: ex.exercise_name,
+                fullReps: ex.full_reps || 0,
+                partialReps: ex.partial_reps || 0,
+                bandColor: ex.band_color || 'White'
+              }))
+            }
+          })
         }
       }
       
-      // For now, set longest streak to current streak (we can improve this later)
-      const longestStreak = currentStreak
-
-      // Band usage
-      const bandCounts = exercises.reduce((acc: any, ex) => {
-        acc[ex.band_color] = (acc[ex.band_color] || 0) + 1
-        return acc
-      }, {})
-      const mostUsedBand = Object.keys(bandCounts).reduce((a, b) => 
-        bandCounts[a] > bandCounts[b] ? a : b, 'White')
-
-      // Workout types
-      const workoutsByType = exercises.reduce((acc: any, ex) => {
-        if (ex.workout_type === 'Push' || ex.workout_type === 'Pull') {
-          acc[ex.workout_type] = (acc[ex.workout_type] || 0) + 1
-        }
-        return acc
-      }, { Push: 0, Pull: 0 })
-
-      // Average reps
-      const totalReps = exercises.reduce((sum, ex) => sum + (ex.full_reps || 0) + (ex.partial_reps || 0), 0)
-      const averageRepsPerExercise = exercises.length > 0 ? Math.round(totalReps / exercises.length) : 0
-
-      // Recent workouts with individual exercise details
-      const uniqueDates = [...new Set(exercises.map(e => e.workout_local_date_time.split('T')[0]))]
-      const sortedDates = uniqueDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
-      
-      const recentWorkouts = sortedDates.slice(0, 5).map(date => {
-        const dayExercises = exercises.filter(e => e.workout_local_date_time.startsWith(date))
-        
-        return {
-          date,
-          type: dayExercises[0]?.workout_type || 'Mixed',
-          exercises: [...new Set(dayExercises.map(e => e.exercise_name))].length,
-          exerciseDetails: dayExercises.map(ex => ({
-            name: ex.exercise_name,
-            fullReps: ex.full_reps || 0,
-            partialReps: ex.partial_reps || 0,
-            bandColor: ex.band_color || 'White'
-          }))
-        }
-      })
-
+      // Use unified stats with time-range adjustments
       setStats({
-        totalWorkouts,
-        currentWeek,
-        currentStreak,
-        longestStreak,
-        totalExercises: exercises.length,
-        averageRepsPerExercise,
-        mostUsedBand,
-        workoutsByType,
+        totalWorkouts: filteredTotalWorkouts,
+        currentWeek: userStats.currentWeek,
+        currentStreak: userStats.currentStreak, // Always from unified source
+        longestStreak: userStats.longestStreak, // Always from unified source
+        totalExercises: filteredTotalExercises,
+        averageRepsPerExercise: userStats.averageRepsPerExercise,
+        mostUsedBand: userStats.mostUsedBand,
+        workoutsByType: userStats.workoutsByType,
         recentWorkouts
       })
+      
+      console.log('✅ Stats loaded with unified service:', {
+        currentStreak: userStats.currentStreak,
+        longestStreak: userStats.longestStreak,
+        currentWeek: userStats.currentWeek,
+        totalWorkouts: filteredTotalWorkouts
+      })
+      
     } catch (error) {
-      console.error('Error loading stats:', error)
+      console.error('❌ Error loading stats with unified service:', error)
     }
   }
 
