@@ -489,6 +489,20 @@ export async function getWorkoutForDateWithCompletion(
   isShifted: boolean
 }> {
   console.log('🎯 getWorkoutForDateWithCompletion called for', targetDate, 'user:', userId)
+  
+  const todayForCheck = (() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  })()
+  const tomorrowForCheck = (() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+  })()
+  
+  if (targetDate === tomorrowForCheck) {
+    console.log('🚨 TOMORROW DETECTED! Processing', targetDate, 'today is', todayForCheck)
+  }
   try {
     // Get the original calendar-based workout for this date
     const originalWorkout = getWorkoutForDate(startDate, targetDate)
@@ -496,7 +510,10 @@ export async function getWorkoutForDateWithCompletion(
     // Get current completion status to understand where user is in sequence
     const currentWorkout = await getTodaysWorkoutWithCompletion(startDate, userId)
     
-    const today = new Date().toISOString().split('T')[0]
+    const today = (() => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    })()
     const targetDateObj = new Date(targetDate)
     const todayObj = new Date(today)
     
@@ -553,13 +570,14 @@ export async function getWorkoutForDateWithCompletion(
       
       let currentWorkoutDay = currentWorkout.dayInWeek
       
-      console.log('DEBUG getWorkoutForDateWithCompletion:', {
+      console.log('🔍 DEBUG getWorkoutForDateWithCompletion:', {
         targetDate,
         today,
         daysDifference,
         currentWorkoutDay,
         currentWorkoutType: currentWorkout.workoutType,
-        originalWorkoutType: originalWorkout.workoutType
+        originalWorkoutType: originalWorkout.workoutType,
+        isTargetTomorrow: daysDifference === 1
       })
       
       // Project forward day by day, following the X3 schedule pattern
