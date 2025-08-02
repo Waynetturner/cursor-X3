@@ -107,6 +107,8 @@ export default function CalendarPage() {
       const isThisMonth = currentCalendarDate.getMonth() === month
       
       try {
+        console.log('📅 Calendar processing date:', dateStr, 'isThisMonth:', isThisMonth, 'isToday:', dateStr === today)
+        
         // Use completion-based logic for calendar display
         const workoutInfo = await getWorkoutForDateWithCompletion(dateStr, user.id, userStartDate)
         
