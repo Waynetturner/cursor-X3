@@ -552,11 +552,25 @@ export async function getWorkoutForDateWithCompletion(
       
       let currentWorkoutDay = currentWorkout.dayInWeek
       
+      console.log('DEBUG getWorkoutForDateWithCompletion:', {
+        targetDate,
+        today,
+        daysDifference,
+        currentWorkoutDay,
+        currentWorkoutType: currentWorkout.workoutType,
+        originalWorkoutType: originalWorkout.workoutType
+      })
+      
       // Project forward day by day, following the X3 schedule pattern
       let projectedDay = currentWorkoutDay
       for (let i = 0; i < daysDifference; i++) {
         projectedDay = (projectedDay + 1) % 7
       }
+      
+      console.log('DEBUG projection:', {
+        projectedDay,
+        originalTargetWeek: originalWorkout.week
+      })
       
       // Use the original target date's week to determine schedule pattern
       const originalTargetWeek = originalWorkout.week
@@ -566,6 +580,12 @@ export async function getWorkoutForDateWithCompletion(
       
       // Get the workout type for this projected day
       const projectedWorkout = schedule[projectedDay]
+      
+      console.log('DEBUG final result:', {
+        schedule,
+        projectedWorkout,
+        originalWorkout: originalWorkout.workoutType
+      })
       
       // Check if this represents a shift from the original schedule
       const isShifted = originalWorkout.workoutType !== projectedWorkout
