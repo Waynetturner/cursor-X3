@@ -488,7 +488,6 @@ export async function getWorkoutForDateWithCompletion(
   dayInWeek: number
   isShifted: boolean
 }> {
-  console.log('🎯 getWorkoutForDateWithCompletion called for', targetDate, 'user:', userId)
   try {
     // Get the original calendar-based workout for this date
     const originalWorkout = getWorkoutForDate(startDate, targetDate)
@@ -505,7 +504,6 @@ export async function getWorkoutForDateWithCompletion(
       return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     })()
     
-    console.log('📅 Date sync check - today calculated as:', today, 'target date:', targetDate)
     const targetDateObj = new Date(targetDate)
     const todayObj = new Date(today)
     
@@ -562,15 +560,6 @@ export async function getWorkoutForDateWithCompletion(
       
       let currentWorkoutDay = currentWorkout.dayInWeek
       
-      console.log('🔍 DEBUG getWorkoutForDateWithCompletion:', {
-        targetDate,
-        today,
-        daysDifference,
-        currentWorkoutDay,
-        currentWorkoutType: currentWorkout.workoutType,
-        originalWorkoutType: originalWorkout.workoutType,
-        isTargetTomorrow: daysDifference === 1
-      })
       
       // Project forward day by day, following the X3 schedule pattern
       let projectedDay = currentWorkoutDay
@@ -578,10 +567,6 @@ export async function getWorkoutForDateWithCompletion(
         projectedDay = (projectedDay + 1) % 7
       }
       
-      console.log('DEBUG projection:', {
-        projectedDay,
-        originalTargetWeek: originalWorkout.week
-      })
       
       // Use the original target date's week to determine schedule pattern
       const originalTargetWeek = originalWorkout.week
@@ -592,11 +577,6 @@ export async function getWorkoutForDateWithCompletion(
       // Get the workout type for this projected day
       const projectedWorkout = schedule[projectedDay]
       
-      console.log('DEBUG final result:', {
-        schedule,
-        projectedWorkout,
-        originalWorkout: originalWorkout.workoutType
-      })
       
       // Check if this represents a shift from the original schedule
       const isShifted = originalWorkout.workoutType !== projectedWorkout
