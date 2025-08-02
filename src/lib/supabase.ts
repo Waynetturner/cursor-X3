@@ -503,6 +503,10 @@ export async function getWorkoutForDateWithCompletion(
   if (targetDate === tomorrowForCheck) {
     console.log('🚨 TOMORROW DETECTED! Processing', targetDate, 'today is', todayForCheck)
   }
+  
+  if (targetDate === '2025-08-03') {
+    console.log('🚨 AUGUST 3RD DETECTED! This should be tomorrow if today is Aug 2nd')
+  }
   try {
     // Get the original calendar-based workout for this date
     const originalWorkout = getWorkoutForDate(startDate, targetDate)
