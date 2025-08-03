@@ -183,7 +183,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     }
   })
   
-  const adjustedDaysSinceStart = daysSinceStart + 1
+  const adjustedDaysSinceStart = daysSinceStart + totalMissedWorkoutDays
   const adjustedWeek = Math.floor(adjustedDaysSinceStart / 7) + 1
   const adjustedDayInWeek = adjustedDaysSinceStart % 7
   
