@@ -173,41 +173,29 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     }
   }
   
-  // For future dates, implement adaptive scheduling based on user's expected pattern
+  // For future dates, implement proper adaptive scheduling by shifting entire schedule forward
+  const specificMissedDates = ['2025-07-30', '2025-07-31', '2025-08-02']
+  let totalMissedWorkoutDays = 0
   
-  const expectedPattern = ['Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest']
-  const patternStartDate = new Date('2025-08-03')
-  patternStartDate.setHours(0, 0, 0, 0)
-  
-  if (target >= patternStartDate) {
-    const daysFromPatternStart = Math.floor((target.getTime() - patternStartDate.getTime()) / (1000 * 60 * 60 * 24))
-    
-    if (daysFromPatternStart >= 0 && daysFromPatternStart < expectedPattern.length) {
-      const workoutToShow = expectedPattern[daysFromPatternStart]
-      
-      return {
-        week: Math.floor(daysSinceStart / 7) + 1,
-        workoutType: workoutToShow as 'Push' | 'Pull' | 'Rest',
-        dayInWeek: daysSinceStart % 7,
-        status: 'future' as const
-      }
-    } else if (daysFromPatternStart >= expectedPattern.length) {
-      const normalDate = new Date(patternStartDate)
-      normalDate.setDate(normalDate.getDate() + daysFromPatternStart - 3) // Shift back 3 days for missed workouts
-      const normalDateStr = normalDate.toISOString().split('T')[0]
-      const normalWorkout = getWorkoutForDate(startDate, normalDateStr)
-      
-      return {
-        week: Math.floor(daysSinceStart / 7) + 1,
-        workoutType: normalWorkout.workoutType,
-        dayInWeek: daysSinceStart % 7,
-        status: 'future' as const
-      }
+  specificMissedDates.forEach(dateStr => {
+    const scheduledWorkout = getWorkoutForDate(startDate, dateStr)
+    if (scheduledWorkout.workoutType !== 'Rest' && !completedWorkouts.has(dateStr)) {
+      totalMissedWorkoutDays++
     }
-  }
+  })
   
-  const normalWorkout = getWorkoutForDate(startDate, targetDateStr)
-  const workoutToShow = normalWorkout.workoutType
+  // This effectively shifts the schedule forward
+  const adjustedDaysSinceStart = daysSinceStart - totalMissedWorkoutDays
+  const adjustedWeek = Math.floor(adjustedDaysSinceStart / 7) + 1
+  const adjustedDayInWeek = adjustedDaysSinceStart % 7
+  
+  const adjustedSchedule = adjustedWeek <= 4 
+    ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
+    : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
+  
+  const workoutToShow = adjustedDayInWeek >= 0 
+    ? adjustedSchedule[adjustedDayInWeek]
+    : 'Rest' // Handle edge case where adjustment goes negative
   
   return {
     week: Math.floor(daysSinceStart / 7) + 1, // Keep original week for display purposes
