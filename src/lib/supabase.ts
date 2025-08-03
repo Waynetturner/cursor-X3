@@ -173,45 +173,38 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     }
   }
   
-  // For future dates, calculate adaptive scheduling
-  const lookbackDays = 7
-  let missedWorkouts: Array<{date: string, type: 'Push' | 'Pull'}> = []
-  let lookbackDate = new Date(today)
-  lookbackDate.setDate(lookbackDate.getDate() - lookbackDays)
+  // For future dates, calculate adaptive scheduling by shifting entire schedule forward
+  let totalMissedWorkoutDays = 0
+  let checkDate = new Date(start)
   
-  let currentCheckDate = new Date(Math.max(lookbackDate.getTime(), start.getTime()))
-  
-  while (currentCheckDate < today) {
-    const checkDateStr = currentCheckDate.toISOString().split('T')[0]
+  while (checkDate < today) {
+    const checkDateStr = checkDate.toISOString().split('T')[0]
     const scheduledWorkout = getWorkoutForDate(startDate, checkDateStr)
     
     if (scheduledWorkout.workoutType !== 'Rest' && !completedWorkouts.has(checkDateStr)) {
-      missedWorkouts.push({
-        date: checkDateStr,
-        type: scheduledWorkout.workoutType as 'Push' | 'Pull'
-      })
+      totalMissedWorkoutDays++
     }
     
-    currentCheckDate.setDate(currentCheckDate.getDate() + 1)
+    checkDate.setDate(checkDate.getDate() + 1)
   }
   
-  // Calculate the original day in week for this target date
-  const originalWeek = Math.floor(daysSinceStart / 7) + 1
-  const dayInWeek = daysSinceStart % 7
+  // This effectively shifts the schedule forward
+  const adjustedDaysSinceStart = daysSinceStart - totalMissedWorkoutDays
+  const adjustedWeek = Math.floor(adjustedDaysSinceStart / 7) + 1
+  const adjustedDayInWeek = adjustedDaysSinceStart % 7
   
-  // Determine which schedule to use based on the original week
-  const schedule = originalWeek <= 4 
+  const adjustedSchedule = adjustedWeek <= 4 
     ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
     : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
   
-  const workoutToShow = missedWorkouts.length > 0 
-    ? missedWorkouts[missedWorkouts.length - 1].type  // Most recent missed workout
-    : schedule[dayInWeek]
+  const workoutToShow = adjustedDayInWeek >= 0 
+    ? adjustedSchedule[adjustedDayInWeek]
+    : 'Rest'
   
   return {
-    week: originalWeek,
+    week: Math.floor(daysSinceStart / 7) + 1,
     workoutType: workoutToShow as 'Push' | 'Pull' | 'Rest',
-    dayInWeek,
+    dayInWeek: daysSinceStart % 7,
     status: 'future' as const
   }
 }
