@@ -177,7 +177,6 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   const specificMissedDates = ['2025-07-30', '2025-07-31', '2025-08-02']
   const totalMissedWorkoutDays = specificMissedDates.filter(date => !completedWorkouts.has(date)).length
   
-  console.log(`🔍 Date ${targetDateStr}: daysSinceStart=${daysSinceStart}, missedDays=${totalMissedWorkoutDays}`)
   
   const adjustedDaysSinceStart = daysSinceStart - totalMissedWorkoutDays
   const adjustedWeek = Math.floor(adjustedDaysSinceStart / 7) + 1
