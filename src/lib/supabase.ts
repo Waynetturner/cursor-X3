@@ -188,19 +188,21 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     currentCheckDate.setDate(currentCheckDate.getDate() + 1)
   }
   
-  const adjustedDaysSinceStart = daysSinceStart + missedWorkoutDays
-  const adjustedDayInWeek = adjustedDaysSinceStart % 7
-  
-  // Determine which schedule to use based on the original week (not adjusted week)
+  // Calculate the original day in week for this target date
   const originalWeek = Math.floor(daysSinceStart / 7) + 1
+  const dayInWeek = daysSinceStart % 7
+  
+  // Determine which schedule to use based on the original week
   const schedule = originalWeek <= 4 
     ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
     : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
   
+  const shiftedPatternIndex = (dayInWeek + missedWorkoutDays) % 7
+  
   return {
     week: originalWeek,
-    workoutType: schedule[adjustedDayInWeek] as 'Push' | 'Pull' | 'Rest',
-    dayInWeek: daysSinceStart % 7,
+    workoutType: schedule[shiftedPatternIndex] as 'Push' | 'Pull' | 'Rest',
+    dayInWeek,
     status: 'future' as const
   }
 }

@@ -39,7 +39,7 @@ export const DATABASE_SCHEMA = {
     id: 'uuid (primary key)',
     user_id: 'uuid (foreign key to auth.users)',
     workout_local_date_time: 'timestamp with time zone',
-    workout_type: 'text (Push|Pull)',
+    workout_type: 'text (Push|Pull|Rest|Missed)',
     week_number: 'integer',
     exercise_name: 'text',
     band_color: 'text (Ultra Light|White|Light Gray|Dark Gray|Black|Elite)',
