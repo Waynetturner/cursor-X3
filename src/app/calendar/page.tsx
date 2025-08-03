@@ -237,7 +237,7 @@ export default function CalendarPage() {
                         ${day.workoutType === 'Pull' ? 'border-red-500 bg-red-100 dark:bg-red-900/30' : ''}
                         ${day.workoutType === 'Rest' ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/30' : ''}
                         ${day.isCompleted ? 'border-green-500' : ''}
-                        ${day.status === 'missed' && day.workoutType !== 'Rest' ? 'border-red-600 bg-red-200 dark:bg-red-800/50' : ''}
+                        ${day.status === 'missed' && day.workoutType !== 'Rest' ? 'border-red-600 bg-red-200 dark:bg-red-800/50 !opacity-100' : ''}
                       `}
                     >
                       <div className="flex flex-col h-full">
