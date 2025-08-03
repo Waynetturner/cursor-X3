@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkout } from '@/lib/supabase'
+import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkout, getWorkoutForDateWithCompletion } from '@/lib/supabase'
 import { announceToScreenReader } from '@/lib/accessibility'
 import { Play, Flame, Calendar, ArrowRight, Sparkles, TrendingUp, Users, Shield } from 'lucide-react'
 import React from 'react'
@@ -382,15 +382,30 @@ export default function HomePage() {
               console.error('❌ Error creating profile:', insertError)
             } else {
               console.log('✅ Profile created successfully')
-              const workout = getTodaysWorkout(today)
+              const { data: workoutData } = await supabase
+                .from('workout_exercises')
+                .select('workout_local_date_time')
+                .eq('user_id', user.id)
+              const completedWorkouts = new Set(
+                workoutData?.map(e => e.workout_local_date_time.split('T')[0]) || []
+              )
+              const workout = getWorkoutForDateWithCompletion(today, today, completedWorkouts)
               setTodaysWorkout(workout)
             }
           }
         } else if (profile?.x3_start_date) {
           console.log('✅ Found start date:', profile.x3_start_date)
-          const workout = getTodaysWorkout(profile.x3_start_date)
+          const { data: workoutData } = await supabase
+            .from('workout_exercises')
+            .select('workout_local_date_time')
+            .eq('user_id', user.id)
+          const completedWorkouts = new Set(
+            workoutData?.map(e => e.workout_local_date_time.split('T')[0]) || []
+          )
+          const today = new Date().toISOString().split('T')[0]
+          const workout = getWorkoutForDateWithCompletion(profile.x3_start_date, today, completedWorkouts)
           setTodaysWorkout(workout)
-        } else {
+        }else {
           console.log('⚠️ No start date found in profile')
         }
       } else {
