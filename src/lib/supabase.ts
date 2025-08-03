@@ -173,69 +173,35 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     }
   }
   
-  let completedWorkoutDays = 0
+  let missedWorkoutDays = 0
   let currentCheckDate = new Date(start)
   
   while (currentCheckDate < target) {
     const checkDateStr = currentCheckDate.toISOString().split('T')[0]
     const scheduledWorkout = getWorkoutForDate(startDate, checkDateStr)
     
-    if (scheduledWorkout.workoutType !== 'Rest' && completedWorkouts.has(checkDateStr)) {
-      completedWorkoutDays++
+    if (scheduledWorkout.workoutType !== 'Rest' && !completedWorkouts.has(checkDateStr)) {
+      missedWorkoutDays++
     }
     
     currentCheckDate.setDate(currentCheckDate.getDate() + 1)
   }
   
-  const workoutSequence: ('Push' | 'Pull' | 'Rest')[] = []
+  const adjustedDaysSinceStart = daysSinceStart + missedWorkoutDays
+  const adjustedWeek = Math.floor(adjustedDaysSinceStart / 7) + 1
+  const adjustedDayInWeek = adjustedDaysSinceStart % 7
   
-  // Week 1-4: Push/Pull/Rest/Push/Pull/Rest/Rest (4 workouts per week)
-  // Week 5+: Push/Pull/Push/Pull/Push/Pull/Rest (6 workouts per week)
-  for (let week = 1; week <= 20; week++) { // Generate enough weeks
-    if (week <= 4) {
-      workoutSequence.push('Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest')
-    } else {
-      workoutSequence.push('Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest')
-    }
-  }
+  const schedule = adjustedWeek <= 4 
+    ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
+    : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
   
-  let workoutIndex = 0
-  let workoutDaysProcessed = 0
-  
-  while (workoutDaysProcessed < completedWorkoutDays && workoutIndex < workoutSequence.length) {
-    if (workoutSequence[workoutIndex] !== 'Rest') {
-      workoutDaysProcessed++
-    }
-    if (workoutDaysProcessed < completedWorkoutDays) {
-      workoutIndex++
-    }
-  }
-  
-  if (workoutDaysProcessed === completedWorkoutDays && workoutIndex < workoutSequence.length) {
-    workoutIndex++
-    while (workoutIndex < workoutSequence.length && workoutSequence[workoutIndex] === 'Rest') {
-      workoutIndex++
-    }
-  }
-  
-  // Determine what workout should happen on the target date
-  let projectedWorkoutType: 'Push' | 'Pull' | 'Rest' = 'Rest'
-  
-  if (workoutIndex < workoutSequence.length) {
-    projectedWorkoutType = workoutSequence[workoutIndex]
-  } else {
-    const remainingIndex = workoutIndex % 7
-    const week5Pattern: ('Push' | 'Pull' | 'Rest')[] = ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest']
-    projectedWorkoutType = week5Pattern[remainingIndex]
-  }
-  
-  // Calculate which week we're in based on the target date
+  // Calculate which week we're in based on the original target date (for display)
   const week = Math.floor(daysSinceStart / 7) + 1
   const dayInWeek = daysSinceStart % 7
   
   return {
     week,
-    workoutType: projectedWorkoutType,
+    workoutType: schedule[adjustedDayInWeek] as 'Push' | 'Pull' | 'Rest',
     dayInWeek,
     status: 'future' as const
   }
