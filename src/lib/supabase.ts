@@ -174,7 +174,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   }
   
   // For future dates, calculate adaptive scheduling
-  let missedWorkoutDays = 0
+  let missedWorkouts: Array<{date: string, type: 'Push' | 'Pull'}> = []
   let currentCheckDate = new Date(start)
   
   while (currentCheckDate < target) {
@@ -182,7 +182,10 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     const scheduledWorkout = getWorkoutForDate(startDate, checkDateStr)
     
     if (scheduledWorkout.workoutType !== 'Rest' && currentCheckDate < today && !completedWorkouts.has(checkDateStr)) {
-      missedWorkoutDays++
+      missedWorkouts.push({
+        date: checkDateStr,
+        type: scheduledWorkout.workoutType as 'Push' | 'Pull'
+      })
     }
     
     currentCheckDate.setDate(currentCheckDate.getDate() + 1)
@@ -197,11 +200,13 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
     : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
   
-  const shiftedPatternIndex = (dayInWeek + missedWorkoutDays) % 7
+  const workoutToShow = missedWorkouts.length > 0 
+    ? missedWorkouts[0].type 
+    : schedule[dayInWeek]
   
   return {
     week: originalWeek,
-    workoutType: schedule[shiftedPatternIndex] as 'Push' | 'Pull' | 'Rest',
+    workoutType: workoutToShow as 'Push' | 'Pull' | 'Rest',
     dayInWeek,
     status: 'future' as const
   }

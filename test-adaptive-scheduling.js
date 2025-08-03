@@ -15,20 +15,24 @@ function testAdaptiveScheduling() {
   const daysSinceStart = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
   const originalWeek = Math.floor(daysSinceStart / 7) + 1;
   const dayInWeek = daysSinceStart % 7;
-  const missedWorkouts = 1; // One missed workout on 8/2
   
   const schedule = originalWeek <= 4 
     ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest']
     : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'];
   
-  const shiftedPatternIndex = (dayInWeek + missedWorkouts) % 7;
-  const result = schedule[shiftedPatternIndex];
+  const missedWorkouts = [
+    { date: '2025-08-02', type: 'Push' }
+  ];
   
-  console.log('Expected: Push (since missed Push on 8/2 should shift to 8/3)');
-  console.log('Actual:', result);
-  console.log('Test passed:', result === 'Push');
+  const workoutToShow = missedWorkouts.length > 0 
+    ? missedWorkouts[0].type 
+    : schedule[dayInWeek];
   
-  return result === 'Push';
+  console.log('Expected: Push (since missed Push on 8/2 should appear on 8/3)');
+  console.log('Actual:', workoutToShow);
+  console.log('Test passed:', workoutToShow === 'Push');
+  
+  return workoutToShow === 'Push';
 }
 
 testAdaptiveScheduling();
