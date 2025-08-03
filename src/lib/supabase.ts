@@ -188,7 +188,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     checkDate.setDate(checkDate.getDate() + 1)
   }
   
-  
+  // This effectively shifts the schedule forward
   const adjustedDaysSinceStart = daysSinceStart - totalMissedWorkoutDays
   const adjustedWeek = Math.floor(adjustedDaysSinceStart / 7) + 1
   const adjustedDayInWeek = adjustedDaysSinceStart % 7
@@ -199,10 +199,10 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   
   const workoutToShow = adjustedDayInWeek >= 0 && adjustedDayInWeek < adjustedSchedule.length
     ? adjustedSchedule[adjustedDayInWeek]
-    : 'Rest'
+    : 'Rest' // Handle edge case where adjustment goes negative
   
   return {
-    week: Math.floor(daysSinceStart / 7) + 1,
+    week: Math.floor(daysSinceStart / 7) + 1, // Keep original week for display purposes
     workoutType: workoutToShow as 'Push' | 'Pull' | 'Rest',
     dayInWeek: daysSinceStart % 7,
     status: 'future' as const
