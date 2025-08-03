@@ -173,6 +173,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     }
   }
   
+  // For future dates, calculate adaptive scheduling
   let missedWorkoutDays = 0
   let currentCheckDate = new Date(start)
   
@@ -180,7 +181,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     const checkDateStr = currentCheckDate.toISOString().split('T')[0]
     const scheduledWorkout = getWorkoutForDate(startDate, checkDateStr)
     
-    if (scheduledWorkout.workoutType !== 'Rest' && !completedWorkouts.has(checkDateStr)) {
+    if (scheduledWorkout.workoutType !== 'Rest' && currentCheckDate < today && !completedWorkouts.has(checkDateStr)) {
       missedWorkoutDays++
     }
     
@@ -188,21 +189,18 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   }
   
   const adjustedDaysSinceStart = daysSinceStart + missedWorkoutDays
-  const adjustedWeek = Math.floor(adjustedDaysSinceStart / 7) + 1
   const adjustedDayInWeek = adjustedDaysSinceStart % 7
   
-  const schedule = adjustedWeek <= 4 
+  // Determine which schedule to use based on the original week (not adjusted week)
+  const originalWeek = Math.floor(daysSinceStart / 7) + 1
+  const schedule = originalWeek <= 4 
     ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
     : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
   
-  // Calculate which week we're in based on the original target date (for display)
-  const week = Math.floor(daysSinceStart / 7) + 1
-  const dayInWeek = daysSinceStart % 7
-  
   return {
-    week,
+    week: originalWeek,
     workoutType: schedule[adjustedDayInWeek] as 'Push' | 'Pull' | 'Rest',
-    dayInWeek,
+    dayInWeek: daysSinceStart % 7,
     status: 'future' as const
   }
 }
