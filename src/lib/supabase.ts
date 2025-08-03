@@ -137,6 +137,110 @@ export function handleMissedWorkouts(lastWorkoutDate: string) {
   }
 }
 
+// Calculate workout for a specific date with completion-based adaptive scheduling
+export function getWorkoutForDateWithCompletion(startDate: string, targetDate: string, completedWorkouts: Set<string>) {
+  const start = new Date(startDate)
+  const target = new Date(targetDate)
+  
+  // Normalize both dates to avoid timezone issues
+  start.setHours(0, 0, 0, 0)
+  target.setHours(0, 0, 0, 0)
+  
+  const daysSinceStart = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+  
+  // Handle negative days (before start date)
+  if (daysSinceStart < 0) {
+    return {
+      week: 0,
+      workoutType: 'Rest' as 'Push' | 'Pull' | 'Rest',
+      dayInWeek: -1,
+      status: 'future' as 'completed' | 'missed' | 'future'
+    }
+  }
+  
+  const targetDateStr = target.toISOString().split('T')[0]
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const isPastDate = target < today
+  
+  if (isPastDate) {
+    const staticWorkout = getWorkoutForDate(startDate, targetDateStr)
+    const isCompleted = completedWorkouts.has(targetDateStr)
+    
+    return {
+      ...staticWorkout,
+      status: isCompleted ? 'completed' as const : 'missed' as const
+    }
+  }
+  
+  let completedWorkoutDays = 0
+  let currentCheckDate = new Date(start)
+  
+  while (currentCheckDate < target) {
+    const checkDateStr = currentCheckDate.toISOString().split('T')[0]
+    const scheduledWorkout = getWorkoutForDate(startDate, checkDateStr)
+    
+    if (scheduledWorkout.workoutType !== 'Rest' && completedWorkouts.has(checkDateStr)) {
+      completedWorkoutDays++
+    }
+    
+    currentCheckDate.setDate(currentCheckDate.getDate() + 1)
+  }
+  
+  const workoutSequence: ('Push' | 'Pull' | 'Rest')[] = []
+  
+  // Week 1-4: Push/Pull/Rest/Push/Pull/Rest/Rest (4 workouts per week)
+  // Week 5+: Push/Pull/Push/Pull/Push/Pull/Rest (6 workouts per week)
+  for (let week = 1; week <= 20; week++) { // Generate enough weeks
+    if (week <= 4) {
+      workoutSequence.push('Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest')
+    } else {
+      workoutSequence.push('Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest')
+    }
+  }
+  
+  let workoutIndex = 0
+  let workoutDaysProcessed = 0
+  
+  while (workoutDaysProcessed < completedWorkoutDays && workoutIndex < workoutSequence.length) {
+    if (workoutSequence[workoutIndex] !== 'Rest') {
+      workoutDaysProcessed++
+    }
+    if (workoutDaysProcessed < completedWorkoutDays) {
+      workoutIndex++
+    }
+  }
+  
+  if (workoutDaysProcessed === completedWorkoutDays && workoutIndex < workoutSequence.length) {
+    workoutIndex++
+    while (workoutIndex < workoutSequence.length && workoutSequence[workoutIndex] === 'Rest') {
+      workoutIndex++
+    }
+  }
+  
+  // Determine what workout should happen on the target date
+  let projectedWorkoutType: 'Push' | 'Pull' | 'Rest' = 'Rest'
+  
+  if (workoutIndex < workoutSequence.length) {
+    projectedWorkoutType = workoutSequence[workoutIndex]
+  } else {
+    const remainingIndex = workoutIndex % 7
+    const week5Pattern: ('Push' | 'Pull' | 'Rest')[] = ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest']
+    projectedWorkoutType = week5Pattern[remainingIndex]
+  }
+  
+  // Calculate which week we're in based on the target date
+  const week = Math.floor(daysSinceStart / 7) + 1
+  const dayInWeek = daysSinceStart % 7
+  
+  return {
+    week,
+    workoutType: projectedWorkoutType,
+    dayInWeek,
+    status: 'future' as const
+  }
+}
+
 // Calculate week progress (4 workouts weeks 1-4, 6 workouts week 5+)
 export function calculateWeekProgress(startDate: string, workoutDates: string[]) {
   const todayWorkout = getTodaysWorkout(startDate)

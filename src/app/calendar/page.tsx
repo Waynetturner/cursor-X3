@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
-import { supabase, getWorkoutForDate, X3_EXERCISES } from '@/lib/supabase'
+import { supabase, getWorkoutForDate, getWorkoutForDateWithCompletion, X3_EXERCISES } from '@/lib/supabase'
 import { ChevronLeft, ChevronRight, Flame, Dumbbell, Coffee, CheckCircle } from 'lucide-react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
@@ -14,6 +14,7 @@ interface WorkoutDay {
   isToday: boolean
   isThisMonth: boolean
   week: number
+  status: 'completed' | 'missed' | 'future'
 }
 
 export default function CalendarPage() {
@@ -101,7 +102,7 @@ export default function CalendarPage() {
       currentCalendarDate.setDate(startDate.getDate() + i)
       
       const dateStr = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}-${String(currentCalendarDate.getDate()).padStart(2, '0')}`
-      const workout = getWorkoutForDate(userStartDate, dateStr)
+      const workout = getWorkoutForDateWithCompletion(userStartDate, dateStr, completedWorkouts)
       const isThisMonth = currentCalendarDate.getMonth() === month
       
       calendarDays.push({
@@ -111,7 +112,8 @@ export default function CalendarPage() {
         isCompleted: completedWorkouts.has(dateStr),
         isToday: dateStr === today,
         isThisMonth: isThisMonth,
-        week: workout.week
+        week: workout.week,
+        status: workout.status
       })
     }
 
@@ -235,6 +237,7 @@ export default function CalendarPage() {
                         ${day.workoutType === 'Pull' ? 'border-red-500 bg-red-100 dark:bg-red-900/30' : ''}
                         ${day.workoutType === 'Rest' ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/30' : ''}
                         ${day.isCompleted ? 'border-green-500' : ''}
+                        ${day.status === 'missed' && day.workoutType !== 'Rest' ? 'border-red-600 bg-red-200 dark:bg-red-800/50' : ''}
                       `}
                     >
                       <div className="flex flex-col h-full">
