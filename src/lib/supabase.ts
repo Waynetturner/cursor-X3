@@ -174,8 +174,19 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   }
   
   // For future dates, calculate adaptive scheduling by shifting entire schedule forward
-  const specificMissedDates = ['2025-07-30', '2025-07-31', '2025-08-02']
-  const totalMissedWorkoutDays = specificMissedDates.filter(date => !completedWorkouts.has(date)).length
+  let totalMissedWorkoutDays = 0
+  let checkDate = new Date(start)
+  
+  while (checkDate < today) {
+    const checkDateStr = checkDate.toISOString().split('T')[0]
+    const scheduledWorkout = getWorkoutForDate(startDate, checkDateStr)
+    
+    if (scheduledWorkout.workoutType !== 'Rest' && !completedWorkouts.has(checkDateStr)) {
+      totalMissedWorkoutDays++
+    }
+    
+    checkDate.setDate(checkDate.getDate() + 1)
+  }
   
   
   const adjustedDaysSinceStart = daysSinceStart - totalMissedWorkoutDays
