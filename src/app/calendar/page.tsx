@@ -70,8 +70,6 @@ export default function CalendarPage() {
           })
         )
         setCompletedWorkouts(completed)
-        console.log('📅 Calendar loaded completed workouts:', Array.from(completed))
-        console.log('📅 Expected missed dates should NOT be in this set: 7/30, 7/31, 8/2')
       }
     } catch (error) {
       console.error('Error loading user data:', error)

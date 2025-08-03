@@ -167,8 +167,6 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     const staticWorkout = getWorkoutForDate(startDate, targetDateStr)
     const isCompleted = completedWorkouts.has(targetDateStr)
     
-    console.log(`🔍 Date ${targetDateStr}: isPast=${isPastDate}, workoutType=${staticWorkout.workoutType}, isCompleted=${isCompleted}`)
-    
     return {
       ...staticWorkout,
       status: isCompleted ? 'completed' as const : 'missed' as const
@@ -176,14 +174,18 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   }
   
   // For future dates, calculate adaptive scheduling
+  const lookbackDays = 7
   let missedWorkouts: Array<{date: string, type: 'Push' | 'Pull'}> = []
-  let currentCheckDate = new Date(start)
+  let lookbackDate = new Date(today)
+  lookbackDate.setDate(lookbackDate.getDate() - lookbackDays)
   
-  while (currentCheckDate < target) {
+  let currentCheckDate = new Date(Math.max(lookbackDate.getTime(), start.getTime()))
+  
+  while (currentCheckDate < today) {
     const checkDateStr = currentCheckDate.toISOString().split('T')[0]
     const scheduledWorkout = getWorkoutForDate(startDate, checkDateStr)
     
-    if (scheduledWorkout.workoutType !== 'Rest' && currentCheckDate < today && !completedWorkouts.has(checkDateStr)) {
+    if (scheduledWorkout.workoutType !== 'Rest' && !completedWorkouts.has(checkDateStr)) {
       missedWorkouts.push({
         date: checkDateStr,
         type: scheduledWorkout.workoutType as 'Push' | 'Pull'
@@ -203,7 +205,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
   
   const workoutToShow = missedWorkouts.length > 0 
-    ? missedWorkouts[0].type 
+    ? missedWorkouts[missedWorkouts.length - 1].type  // Most recent missed workout
     : schedule[dayInWeek]
   
   return {
