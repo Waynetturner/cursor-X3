@@ -105,13 +105,6 @@ export default function CalendarPage() {
       const workout = getWorkoutForDateWithCompletion(userStartDate, dateStr, completedWorkouts)
       const isThisMonth = currentCalendarDate.getMonth() === month
       
-      if (['2025-07-30', '2025-07-31', '2025-08-02'].includes(dateStr)) {
-        console.log(`🔍 CALENDAR: ${dateStr}`)
-        console.log(`  workout.status: ${workout.status}`)
-        console.log(`  workout.workoutType: ${workout.workoutType}`)
-        console.log(`  isThisMonth: ${isThisMonth}`)
-        console.log(`  CSS condition: ${workout.status === 'missed' && workout.workoutType !== 'Rest'}`)
-      }
       
       calendarDays.push({
         date: dateStr,
@@ -235,21 +228,14 @@ export default function CalendarPage() {
                 {/* Calendar Days - Full Width */}
                 <div className="grid grid-cols-7 gap-3 w-full max-w-4xl">
                   {workoutDays.map((day, index) => {
-                    if (['2025-07-30', '2025-07-31', '2025-08-02'].includes(day.date)) {
-                      const isMissedWorkout = day.status === 'missed' && day.workoutType !== 'Rest'
-                      console.log(`🎨 CSS: ${day.date}`)
-                      console.log(`  day.status: ${day.status}`)
-                      console.log(`  day.workoutType: ${day.workoutType}`)
-                      console.log(`  isMissedWorkout: ${isMissedWorkout}`)
-                      console.log(`  CSS classes: ${isMissedWorkout ? 'RED STYLING' : 'NORMAL STYLING'}`)
-                    }
                     
                     return (
                     <div
                       key={day.date}
                       className={`
                         relative min-h-[80px] p-3 rounded-lg border-2 transition-all duration-200
-                        ${day.status === 'missed' && day.workoutType !== 'Rest' ? 'border-red-600 bg-red-200 dark:bg-red-800/50 !opacity-100' : 
+                        ${day.status === 'missed' && day.workoutType !== 'Rest' ? 
+                          'border-red-600 bg-red-200 dark:bg-red-800/50 !opacity-100 !border-4' : 
                           `${day.isThisMonth ? '' : 'opacity-50'}
                            ${day.isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-gray-100 dark:ring-offset-gray-900' : ''}
                            ${day.workoutType === 'Push' ? 'border-orange-500 bg-orange-100 dark:bg-orange-900/30' : ''}
