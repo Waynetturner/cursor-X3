@@ -191,6 +191,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     const scheduledWorkout = getWorkoutForDate(startDate, dateStr)
     if (scheduledWorkout.workoutType !== 'Rest' && !completedWorkouts.has(dateStr)) {
       totalMissedWorkoutDays++
+      console.log(`🔍 Missed workout detected: ${dateStr} (${scheduledWorkout.workoutType})`)
     }
   })
   
