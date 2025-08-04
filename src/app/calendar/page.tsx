@@ -235,13 +235,14 @@ export default function CalendarPage() {
                       key={day.date}
                       className={`
                         relative min-h-[80px] p-3 rounded-lg border-2 transition-all duration-200
-                        ${day.isThisMonth ? '' : 'opacity-50'}
-                        ${day.isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-gray-100 dark:ring-offset-gray-900' : ''}
-                        ${day.workoutType === 'Push' ? 'border-orange-500 bg-orange-100 dark:bg-orange-900/30' : ''}
-                        ${day.workoutType === 'Pull' ? 'border-red-500 bg-red-100 dark:bg-red-900/30' : ''}
-                        ${day.workoutType === 'Rest' ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/30' : ''}
-                        ${day.isCompleted ? 'border-green-500' : ''}
-                        ${day.status === 'missed' && day.workoutType !== 'Rest' ? 'border-red-600 bg-red-200 dark:bg-red-800/50 !opacity-100' : ''}
+                        ${day.status === 'missed' && day.workoutType !== 'Rest' ? 'border-red-600 bg-red-200 dark:bg-red-800/50 !opacity-100' : 
+                          `${day.isThisMonth ? '' : 'opacity-50'}
+                           ${day.isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-gray-100 dark:ring-offset-gray-900' : ''}
+                           ${day.workoutType === 'Push' ? 'border-orange-500 bg-orange-100 dark:bg-orange-900/30' : ''}
+                           ${day.workoutType === 'Pull' ? 'border-red-500 bg-red-100 dark:bg-red-900/30' : ''}
+                           ${day.workoutType === 'Rest' ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/30' : ''}
+                           ${day.isCompleted ? 'border-green-500' : ''}`
+                        }
                       `}
                     >
                       <div className="flex flex-col h-full">

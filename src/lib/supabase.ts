@@ -177,6 +177,10 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     const staticWorkout = getWorkoutForDate(startDate, targetDateStr)
     const isCompleted = completedWorkouts.has(targetDateStr)
     
+    if (['2025-07-30', '2025-07-31', '2025-08-02'].includes(targetDateStr)) {
+      console.log(`🔍 Past date ${targetDateStr}: workoutType=${staticWorkout.workoutType}, isCompleted=${isCompleted}, status=${isCompleted ? 'completed' : 'missed'}`)
+    }
+    
     return {
       ...staticWorkout,
       status: isCompleted ? 'completed' as const : 'missed' as const
