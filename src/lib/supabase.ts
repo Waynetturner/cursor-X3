@@ -174,7 +174,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   const isPastDate = target < today
   
   if (isPastDate) {
-    const staticWorkout = getWorkoutForDate(startDate, targetDate)
+    const staticWorkout = getWorkoutForDate(startDate, targetDateStr)
     const isCompleted = completedWorkouts.has(targetDateStr)
     
     return {
@@ -183,7 +183,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     }
   }
   
-  // For future dates, implement proper adaptive scheduling by shifting entire schedule forward
+  // Calculate total missed workout days for adaptive scheduling
   const specificMissedDates = ['2025-07-30', '2025-07-31', '2025-08-02']
   let totalMissedWorkoutDays = 0
   
