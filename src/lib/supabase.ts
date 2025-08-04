@@ -139,6 +139,16 @@ export function handleMissedWorkouts(lastWorkoutDate: string) {
 
 // Calculate workout for a specific date with completion-based adaptive scheduling
 export function getWorkoutForDateWithCompletion(startDate: string, targetDate: string, completedWorkouts: Set<string>) {
+  // Handle null or undefined startDate
+  if (!startDate) {
+    return {
+      week: 0,
+      workoutType: 'Rest' as 'Push' | 'Pull' | 'Rest',
+      dayInWeek: -1,
+      status: 'future' as 'completed' | 'missed' | 'future'
+    }
+  }
+  
   const start = new Date(startDate)
   const target = new Date(targetDate)
   

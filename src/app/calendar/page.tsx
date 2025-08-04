@@ -105,10 +105,6 @@ export default function CalendarPage() {
       const workout = getWorkoutForDateWithCompletion(userStartDate, dateStr, completedWorkouts)
       const isThisMonth = currentCalendarDate.getMonth() === month
       
-      if (dateStr === '2025-05-28') {
-        console.log(`🔍 DEBUG 5/28: userStartDate="${userStartDate}", dateStr="${dateStr}", workoutType="${workout.workoutType}", week=${workout.week}`)
-      }
-      
       calendarDays.push({
         date: dateStr,
         dayOfMonth: currentCalendarDate.getDate(),
