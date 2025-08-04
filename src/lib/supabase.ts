@@ -44,7 +44,7 @@ export function getWorkoutForDate(startDate: string, targetDate: string) {
   
   const daysSinceStart = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
   
-  // Handle negative days (before start date)
+  // Handle negative days (before start date) - show as Rest for calendar display
   if (daysSinceStart < 0) {
     return {
       week: 0,
@@ -148,7 +148,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   
   const daysSinceStart = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
   
-  // Handle negative days (before start date)
+  // Handle negative days (before start date) - show as Rest for calendar display
   if (daysSinceStart < 0) {
     return {
       week: 0,
@@ -164,7 +164,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   const isPastDate = target < today
   
   if (isPastDate) {
-    const staticWorkout = getWorkoutForDate(startDate, targetDateStr)
+    const staticWorkout = getWorkoutForDate(startDate, targetDate)
     const isCompleted = completedWorkouts.has(targetDateStr)
     
     return {
