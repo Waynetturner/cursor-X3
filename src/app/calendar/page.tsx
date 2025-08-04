@@ -14,7 +14,7 @@ interface WorkoutDay {
   isToday: boolean
   isThisMonth: boolean
   week: number
-  status: 'completed' | 'missed' | 'future'
+  status: 'completed' | 'missed' | 'future' | 'pre-program'
 }
 
 export default function CalendarPage() {
@@ -228,14 +228,18 @@ export default function CalendarPage() {
                 {/* Calendar Days - Full Width */}
                 <div className="grid grid-cols-7 gap-3 w-full max-w-4xl">
                   {workoutDays.map((day, index) => {
+                    const isMissedWorkout = day.status === 'missed' && day.workoutType !== 'Rest'
+                    const isPreProgram = day.status === 'pre-program'
                     
                     return (
                     <div
                       key={day.date}
                       className={`
                         relative min-h-[80px] p-3 rounded-lg border-2 transition-all duration-200
-                        ${day.status === 'missed' && day.workoutType !== 'Rest' ? 
-                          'border-red-600 bg-red-200 dark:bg-red-800/50 !opacity-100 !border-4' : 
+                        ${isMissedWorkout ? 
+                          'border-red-600 bg-gray-200 dark:bg-gray-700 !opacity-100 !border-4' : 
+                          isPreProgram ?
+                          'border-gray-300 bg-gray-50 dark:bg-gray-800 opacity-30' :
                           `${day.isThisMonth ? '' : 'opacity-50'}
                            ${day.isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-gray-100 dark:ring-offset-gray-900' : ''}
                            ${day.workoutType === 'Push' ? 'border-orange-500 bg-orange-100 dark:bg-orange-900/30' : ''}
@@ -251,23 +255,37 @@ export default function CalendarPage() {
                           {day.dayOfMonth}
                         </span>
                         
-                        {/* Workout Type */}
+                        {/* Workout Type or Status */}
                         <div className="flex-1 flex flex-col items-center justify-center">
-                          <div className="flex items-center space-x-1 mb-1">
-                            {getWorkoutIcon(day.workoutType)}
-                            <span className={`text-xs font-medium ${
-                              day.workoutType === 'Rest' 
-                                ? 'text-blue-600 dark:text-blue-400' 
-                                : day.workoutType === 'Push' 
-                                ? 'text-orange-600 dark:text-orange-400' 
-                                : 'text-red-600 dark:text-red-400'
-                            }`}>
-                              {day.workoutType}
-                            </span>
-                          </div>
+                          {isMissedWorkout ? (
+                            <div className="flex items-center space-x-1 mb-1">
+                              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                                Missed
+                              </span>
+                            </div>
+                          ) : isPreProgram ? (
+                            <div className="flex items-center space-x-1 mb-1">
+                              <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                                
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-1 mb-1">
+                              {getWorkoutIcon(day.workoutType)}
+                              <span className={`text-xs font-medium ${
+                                day.workoutType === 'Rest' 
+                                  ? 'text-blue-600 dark:text-blue-400' 
+                                  : day.workoutType === 'Push' 
+                                  ? 'text-orange-600 dark:text-orange-400' 
+                                  : 'text-red-600 dark:text-red-400'
+                              }`}>
+                                {day.workoutType}
+                              </span>
+                            </div>
+                          )}
                           
-                          {/* Week indicator for current month */}
-                          {day.isThisMonth && (
+                          {/* Week indicator for current month (not for pre-program or missed) */}
+                          {day.isThisMonth && !isMissedWorkout && !isPreProgram && (
                             <span className="text-xs opacity-80 text-gray-700 dark:text-gray-300">
                               W{day.week}
                             </span>

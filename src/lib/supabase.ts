@@ -158,13 +158,13 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   
   const daysSinceStart = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
   
-  // Handle negative days (before start date) - show as Rest for calendar display
+  // Handle negative days (before start date) - show no workout type for pre-program dates
   if (daysSinceStart < 0) {
     return {
       week: 0,
       workoutType: 'Rest' as 'Push' | 'Pull' | 'Rest',
       dayInWeek: -1,
-      status: 'future' as 'completed' | 'missed' | 'future'
+      status: 'pre-program' as 'completed' | 'missed' | 'future' | 'pre-program'
     }
   }
   
@@ -177,20 +177,19 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     const staticWorkout = getWorkoutForDate(startDate, targetDateStr)
     const isCompleted = completedWorkouts.has(targetDateStr)
     
-    
     return {
       ...staticWorkout,
       status: isCompleted ? 'completed' as const : 'missed' as const
     }
   }
   
-  // Calculate total missed workout days for adaptive scheduling
+  // For future dates, calculate adaptive scheduling
   let totalMissedWorkoutDays = 0
   
   const todayForMissed = new Date()
   todayForMissed.setHours(0, 0, 0, 0)
   
-  for (let i = 0; i <= daysSinceStart; i++) {
+  for (let i = 0; i < daysSinceStart; i++) {
     const checkDate = new Date(start)
     checkDate.setDate(checkDate.getDate() + i)
     const checkDateStr = checkDate.toISOString().split('T')[0]
@@ -203,7 +202,6 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     }
   }
   
-  // This effectively shifts the schedule forward
   const adjustedDaysSinceStart = daysSinceStart - totalMissedWorkoutDays
   const adjustedWeek = Math.floor(adjustedDaysSinceStart / 7) + 1
   const adjustedDayInWeek = adjustedDaysSinceStart % 7
@@ -214,10 +212,10 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   
   const workoutToShow = adjustedDayInWeek >= 0 
     ? adjustedSchedule[adjustedDayInWeek]
-    : 'Rest' // Handle edge case where adjustment goes negative
+    : 'Rest'
   
   return {
-    week: Math.floor(daysSinceStart / 7) + 1, // Keep original week for display purposes
+    week: Math.floor(daysSinceStart / 7) + 1,
     workoutType: workoutToShow as 'Push' | 'Pull' | 'Rest',
     dayInWeek: daysSinceStart % 7,
     status: 'future' as const
