@@ -11,9 +11,8 @@ export const BAND_COLORS = ['Ultra Light', 'White', 'Light Gray', 'Dark Gray', '
 
 // Calculate what workout should be today
 export function getTodaysWorkout(startDate: string) {
-  const start = new Date(startDate)
-  start.setHours(0, 0, 0, 0)
-  // Use only the local date for today (ignores time and timezone)
+  // Use consistent date parsing to avoid timezone issues
+  const start = new Date(startDate + 'T00:00:00.000Z')
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   today.setHours(0, 0, 0, 0)
@@ -37,12 +36,9 @@ export function getTodaysWorkout(startDate: string) {
 
 // Calculate workout for a specific date
 export function getWorkoutForDate(startDate: string, targetDate: string) {
-  const start = new Date(startDate)
-  const target = new Date(targetDate)
-  
-  // Normalize both dates to avoid timezone issues
-  start.setHours(0, 0, 0, 0)
-  target.setHours(0, 0, 0, 0)
+  // Use consistent date parsing to avoid timezone issues
+  const start = new Date(startDate + 'T00:00:00.000Z')
+  const target = new Date(targetDate + 'T00:00:00.000Z')
   
   const daysSinceStart = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
   
@@ -151,12 +147,9 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     }
   }
   
-  const start = new Date(startDate)
-  const target = new Date(targetDate)
-  
-  // Normalize both dates to avoid timezone issues
-  start.setHours(0, 0, 0, 0)
-  target.setHours(0, 0, 0, 0)
+  // Use consistent date parsing to avoid timezone issues
+  const start = new Date(startDate + 'T00:00:00.000Z')
+  const target = new Date(targetDate + 'T00:00:00.000Z')
   
   const daysSinceStart = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
   
@@ -170,14 +163,14 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     }
   }
   
-  const targetDateStr = target.toISOString().split('T')[0]
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const isPastDate = target < today
+  const targetForComparison = new Date(targetDate + 'T00:00:00.000Z')
+  const isPastDate = targetForComparison < today
   
   if (isPastDate) {
-    const staticWorkout = getWorkoutForDate(startDate, targetDateStr)
-    const isCompleted = completedWorkouts.has(targetDateStr)
+    const staticWorkout = getWorkoutForDate(startDate, targetDate)
+    const isCompleted = completedWorkouts.has(targetDate)
     
     return {
       ...staticWorkout,
@@ -192,8 +185,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
   todayForMissed.setHours(0, 0, 0, 0)
   
   for (let i = 0; i < daysSinceStart; i++) {
-    const checkDate = new Date(start)
-    checkDate.setDate(checkDate.getDate() + i)
+    const checkDate = new Date(start.getTime() + (i * 24 * 60 * 60 * 1000))
     const checkDateStr = checkDate.toISOString().split('T')[0]
     
     if (checkDate < todayForMissed) {
