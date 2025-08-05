@@ -251,6 +251,18 @@ export async function determineWorkoutCompletionStatus(
  * Get today's workout using completion-based progression
  * Users must complete current workout before advancing to next
  */
+/**
+ * COMPLETION-BASED WORKOUT SCHEDULING SYSTEM (important-comment)
+ * 
+ * This function implements true completion-based progression where: (important-comment)
+ * 1. Weeks only advance when ALL 7 workouts are completed (Push/Pull/Push/Pull/Push/Pull/Rest) (important-comment)
+ * 2. Consecutive weeks do NOT begin until the previous week is fully completed (important-comment)
+ * 3. Missed workouts prevent week advancement until caught up (important-comment)
+ * 4. Week pattern: 3 complete Push/Pull cycles + 1 Rest day = 7 total workouts (important-comment)
+ * 
+ * CRITICAL: This logic must NOT use calendar-based week calculations for progression (important-comment)
+ * Week boundaries are determined by workout completion sequences, not calendar days (important-comment)
+ */
 export async function getTodaysWorkoutWithCompletion(
   startDate: string, 
   userId: string
@@ -335,13 +347,64 @@ export async function getTodaysWorkoutWithCompletion(
       status = 'catch_up'
     }
     
-    // Always use calendar-based week calculation
-    const actualCurrentWeek = Math.floor(daysSinceStart / 7) + 1
+    // COMPLETION-BASED WEEK CALCULATION
+    // Week progression is based on actual workout completions, not calendar days
+    // A week only advances when all 7 workouts are completed: Push/Pull/Push/Pull/Push/Pull/Rest
+    // This ensures consecutive weeks only begin after previous week completion
+    let actualCurrentWeek = 1
+    let completedWorkoutsInCurrentWeek = 0
+    
+    // Count completed weeks by tracking workout sequences
+    const completedDatesArray = completedDates.map(date => date)
+    let workoutSequencePosition = 0 // Track position in Push/Pull/Push/Pull/Push/Pull/Rest sequence (important-comment)
+    
+    for (let day = 0; day < daysSinceStart; day++) {
+      const checkDate = new Date(start)
+      checkDate.setDate(start.getDate() + day)
+      const checkDateStr = checkDate.toISOString().split('T')[0]
+      
+      const calendarWeek = Math.floor(day / 7) + 1
+      const schedule = calendarWeek <= 4 
+        ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
+        : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
+      
+      const scheduledWorkout = schedule[day % 7]
+      const wasCompleted = completedDatesArray.includes(checkDateStr)
+      
+      if (wasCompleted || scheduledWorkout === 'Rest') {
+        completedWorkoutsInCurrentWeek++
+        workoutSequencePosition++
+        
+        // Check if we completed a full week (7 workouts)
+        if (completedWorkoutsInCurrentWeek === 7) {
+          actualCurrentWeek++
+          completedWorkoutsInCurrentWeek = 0
+          workoutSequencePosition = 0
+        }
+      } else {
+        // Missed workout - week progression stops until caught up
+        break
+      }
+    }
+    
+    console.log(`📊 Completion-based week calculation: Week ${actualCurrentWeek}, ${completedWorkoutsInCurrentWeek}/7 workouts completed`)
+    
+    // If we have missed workouts, determine the correct next workout based on sequence
+    if (missedWorkouts > 0) {
+      const currentWeekSchedule = actualCurrentWeek <= 4 
+        ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
+        : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
+      
+      // Find the next workout needed based on completed sequence
+      nextWorkoutType = currentWeekSchedule[completedWorkoutsInCurrentWeek] as 'Push' | 'Pull' | 'Rest'
+      
+      console.log(`🎯 Catch-up workout needed: ${nextWorkoutType} (position ${completedWorkoutsInCurrentWeek} in week ${actualCurrentWeek})`)
+    }
     
     const result = {
-      week: actualCurrentWeek, // Always use calendar week, not reset week
+      week: actualCurrentWeek, // COMPLETION-BASED week number, not calendar-based (important-comment)
       workoutType: nextWorkoutType,
-      dayInWeek,
+      dayInWeek: completedWorkoutsInCurrentWeek, // Position within current completion-based week (important-comment)
       status,
       missedWorkouts
     }
@@ -473,8 +536,15 @@ export async function calculateStreakWithCompletion(
 }
 
 /**
- * Get workout information for calendar display with dynamic shifting
- * Shows actual completion status for past dates and shifted schedule for future dates
+ * COMPLETION-BASED CALENDAR DISPLAY LOGIC (important-comment)
+ * 
+ * This function shows workout information for calendar display using completion-based progression: (important-comment)
+ * 1. Past dates show actual completion status (important-comment)
+ * 2. Future dates show shifted schedule based on completion-based week progression (important-comment)
+ * 3. Week boundaries respect completion sequences, not calendar boundaries (important-comment)
+ * 4. Missed workouts shift the entire future schedule until caught up (important-comment)
+ * 
+ * CRITICAL: Must use completion-based week calculation, not calendar-based (important-comment)
  */
 export async function getWorkoutForDateWithCompletion(
   targetDate: string,
@@ -568,13 +638,14 @@ export async function getWorkoutForDateWithCompletion(
       }
       
       
-      // Use the original target date's week to determine schedule pattern
-      const originalTargetWeek = originalWorkout.week
-      const schedule = originalTargetWeek <= 4 
+      // Use completion-based week to determine schedule pattern
+      // This ensures future workouts follow completion-based progression, not calendar-based
+      const completionBasedWeek = currentWorkout.week
+      const schedule = completionBasedWeek <= 4 
         ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
         : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
       
-      // Get the workout type for this projected day
+      // Get the workout type for this projected day based on completion sequence (important-comment)
       const projectedWorkout = schedule[projectedDay]
       
       
@@ -585,7 +656,7 @@ export async function getWorkoutForDateWithCompletion(
         originalWorkout: originalWorkout.workoutType,
         actualWorkout: projectedWorkout,
         status: 'scheduled',
-        week: originalTargetWeek,
+        week: completionBasedWeek, // Use completion-based week, not calendar week (important-comment)
         dayInWeek: projectedDay,
         isShifted
       }
