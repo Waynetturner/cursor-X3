@@ -231,10 +231,8 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     }
   }
   
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const targetForComparison = new Date(targetDate + 'T00:00:00.000Z')
-  const isPastDate = targetForComparison < today
+  const todayDateStr = new Date().toISOString().split('T')[0]
+  const isPastDate = targetDate < todayDateStr
   
   if (isPastDate) {
     const staticWorkout = getWorkoutForDate(startDate, targetDate)
@@ -260,7 +258,7 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     const checkDate = new Date(start.getTime() + (day * 24 * 60 * 60 * 1000))
     const checkDateStr = checkDate.toISOString().split('T')[0]
     
-    if (checkDate >= today) break
+    if (checkDateStr >= targetDate) break
     
     const calendarWeek = Math.floor(day / 7) + 1
     const schedule = calendarWeek <= 4 
@@ -284,7 +282,8 @@ export function getWorkoutForDateWithCompletion(startDate: string, targetDate: s
     }
   }
   
-  const daysFromToday = Math.floor((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  const todayDate = new Date(todayDateStr + 'T00:00:00.000Z')
+  const daysFromToday = Math.floor((target.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24))
   
   // Calculate the workout position based on completion-based progression
   let projectedWorkoutPosition = completedWorkoutsInCurrentWeek
