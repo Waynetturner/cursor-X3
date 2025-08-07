@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
@@ -43,13 +44,20 @@ const AnimatedCadenceButton: React.FC = () => {
     };
   }, []);
 
-  return (
+return (
+  <div className="flex justify-center w-full mt-4 mb-4">
+
     <div
       onClick={toggleCadence}
       role="button"
       aria-pressed={active}
       aria-label={active ? 'Stop cadence tone' : 'Start cadence tone'}
-      className="w-[300px] h-[100px] cursor-pointer flex items-center justify-center"
+        className={`
+    max-w-[300px] w-full h-[100px] cursor-pointer transition-transform duration-200
+    ${active ? 'scale-105 ring-4 ring-ember-red ring-opacity-30' : 'hover:scale-105'}
+    mx-auto
+  `}
+
     >
       <svg viewBox="0 0 400 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
         <title>X3 Momentum Cadence Button</title>
@@ -100,7 +108,10 @@ const AnimatedCadenceButton: React.FC = () => {
         </text>
       </svg>
     </div>
+  </div>
   );
 };
 
+
 export default AnimatedCadenceButton;
+
