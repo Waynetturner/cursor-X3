@@ -2,10 +2,14 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
-const AnimatedCadenceButton: React.FC = () => {
-  const [active, setActive] = useState(false);
+interface AnimatedCadenceButtonProps {
+  cadenceActive: boolean;
+  setCadenceActive: (active: boolean) => void;
+}
+
+const AnimatedCadenceButton: React.FC<AnimatedCadenceButtonProps> = ({ cadenceActive, setCadenceActive }) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const playBeep = () => {
@@ -28,21 +32,38 @@ const AnimatedCadenceButton: React.FC = () => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
-      setActive(false);
+      setCadenceActive(false);
     } else {
       playBeep();
       intervalRef.current = setInterval(playBeep, 2000);
-      setActive(true);
+      setCadenceActive(true);
     }
   };
 
+  // Sync with parent's cadence state
   useEffect(() => {
+    if (cadenceActive) {
+      // Start beeping when parent activates cadence
+      if (!intervalRef.current) {
+        playBeep(); // Initial beep
+        intervalRef.current = setInterval(playBeep, 2000);
+      }
+    } else {
+      // Stop beeping when parent deactivates cadence
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+    
+    // Cleanup on unmount
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
-  }, []);
+  }, [cadenceActive]);
 
 return (
   <div className="flex justify-center w-full mt-4 mb-4">
@@ -50,11 +71,11 @@ return (
     <div
       onClick={toggleCadence}
       role="button"
-      aria-pressed={active}
-      aria-label={active ? 'Stop cadence tone' : 'Start cadence tone'}
+      aria-pressed={cadenceActive}
+      aria-label={cadenceActive ? 'Stop cadence tone' : 'Start cadence tone'}
         className={`
     max-w-[300px] w-full h-[100px] cursor-pointer transition-transform duration-200
-    ${active ? 'scale-105 ring-4 ring-ember-red ring-opacity-30' : 'hover:scale-105'}
+    ${cadenceActive ? 'scale-105 ring-4 ring-ember-red ring-opacity-30' : 'hover:scale-105'}
     mx-auto
   `}
 
@@ -114,4 +135,3 @@ return (
 
 
 export default AnimatedCadenceButton;
-

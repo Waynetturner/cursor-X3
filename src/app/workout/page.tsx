@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkoutWithCompletion } from '@/lib/supabase'
+import { updateDailyWorkoutLog } from '@/lib/daily-workout-log'
 import { announceToScreenReader } from '@/lib/accessibility'
 import { Play, Flame, Calendar, ArrowRight, Sparkles, TrendingUp, Users, Shield } from 'lucide-react'
 import React from 'react'
@@ -699,6 +700,22 @@ export default function HomePage() {
           )
           console.log(`🔄 Speaking transition phrase: "${transitionPhrase}" with exercise context`);
           speak(transitionPhrase, 'exercise')
+        }
+      }
+      
+      // Update daily workout log if this is the last exercise
+      if (isLastExercise) {
+        console.log('📊 Updating daily workout log for completed workout')
+        try {
+          await updateDailyWorkoutLog(
+            user.id,
+            workoutLocalDateTime.split('T')[0], // Just the date part
+            todaysWorkout.workoutType as 'Push' | 'Pull'
+          )
+          console.log('✅ Daily workout log updated successfully')
+        } catch (logError) {
+          console.error('❌ Error updating daily workout log:', logError)
+          // Don't fail the exercise save if log update fails
         }
       }
       
