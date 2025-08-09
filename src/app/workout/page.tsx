@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkoutWithCompletion } from '@/lib/supabase'
+import { updateDailyWorkoutLog } from '@/lib/daily-workout-log'
 import { announceToScreenReader } from '@/lib/accessibility'
 import { Play, Flame, Calendar, ArrowRight, Sparkles, TrendingUp, Users, Shield } from 'lucide-react'
 import React from 'react'
@@ -14,7 +15,7 @@ import { testModeService } from '@/lib/test-mode'
 import { getCurrentCentralISOString } from '@/lib/timezone'
 import { ttsPhaseService } from '@/lib/tts-phrases'
 import ExerciseCard from '@/components/ExerciseCard'
-import CadenceButton from '@/components/CadenceButton'
+import AnimatedCadenceButton from '@/components/AnimatedCadenceButton';
 import { getWorkoutHistoryData } from '@/lib/exercise-history'
 
 // Helper to get local ISO string with timezone offset
@@ -702,6 +703,22 @@ export default function HomePage() {
         }
       }
       
+      // Update daily workout log if this is the last exercise
+      if (isLastExercise) {
+        console.log('📊 Updating daily workout log for completed workout')
+        try {
+          await updateDailyWorkoutLog(
+            user.id,
+            workoutLocalDateTime.split('T')[0], // Just the date part
+            todaysWorkout.workoutType as 'Push' | 'Pull'
+          )
+          console.log('✅ Daily workout log updated successfully')
+        } catch (logError) {
+          console.error('❌ Error updating daily workout log:', logError)
+          // Don't fail the exercise save if log update fails
+        }
+      }
+      
       // Start 90-second rest timer for Momentum/Mastery users (but not for last exercise)
       if (hasFeature('restTimer') && !isLastExercise) {
         setRestTimer({
@@ -1023,7 +1040,9 @@ export default function HomePage() {
 
   // Cadence Button Component
   const CadenceButtonComponent = (
-    <CadenceButton cadenceActive={cadenceActive} setCadenceActive={setCadenceActive} />
+    <div className="w-full flex justify-center">
+    <AnimatedCadenceButton cadenceActive={cadenceActive} setCadenceActive={setCadenceActive} />
+  </div>
   );
 
   const handleStartExercise = () => {
