@@ -13,7 +13,8 @@ const AnimatedCadenceButton: React.FC<AnimatedCadenceButtonProps> = ({ cadenceAc
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const playBeep = () => {
-    const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const context = new AudioContextClass();
     const oscillator = context.createOscillator();
     const gain = context.createGain();
 

@@ -5,13 +5,14 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import X3MomentumWordmark from '@/components/X3MomentumWordmark'
+import type { User } from '@supabase/auth-helpers-nextjs'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 

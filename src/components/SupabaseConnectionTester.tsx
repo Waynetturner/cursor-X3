@@ -8,14 +8,19 @@ interface TestResult {
   name: string
   status: 'pending' | 'success' | 'error'
   message: string
-  details?: any
+  details?: {
+    error?: string;
+    data?: Record<string, unknown>;
+    count?: number;
+    [key: string]: unknown;
+  }
 }
 
 export default function SupabaseConnectionTester() {
   const [tests, setTests] = useState<TestResult[]>([])
   const [isRunning, setIsRunning] = useState(false)
 
-  const updateTest = (name: string, status: TestResult['status'], message: string, details?: any) => {
+  const updateTest = (name: string, status: TestResult['status'], message: string, details?: TestResult['details']) => {
     setTests(prev => {
       const existing = prev.find(t => t.name === name)
       const newTest = { name, status, message, details }

@@ -49,7 +49,7 @@ export default function VerifyEmailPage() {
           <div className="text-center">
             <X3MomentumWordmark size="md" className="mx-auto mb-2" />
             <h1 className="text-2xl font-bold text-gray-900">Check Your Email</h1>
-            <p className="text-gray-600">We've sent you a verification link</p>
+            <p className="text-gray-600">We&apos;ve sent you a verification link</p>
           </div>
         </div>
       </header>
@@ -64,7 +64,7 @@ export default function VerifyEmailPage() {
               </div>
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Verify Your Email Address</h2>
               <p className="text-gray-600 mb-6">
-                We've sent a verification link to your email address. Please check your inbox and click the link to complete your registration.
+                We&apos;ve sent a verification link to your email address. Please check your inbox and click the link to complete your registration.
               </p>
             </div>
 
@@ -77,7 +77,7 @@ export default function VerifyEmailPage() {
                     <ul className="text-sm text-blue-700 mt-1 space-y-1">
                       <li>• Check your email inbox (and spam folder)</li>
                       <li>• Click the verification link in the email</li>
-                      <li>• You'll be automatically signed in</li>
+                      <li>• You&apos;ll be automatically signed in</li>
                       <li>• Start your X3 journey!</li>
                     </ul>
                   </div>
@@ -86,7 +86,7 @@ export default function VerifyEmailPage() {
 
               <div className="border-t border-gray-200 pt-6">
                 <p className="text-sm text-gray-600 mb-4">
-                  Didn't receive the email? Check your spam folder or try a different email address.
+                  Didn&apos;t receive the email? Check your spam folder or try a different email address.
                 </p>
                 
                 <div className="space-y-3">

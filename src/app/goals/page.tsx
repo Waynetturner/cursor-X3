@@ -33,7 +33,7 @@ interface UserStats {
 
 export default function GoalsPage() {
   const router = useRouter()
-  const [user, setUser] = useState<{ id: string } | null>(null)
+  // Removed unused user state
   const [goals, setGoals] = useState<Goal[]>([])
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(true)

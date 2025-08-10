@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { X3_KNOWLEDGE_BASE, generateCoachingAdvice, COACHING_RESPONSES } from '@/lib/x3-knowledge-base'
+import { generateCoachingAdvice, COACHING_RESPONSES } from '@/lib/x3-knowledge-base'
 import { supabase } from '@/lib/supabase'
 
 // Types for WebLLM
@@ -23,7 +23,7 @@ interface MLCEngine {
       }>
     }
   }
-  setInitProgressCallback?: (callback: (report: any) => void) => void
+  setInitProgressCallback?: (callback: (report: { text: string; progress: number }) => void) => void
 }
 
 interface WebLLMCoachOptions {
@@ -84,8 +84,8 @@ interface UserWorkoutContext {
   }
   userGoals?: Array<{
     type: string
-    target: any
-    current: any
+    target: Record<string, unknown>
+    current: Record<string, unknown>
     description: string
     deadline: string
   }>
@@ -109,7 +109,11 @@ interface UserWorkoutContext {
     ttsEnabled: boolean
     ttsVoice: string
     preferredWorkoutTime?: string
-    reminderSettings?: any
+    reminderSettings?: {
+      enabled?: boolean;
+      frequency?: number;
+      [key: string]: unknown;
+    }
     coachingStyle: string
   }
   conversationHistory?: CoachMessage[]
@@ -119,7 +123,8 @@ const DEFAULT_MODEL = "Llama-3.1-8B-Instruct-q4f32_1-MLC"
 const MAX_CONTEXT_MESSAGES = 10
 
 export function useWebLLMCoach(options: WebLLMCoachOptions = {}) {
-  const { userId, modelId = DEFAULT_MODEL, maxContextLength = 8192 } = options
+  const { userId, modelId = DEFAULT_MODEL } = options
+  // Removed unused maxContextLength
   
   // State management
   const [engine, setEngine] = useState<MLCEngine | null>(null)
@@ -148,7 +153,7 @@ export function useWebLLMCoach(options: WebLLMCoachOptions = {}) {
       const newEngine = new MLCEngine()
       
       // Configure engine initialization callback
-      newEngine.setInitProgressCallback((report: any) => {
+      newEngine.setInitProgressCallback((report: { text: string; progress: number }) => {
         console.log('🧠 WebLLM Loading:', report.text)
       })
       
@@ -177,7 +182,7 @@ export function useWebLLMCoach(options: WebLLMCoachOptions = {}) {
       }
 
       // Get user profile with all available data - use defensive query
-      let { data: profile, error: profileError } = await supabase
+      let { data: profile } = await supabase
         .from('profiles')
         .select('*') // Select all columns to see what's actually available
         .eq('id', userId)
@@ -276,7 +281,7 @@ export function useWebLLMCoach(options: WebLLMCoachOptions = {}) {
             week: ex.week_number
           })
           return acc
-        }, {} as Record<string, any[]>) || {}
+        }, {} as Record<string, Record<string, unknown>[]>) || {}
 
         // Find strongest progressions
         const progressions = Object.entries(exerciseGroups).map(([exercise, performances]) => {
@@ -304,7 +309,6 @@ export function useWebLLMCoach(options: WebLLMCoachOptions = {}) {
         
         if (sortedDates.length > 0) {
           // Calculate current streak
-          const today = new Date().toISOString().split('T')[0]
           const checkDate = new Date()
           while (checkDate >= new Date(sortedDates[0])) {
             const dateStr = checkDate.toISOString().split('T')[0]

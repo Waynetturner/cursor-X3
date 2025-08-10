@@ -219,7 +219,7 @@ class TestModeService {
     table: string, 
     data: T, 
     mockHandler?: (data: T) => void
-  ): Promise<{ data: T | null; error: any }> {
+  ): Promise<{ data: T | null; error: Error | null }> {
     if (!this.isEnabled()) {
       // Not in test mode, let normal flow continue
       return Promise.resolve({ data: null, error: new Error('Not intercepted') })
@@ -303,7 +303,7 @@ class TestModeService {
       try {
         const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName })
         console.log('🔒 Audio permission status:', permission.state)
-      } catch (e) {
+      } catch {
         // Permissions API not available or microphone permission not applicable
         console.log('🔒 Audio permissions check not available')
       }

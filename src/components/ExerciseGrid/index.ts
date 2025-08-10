@@ -1,0 +1,1 @@
+export { ExerciseGrid, type ExerciseGridProps } from './ExerciseGrid'

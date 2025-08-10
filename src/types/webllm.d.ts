@@ -27,5 +27,11 @@ declare module '@mlc-ai/web-llm' {
     }
   }
 
-  export const prebuiltAppConfig: Record<string, any>
+  export const prebuiltAppConfig: Record<string, {
+    model: string;
+    model_id: string;
+    model_lib: string;
+    required_features: string[];
+    overrides?: Record<string, unknown>;
+  }>
 }

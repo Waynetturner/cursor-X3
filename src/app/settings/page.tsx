@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
+import type { User } from '@supabase/auth-helpers-nextjs';
 import AppLayout from '@/components/layout/AppLayout';
 import { supabase } from '@/lib/supabase';
 import { useSubscription, TIER_NAMES, TIER_DESCRIPTIONS, TIER_PRICING, TIER_PRICING_ANNUAL } from '@/contexts/SubscriptionContext';
@@ -23,8 +24,8 @@ export default function Settings() {
   const { tier, features, hasFeature, upgradeTo } = useSubscription();
   const { isDark, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState(tabs[0].value);
-  const [user, setUser] = useState<any>(null);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
+  const [user, setUser] = useState<User | null>(null);
+  // Removed unused billingPeriod state
   
   // Profile form state
   const [profileData, setProfileData] = useState({
@@ -167,14 +168,7 @@ export default function Settings() {
     setProfileData(prev => ({ ...prev, [field]: value }));
   };
 
-  const toggleEquipment = (equipment: string) => {
-    setProfileData(prev => ({
-      ...prev,
-      x3EquipmentAvailable: prev.x3EquipmentAvailable.includes(equipment)
-        ? prev.x3EquipmentAvailable.filter(e => e !== equipment)
-        : [...prev.x3EquipmentAvailable, equipment]
-    }));
-  };
+  // Removed unused toggleEquipment function
 
   return (
     <ProtectedRoute>

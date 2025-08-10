@@ -7,6 +7,7 @@ import { useSubscription } from '@/contexts/SubscriptionContext'
 import { testModeService } from '@/lib/test-mode'
 import { useWebLLMCoach } from '@/hooks/useWebLLMCoach'
 import { supabase } from '@/lib/supabase'
+import type { User } from '@supabase/auth-helpers-nextjs'
 
 interface ChatMessage {
   id: string
@@ -43,7 +44,7 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
   const [isLoading, setIsLoading] = useState(false)
   const [autoTTS, setAutoTTS] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
 
   // Hooks
   const { hasFeature } = useSubscription()
@@ -232,7 +233,7 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
         } else {
           try {
             response = JSON.parse(responseText)
-          } catch (parseError) {
+          } catch {
             console.log('📋 Invalid JSON from n8n webhook, generating data-driven fallback')
             
             // Use user context for intelligent fallback even when webhook fails

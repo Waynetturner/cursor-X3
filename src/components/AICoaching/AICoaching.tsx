@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import type { Exercise } from '@/types/workout'
 import { 
   MessageCircle, 
   Send, 
@@ -29,7 +30,7 @@ interface CoachingMessage {
 }
 
 interface AICoachingProps {
-  workoutData?: any[]
+  workoutData?: Exercise[]
   className?: string
 }
 
@@ -40,7 +41,7 @@ export default function AICoaching({ workoutData = [], className = '' }: AICoach
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showWelcome, setShowWelcome] = useState(true)
+  // Removed unused showWelcome and setShowWelcome state
   const [announcement, setAnnouncement] = useState('')
 
   const isAICoachingAvailable = hasFeature('aiCoachAccess')

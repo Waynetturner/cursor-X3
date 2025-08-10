@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center">
               <X3MomentumWordmark size="md" className="mx-auto mb-2" />
               <h1 className="text-2xl font-bold text-gray-900">Check Your Email</h1>
-              <p className="text-gray-600">We've sent you a password reset link</p>
+              <p className="text-gray-600">We&apos;ve sent you a password reset link</p>
             </div>
           </div>
         </header>
@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">Reset Link Sent</h2>
                 <p className="text-gray-600 mb-6">
-                  We've sent a password reset link to <strong>{email}</strong>. Please check your inbox and click the link to reset your password.
+                  We&apos;ve sent a password reset link to <strong>{email}</strong>. Please check your inbox and click the link to reset your password.
                 </p>
               </div>
 
@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
 
                 <div className="border-t border-gray-200 pt-6">
                   <p className="text-sm text-gray-600">
-                    Didn't receive the email?{' '}
+                    Didn&apos;t receive the email?{' '}
                     <button
                       onClick={() => setSuccess(false)}
                       className="text-orange-600 hover:text-orange-700 font-medium"

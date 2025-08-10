@@ -1,12 +1,23 @@
 // N8N Integration Service for OpenAI Coaching
 // This service handles communication with the N8N workflow for dynamic AI coaching
 
+import type { Exercise } from '@/types/workout'
+
 export interface N8NCoachingRequest {
   user_id: string;
   user_feedback: string;
-  workout_data: any[];
-  progress_history: any[];
-  user_profile: any;
+  workout_data: Exercise[];
+  progress_history: {
+    date: string;
+    exercises: Exercise[];
+    week: number;
+  }[];
+  user_profile: {
+    experience?: string;
+    goals?: string[];
+    preferences?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
 }
 
 export interface N8NCoachingResponse {

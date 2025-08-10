@@ -74,7 +74,7 @@ export default function SimpleTTSTester() {
       </div>
       
       <p className="text-sm text-gray-600 mb-4">
-        Test your Text-to-Speech setup to ensure it's working properly for cadence buttons and workout audio cues.
+        Test your Text-to-Speech setup to ensure it&apos;s working properly for cadence buttons and workout audio cues.
       </p>
 
       <button

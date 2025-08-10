@@ -4,6 +4,7 @@
 import { supabase } from './supabase'
 import { n8nService, N8NCoachingRequest } from './n8n-integration'
 import { BACKEND_CONFIG } from './backend-config'
+import type { Exercise } from '@/types/workout'
 
 export interface BackendStatus {
   supabase: {
@@ -31,8 +32,12 @@ export interface BackendStatus {
 export interface CoachingRequest {
   user_id: string;
   user_feedback?: string;
-  workout_data?: any[];
-  progress_history?: any[];
+  workout_data?: Exercise[];
+  progress_history?: {
+    date: string;
+    exercises: Exercise[];
+    week: number;
+  }[];
   coaching_type: 'static' | 'dynamic';
 }
 
@@ -260,7 +265,10 @@ export class BackendIntegrationService {
   }
 
   // Get user profile
-  private async getUserProfile(userId: string): Promise<any> {
+  private async getUserProfile(userId: string): Promise<{
+    profile?: Record<string, unknown>;
+    demographics?: Record<string, unknown>;
+  }> {
     try {
       const { data, error } = await supabase
         .from('profiles')

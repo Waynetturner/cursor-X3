@@ -4,12 +4,14 @@ import { useState, useEffect } from 'react'
 import { backendService, BackendStatus } from '@/lib/backend-integration'
 import { supabase } from '@/lib/supabase'
 import { CheckCircle, XCircle, AlertCircle, Loader2, Database, Zap, Workflow } from 'lucide-react'
+import type { User } from '@supabase/auth-helpers-nextjs'
+import type { BackendResponse } from '@/types/common'
 
 export default function BackendTester() {
   const [status, setStatus] = useState<BackendStatus | null>(null)
-  const [dataFlowResult, setDataFlowResult] = useState<any>(null)
+  const [dataFlowResult, setDataFlowResult] = useState<BackendResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     checkBackendStatus()

@@ -1,0 +1,1 @@
+export { WorkoutHeader, type WorkoutHeaderProps } from './WorkoutHeader'
