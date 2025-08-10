@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase, X3_EXERCISES, BAND_COLORS, getTodaysWorkoutWithCompletion } from '@/lib/supabase'
+import { updateDailyWorkoutLog } from '@/lib/daily-workout-log'
 import { announceToScreenReader } from '@/lib/accessibility'
 import { Play, Flame, Calendar, ArrowRight, Sparkles, TrendingUp, Users, Shield } from 'lucide-react'
 import React from 'react'
@@ -14,7 +15,7 @@ import { testModeService } from '@/lib/test-mode'
 import { getCurrentCentralISOString } from '@/lib/timezone'
 import { ttsPhaseService } from '@/lib/tts-phrases'
 import ExerciseCard from '@/components/ExerciseCard'
-import CadenceButton from '@/components/CadenceButton'
+import AnimatedCadenceButton from '@/components/AnimatedCadenceButton';
 import { getWorkoutHistoryData } from '@/lib/exercise-history'
 
 // Helper to get local ISO string with timezone offset
@@ -59,12 +60,7 @@ function playBeep() {
   oscillator.onended = () => ctx.close();
 }
 
-// Legacy TTS function - replaced by useX3TTS hook
-// Keeping for reference, but all calls should use speak() from useX3TTS
-function speakText(text: string, hasFeature: boolean) {
-  // This function is deprecated - use speak() from useX3TTS instead
-  console.warn('⚠️ speakText is deprecated, use speak() from useX3TTS hook')
-}
+
 
 interface Exercise {
   id?: string;
@@ -94,7 +90,7 @@ export default function HomePage() {
   const [cadenceInterval, setCadenceInterval] = useState<NodeJS.Timeout | null>(null);
   const [restTimer, setRestTimer] = useState<{ isActive: boolean; timeLeft: number; exerciseIndex: number } | null>(null);
   const [restTimerInterval, setRestTimerInterval] = useState<NodeJS.Timeout | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+//  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [exerciseLoadingStates, setExerciseLoadingStates] = useState<{ [key: number]: boolean }>({});
   const [exerciseStates, setExerciseStates] = useState<{ [key: number]: 'idle' | 'started' | 'in_progress' | 'completed' }>({});
   const [ttsActiveStates, setTtsActiveStates] = useState<{ [key: number]: boolean }>({});
@@ -107,7 +103,7 @@ export default function HomePage() {
     if (!user || !todaysWorkout) return 'Push';
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowDateStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+//   const tomorrowDateStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
     return 'Push';
   }
 
@@ -177,18 +173,18 @@ export default function HomePage() {
       playBeep(); // play immediately
       
       // TTS for cadence start - debug logging
-      console.log('🎵 TTS Debug: hasFeature(ttsAudioCues):', hasFeature('ttsAudioCues'));
-      console.log('🎵 TTS Debug: tier:', tier);
-      console.log('🎵 TTS Debug: speak function available:', typeof speak);
+      //console.log('🎵 TTS Debug: hasFeature(ttsAudioCues):', hasFeature('ttsAudioCues'));
+      //console.log('🎵 TTS Debug: tier:', tier);
+      //console.log('🎵 TTS Debug: speak function available:', typeof speak);
       
-      if (hasFeature('ttsAudioCues')) {
-        const cadencePhrase = ttsPhaseService.getCadencePhrase(tier === 'mastery' ? 'mastery' : 'momentum');
-        console.log('🎵 TTS Debug: cadencePhrase:', cadencePhrase);
-        speak(cadencePhrase, 'exercise');
-        console.log('🎵 TTS Debug: speak() called for cadence');
-      } else {
-        console.log('🎵 TTS Debug: ttsAudioCues feature not available - skipping TTS');
-      }
+     // if (hasFeature('ttsAudioCues')) {
+     //   const cadencePhrase = ttsPhaseService.getCadencePhrase(tier === 'mastery' ? 'mastery' : 'momentum');
+     //   console.log('🎵 TTS Debug: cadencePhrase:', cadencePhrase);
+     //   speak(cadencePhrase, 'exercise');
+     //   console.log('🎵 TTS Debug: speak() called for cadence');
+     // } else {
+     //   console.log('🎵 TTS Debug: ttsAudioCues feature not available - skipping TTS');
+     // }
       
       // Use the state-managed interval for consistency
       const interval = setInterval(() => {
@@ -702,6 +698,22 @@ export default function HomePage() {
         }
       }
       
+      // Update daily workout log if this is the last exercise
+      if (isLastExercise) {
+        console.log('📊 Updating daily workout log for completed workout')
+        try {
+          await updateDailyWorkoutLog(
+            user.id,
+            workoutLocalDateTime.split('T')[0], // Just the date part
+            todaysWorkout.workoutType as 'Push' | 'Pull'
+          )
+          console.log('✅ Daily workout log updated successfully')
+        } catch (logError) {
+          console.error('❌ Error updating daily workout log:', logError)
+          // Don't fail the exercise save if log update fails
+        }
+      }
+      
       // Start 90-second rest timer for Momentum/Mastery users (but not for last exercise)
       if (hasFeature('restTimer') && !isLastExercise) {
         setRestTimer({
@@ -1023,7 +1035,9 @@ export default function HomePage() {
 
   // Cadence Button Component
   const CadenceButtonComponent = (
-    <CadenceButton cadenceActive={cadenceActive} setCadenceActive={setCadenceActive} />
+    <div className="w-full flex justify-center">
+    <AnimatedCadenceButton cadenceActive={cadenceActive} setCadenceActive={setCadenceActive} />
+  </div>
   );
 
   const handleStartExercise = () => {
