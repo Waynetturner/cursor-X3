@@ -60,12 +60,7 @@ function playBeep() {
   oscillator.onended = () => ctx.close();
 }
 
-// Legacy TTS function - replaced by useX3TTS hook
-// Keeping for reference, but all calls should use speak() from useX3TTS
-function speakText(text: string, hasFeature: boolean) {
-  // This function is deprecated - use speak() from useX3TTS instead
-  console.warn('⚠️ speakText is deprecated, use speak() from useX3TTS hook')
-}
+
 
 interface Exercise {
   id?: string;
@@ -95,7 +90,7 @@ export default function HomePage() {
   const [cadenceInterval, setCadenceInterval] = useState<NodeJS.Timeout | null>(null);
   const [restTimer, setRestTimer] = useState<{ isActive: boolean; timeLeft: number; exerciseIndex: number } | null>(null);
   const [restTimerInterval, setRestTimerInterval] = useState<NodeJS.Timeout | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+//  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [exerciseLoadingStates, setExerciseLoadingStates] = useState<{ [key: number]: boolean }>({});
   const [exerciseStates, setExerciseStates] = useState<{ [key: number]: 'idle' | 'started' | 'in_progress' | 'completed' }>({});
   const [ttsActiveStates, setTtsActiveStates] = useState<{ [key: number]: boolean }>({});
@@ -108,7 +103,7 @@ export default function HomePage() {
     if (!user || !todaysWorkout) return 'Push';
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowDateStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+//   const tomorrowDateStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
     return 'Push';
   }
 
@@ -178,18 +173,18 @@ export default function HomePage() {
       playBeep(); // play immediately
       
       // TTS for cadence start - debug logging
-      console.log('🎵 TTS Debug: hasFeature(ttsAudioCues):', hasFeature('ttsAudioCues'));
-      console.log('🎵 TTS Debug: tier:', tier);
-      console.log('🎵 TTS Debug: speak function available:', typeof speak);
+      //console.log('🎵 TTS Debug: hasFeature(ttsAudioCues):', hasFeature('ttsAudioCues'));
+      //console.log('🎵 TTS Debug: tier:', tier);
+      //console.log('🎵 TTS Debug: speak function available:', typeof speak);
       
-      if (hasFeature('ttsAudioCues')) {
-        const cadencePhrase = ttsPhaseService.getCadencePhrase(tier === 'mastery' ? 'mastery' : 'momentum');
-        console.log('🎵 TTS Debug: cadencePhrase:', cadencePhrase);
-        speak(cadencePhrase, 'exercise');
-        console.log('🎵 TTS Debug: speak() called for cadence');
-      } else {
-        console.log('🎵 TTS Debug: ttsAudioCues feature not available - skipping TTS');
-      }
+     // if (hasFeature('ttsAudioCues')) {
+     //   const cadencePhrase = ttsPhaseService.getCadencePhrase(tier === 'mastery' ? 'mastery' : 'momentum');
+     //   console.log('🎵 TTS Debug: cadencePhrase:', cadencePhrase);
+     //   speak(cadencePhrase, 'exercise');
+     //   console.log('🎵 TTS Debug: speak() called for cadence');
+     // } else {
+     //   console.log('🎵 TTS Debug: ttsAudioCues feature not available - skipping TTS');
+     // }
       
       // Use the state-managed interval for consistency
       const interval = setInterval(() => {
