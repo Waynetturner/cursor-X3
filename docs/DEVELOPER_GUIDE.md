@@ -239,13 +239,70 @@ export function useNewFeature() {
 }
 ```
 
-#### 3. Service Layer Pattern
+#### 3. Timezone-Aware Development Pattern 
+```typescript
+// src/lib/timezone-helpers.ts
+import { supabase } from './supabase'
+
+/**
+ * Get user's today in their local timezone
+ * ALWAYS use this instead of new Date() for user-facing dates
+ */
+export async function getUserToday(userId: string): Promise<string> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('timezone')
+    .eq('id', userId)
+    .single()
+  
+  const userTimezone = profile?.timezone || 'America/Chicago'
+  return new Date().toLocaleDateString('en-CA', { timeZone: userTimezone })
+}
+
+/**
+ * Get user's current date and time in their timezone
+ */
+export async function getUserDateTime(userId: string): Promise<Date> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('timezone')
+    .eq('id', userId)
+    .single()
+  
+  const userTimezone = profile?.timezone || 'America/Chicago'
+  
+  // Create Date in user's timezone
+  const now = new Date()
+  const userDateString = now.toLocaleString('en-CA', { 
+    timeZone: userTimezone,
+    year: 'numeric',
+    month: '2-digit', 
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).replace(/,\s/, 'T')
+  
+  return new Date(userDateString)
+}
+
+// Usage Examples:
+const userToday = await getUserToday(userId)
+const userDateTime = await getUserDateTime(userId)
+```
+
+#### 4. Service Layer Pattern
 ```typescript
 // src/lib/new-service.ts
 import { supabase } from './supabase'
+import { getUserToday } from './timezone-helpers'
 
 export class NewService {
   async getData(userId: string) {
+    // ALWAYS use user's timezone for date operations
+    const today = await getUserToday(userId)
+    
     const { data, error } = await supabase
       .from('table_name')
       .select('*')
@@ -486,7 +543,29 @@ import dynamic from 'next/dynamic'
 const ClientOnlyComponent = dynamic(() => import('./ClientComponent'), { ssr: false })
 ```
 
-#### 2. TTS Not Working
+#### 2. Timezone Issues
+```typescript
+// NEVER use these for user-facing dates:
+const today = new Date().toISOString().split('T')[0] // ❌ Uses UTC
+const today = new Date().toLocaleDateString() // ❌ Uses system timezone
+
+// ALWAYS use getUserToday() pattern:
+const today = await getUserToday(userId) // ✅ Uses user's timezone
+
+// For database queries involving dates:
+const { data } = await supabase
+  .from('daily_workout_log')
+  .select('*')
+  .eq('user_id', userId)
+  .eq('date', await getUserToday(userId)) // ✅ Timezone-aware
+
+// Debugging timezone issues:
+console.log('UTC now:', new Date().toISOString())
+console.log('User today:', await getUserToday(userId))
+console.log('User profile timezone:', profile.timezone)
+```
+
+#### 3. TTS Not Working
 ```typescript
 // Check TTS availability
 const { isTTSAvailable, error, getSourceIndicator } = useX3TTS()

@@ -127,13 +127,16 @@ X3 Momentum Pro is a comprehensive fitness tracking application specifically des
 ### 2. Program Management
 
 #### 12-Week X3 Program Calendar
-**Description**: Complete visualization of the structured X3 training program
+**Description**: Complete visualization of the structured X3 training program with timezone-accurate scheduling
 
 **Features**:
 - **Phase Visualization**: Foundation Phase (Weeks 1-4) and Intensive Phase (Weeks 5-12)
 - **Schedule Display**: Push/Pull/Rest pattern with color-coded indicators
 - **Progress Tracking**: Visual markers for completed, missed, and upcoming workouts
 - **Current Position**: Clear indication of current week and day in program
+- **Timezone Synchronization**: Calendar displays accurate workout sequence in user's local timezone
+- **Multi-User Support**: Each user's timezone handled individually for accurate scheduling
+- **Dynamic Calculations**: Workout schedule calculated dynamically without pre-filled database entries
 - **Missed Workout Logic**: Follows Dr. Jaquish methodology for handling missed days
 
 **Schedule Patterns**:
@@ -141,12 +144,14 @@ X3 Momentum Pro is a comprehensive fitness tracking application specifically des
 - **Intensive Phase (Weeks 5-12)**: Push, Pull, Push, Pull, Push, Pull, Rest
 
 #### X3 Start Date Management
-**Description**: Program tracking based on user's actual start date
+**Description**: Program tracking based on user's actual start date with timezone awareness
 
 **Features**:
-- **Automatic Week Calculation**: Determines current program week based on start date
+- **Automatic Week Calculation**: Determines current program week based on start date in user's timezone
 - **Schedule Adjustment**: Accounts for missed days without doubling up workouts
 - **Rest Day Integration**: Includes rest days as successful program adherence
+- **Timezone Infrastructure**: Leverages user's timezone setting (profiles.timezone) for accurate date calculations
+- **Real-Time Accuracy**: Calendar and dashboard always show correct workout for user's current local date
 - **Timeline Tracking**: Complete program timeline with milestones
 
 ---

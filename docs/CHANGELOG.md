@@ -16,6 +16,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.1.1] - 2025-08-11
+
+### 🐛 Critical Bug Fix - Calendar Timezone Synchronization
+
+#### Calendar Timezone Issue Resolution
+- **Fixed Critical Calendar Bug** - Resolved timezone synchronization issue causing calendar to display workout sequence one day ahead
+- **Root Cause Identified** - All date calculations used UTC time instead of user's local timezone, causing calendar to show 8/11 when user was in 8/10 timezone
+- **Existing Infrastructure Utilized** - Leveraged existing `profiles.timezone` and `workout_local_date_time` columns that were previously unused in calendar calculations
+
+#### Technical Improvements
+- **getUserToday() Pattern** - Established timezone-aware helper function for all future date calculations
+- **Dynamic Calendar Calculations** - Removed dependency on pre-filled database entries, calendar now calculates workouts dynamically
+- **Multi-User Timezone Support** - Each user's timezone handled individually from their profile settings
+- **Developer Guidelines** - Documented timezone-aware development patterns for future sessions
+
+#### Files Modified (18 total)
+- `src/lib/daily-workout-log.ts` - Major timezone fixes and getUserToday() helper function
+- `src/app/calendar/page.tsx` - Updated to use timezone-aware calculations  
+- `src/lib/user-stats.ts` - Updated to use new daily log functions
+- `src/lib/services/workout-service.ts` - Fixed TypeScript validation issues
+- 14+ additional files with timezone pattern updates
+
+#### User Impact
+- **Calendar Accuracy** - Calendar now displays correct workout sequence in user's local timezone
+- **Dashboard Sync** - Dashboard status correctly synchronized with calendar display  
+- **Future Reliability** - Established patterns prevent similar timezone issues in future development
+
+---
+
 ## [2.1.0] - 2025-01-19
 
 ### 🚀 Documentation Consolidation & Production Readiness
