@@ -33,7 +33,6 @@ interface UserStats {
 
 export default function GoalsPage() {
   const router = useRouter()
-  // Removed unused user state
   const [goals, setGoals] = useState<Goal[]>([])
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -49,7 +48,6 @@ export default function GoalsPage() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        setUser(user)
         await loadUserData(user.id)
       }
       setLoading(false)

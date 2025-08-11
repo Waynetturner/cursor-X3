@@ -182,7 +182,7 @@ export function useWebLLMCoach(options: WebLLMCoachOptions = {}) {
       }
 
       // Get user profile with all available data - use defensive query
-      let { data: profile } = await supabase
+      let { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*') // Select all columns to see what's actually available
         .eq('id', userId)
@@ -285,14 +285,14 @@ export function useWebLLMCoach(options: WebLLMCoachOptions = {}) {
 
         // Find strongest progressions
         const progressions = Object.entries(exerciseGroups).map(([exercise, performances]) => {
-          const sorted = performances.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          const sorted = performances.sort((a, b) => new Date(String(b.date)).getTime() - new Date(String(a.date)).getTime())
           const latest = sorted[0]
           const oldest = sorted[sorted.length - 1]
           return {
             exercise,
-            latestReps: latest?.fullReps + latest?.partialReps,
-            oldestReps: oldest?.fullReps + oldest?.partialReps,
-            improvement: (latest?.fullReps + latest?.partialReps) - (oldest?.fullReps + oldest?.partialReps),
+            latestReps: Number(latest?.fullReps || 0) + Number(latest?.partialReps || 0),
+            oldestReps: Number(oldest?.fullReps || 0) + Number(oldest?.partialReps || 0),
+            improvement: (Number(latest?.fullReps || 0) + Number(latest?.partialReps || 0)) - (Number(oldest?.fullReps || 0) + Number(oldest?.partialReps || 0)),
             sessions: performances.length
           }
         }).filter(p => p.improvement > 0).sort((a, b) => b.improvement - a.improvement)

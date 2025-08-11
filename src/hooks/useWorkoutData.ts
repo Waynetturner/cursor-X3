@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase, X3_EXERCISES, getTodaysWorkoutWithCompletion } from '@/lib/supabase'
+import { supabase, X3_EXERCISES } from '@/lib/supabase'
 import { getWorkoutHistoryData } from '@/lib/exercise-history'
 import { testModeService } from '@/lib/test-mode'
 import { getCurrentCentralISOString } from '@/lib/timezone'
 import { announceToScreenReader } from '@/lib/accessibility'
-import { updateDailyWorkoutLog } from '@/lib/daily-workout-log'
+import { updateDailyWorkoutLog, getTodaysWorkoutFromLog, ensureTodaysEntry } from '@/lib/daily-workout-log'
 import { 
   AuthenticatedUser, 
   WorkoutInfo, 
@@ -104,14 +104,30 @@ export function useWorkoutData(): UseWorkoutDataReturn {
               console.error('❌ Error creating profile:', insertError)
             } else {
               console.log('✅ Profile created successfully')
-              const workout = await getTodaysWorkoutWithCompletion(today, user.id)
-              setTodaysWorkout(workout)
+              // Ensure today's entry exists in daily_workout_log
+              await ensureTodaysEntry(user.id)
+              const workout = await getTodaysWorkoutFromLog(user.id)
+              if (workout) {
+                setTodaysWorkout({
+                  ...workout,
+                  status: workout.status === 'completed' ? 'current' : 'scheduled',
+                  missedWorkouts: 0 // Add the missing property - we can get this from daily log later if needed
+                })
+              }
             }
           }
         } else if (profile?.x3_start_date) {
           console.log('✅ Found start date:', profile.x3_start_date)
-          const workout = await getTodaysWorkoutWithCompletion(profile.x3_start_date, user.id)
-          setTodaysWorkout(workout)
+          // Ensure today's entry exists in daily_workout_log
+          await ensureTodaysEntry(user.id)
+          const workout = await getTodaysWorkoutFromLog(user.id)
+          if (workout) {
+            setTodaysWorkout({
+              ...workout,
+              status: workout.status === 'completed' ? 'current' : 'scheduled',
+              missedWorkouts: 0 // Add the missing property - we can get this from daily log later if needed
+            })
+          }
         } else {
           console.log('⚠️ No start date found in profile')
         }
@@ -179,7 +195,7 @@ export function useWorkoutData(): UseWorkoutDataReturn {
         partial_reps: history?.recentPartialReps || 0,
         notes: '',
         saved: false,
-        previousData: null,
+        previousData: undefined,
         workout_local_date_time: history?.recentWorkoutDate || '',
         // UI fields - name shows historical PR, input fields use recent data
         name: history?.displayText || name.toUpperCase(), // "CHEST PRESS (PR: 16)" or "CHEST PRESS"

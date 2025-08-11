@@ -18,6 +18,12 @@ This directory contains the complete documentation for the X3 Momentum Pro fitne
 **Primary application overview and architecture**
 - Executive summary and current status
 - Technical architecture and component structure
+
+### 🤖 [CLAUDE.md](./CLAUDE.md)
+**Development session history and Claude interaction context**
+- Development guidelines and best practices
+- Complete session history and technical patterns
+- Essential context for future development work
 - Core features and functionality
 - Database schema and integrations
 - Recent refactoring achievements

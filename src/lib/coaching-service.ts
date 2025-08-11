@@ -166,7 +166,7 @@ export class CoachingService {
       sum + (exercise.full_reps || 0) + (exercise.partial_reps || 0), 0)
     
     const averageReps = totalReps / workoutData.length
-    const exercisesCompleted = workoutData.filter(ex => ex.completed).length
+    const exercisesCompleted = workoutData.filter(ex => ex.saved).length
     
     const potentialIssues: string[] = []
     const recommendations: string[] = []

@@ -145,8 +145,10 @@ export abstract class BaseService {
           timestamp: new Date().toISOString(),
           context: `${this.serviceName}.validateInput`,
           details: {
-            rule: rule.name,
-            input: rule.includeInputInError ? input : '[hidden]'
+            metadata: {
+              rule: rule.name,
+              input: rule.includeInputInError ? input : '[hidden]'
+            }
           }
         }
       }

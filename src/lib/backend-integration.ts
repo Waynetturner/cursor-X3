@@ -280,7 +280,7 @@ export class BackendIntegrationService {
       return data;
     } catch (error) {
       console.error('Failed to get user profile:', error);
-      return null;
+      return { profile: undefined, demographics: undefined };
     }
   }
 

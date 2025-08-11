@@ -134,7 +134,10 @@ export function useUserStats(userId: string | null, timeRange: TimeRange): UseUs
       
       setError({
         message: errorMessage,
-        details: err
+        details: {
+          stack: err instanceof Error ? err.stack : undefined,
+          cause: err instanceof Error ? err.cause : err,
+        }
       });
       
       // Set default stats on error to prevent UI breaking

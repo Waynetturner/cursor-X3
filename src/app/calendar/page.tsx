@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import { supabase } from '@/lib/supabase'
+import { ensureTodaysEntry, markMissedWorkouts, getWorkoutForDateFromLog, calculateWorkoutForDate } from '@/lib/daily-workout-log'
 import { ChevronLeft, ChevronRight, Flame, Dumbbell, Coffee, CheckCircle, AlertTriangle } from 'lucide-react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
@@ -45,32 +46,56 @@ export default function CalendarPage() {
   const generateCalendarData = useCallback(async () => {
     if (!userStartDate || !user) return
 
-    const year = currentDate.getFullYear()
-    const month = currentDate.getMonth()
+    console.log('📅 Generating calendar data...')
     
-    const firstDayOfMonth = new Date(year, month, 1)
-    const startDayOfWeek = firstDayOfMonth.getDay()
+    let dailyWorkouts: any[] | null = null
+    let workoutExercises: any[] | null = null
+    let startDate: Date
+    let endDate: Date
+    let year: number
+    let month: number
     
-    const startDate = new Date(firstDayOfMonth)
-    startDate.setDate(startDate.getDate() - startDayOfWeek)
+    try {
+      // Ensure today's entry exists and mark any missed workouts
+      await ensureTodaysEntry(user.id)
+      await markMissedWorkouts(user.id)
+      
+      year = currentDate.getFullYear()
+      month = currentDate.getMonth()
+      
+      const firstDayOfMonth = new Date(year, month, 1)
+      const startDayOfWeek = firstDayOfMonth.getDay()
+      
+      startDate = new Date(firstDayOfMonth)
+      startDate.setDate(startDate.getDate() - startDayOfWeek)
 
-    const endDate = new Date(startDate)
-    endDate.setDate(startDate.getDate() + 34)
+      endDate = new Date(startDate)
+      endDate.setDate(startDate.getDate() + 34)
 
-    // Get workout data from both tables
-    const { data: dailyWorkouts } = await supabase
-      .from('daily_workout_log')
-      .select('date, workout_type, week_number, status')
-      .eq('user_id', user.id)
-      .gte('date', startDate.toISOString().split('T')[0])
-      .lte('date', endDate.toISOString().split('T')[0])
+      // Get workout data from both tables
+      const dailyWorkoutsResult = await supabase
+        .from('daily_workout_log')
+        .select('date, workout_type, week_number, status')
+        .eq('user_id', user.id)
+        .gte('date', startDate.toISOString().split('T')[0])
+        .lte('date', endDate.toISOString().split('T')[0])
 
-    const { data: workoutExercises } = await supabase
-      .from('workout_exercises')
-      .select('workout_local_date_time, workout_type, week_number')
-      .eq('user_id', user.id)
-      .gte('workout_local_date_time', startDate.toISOString().split('T')[0] + 'T00:00:00')
-      .lte('workout_local_date_time', endDate.toISOString().split('T')[0] + 'T23:59:59')
+      const workoutExercisesResult = await supabase
+        .from('workout_exercises')
+        .select('workout_local_date_time, workout_type, week_number')
+        .eq('user_id', user.id)
+        .gte('workout_local_date_time', startDate.toISOString().split('T')[0] + 'T00:00:00')
+        .lte('workout_local_date_time', endDate.toISOString().split('T')[0] + 'T23:59:59')
+      
+      dailyWorkouts = dailyWorkoutsResult.data
+      workoutExercises = workoutExercisesResult.data
+        
+      console.log(`📊 Loaded ${dailyWorkouts?.length || 0} daily log entries and ${workoutExercises?.length || 0} exercise entries`)
+      console.log('📅 Daily workouts data:', dailyWorkouts?.slice(0, 5)) // Show first 5 entries for debugging
+    } catch (error) {
+      console.error('❌ Error in calendar data generation:', error)
+      return
+    }
 
     // Create a map of actual workout dates from workout_exercises
     const exercisesByDate: Record<string, { workout_type: string; week_number: number }> = {}
@@ -98,97 +123,33 @@ export default function CalendarPage() {
       })
     }
 
-    // Calculate your current progress based on actual workouts
-    // You completed weeks 1-9, currently in week 10
-    // Week 10: Push(8/1), Pull(8/3), Push(8/5), Pull(8/6), Push(8/7) = 3P+2Pu, need 1 more Pull + Rest
-
-    // Simple schedule based on your actual progress
-    const getWorkoutForDate = (date: string) => {
+    // Dynamic workout calculation based on daily_workout_log (single source of truth)
+    const getWorkoutForDate = async (date: string) => {
       const today = new Date().toLocaleDateString('en-CA')
       
-      // Check if we have actual exercise data for this date
-      if (exercisesByDate[date]) {
-        return {
-          workoutType: exercisesByDate[date].workout_type as 'Push' | 'Pull' | 'Rest',
-          week: exercisesByDate[date].week_number,
-          isCompleted: true,
-          status: 'complete' as const
-        }
+      // Debug logging for today's date
+      if (date === today) {
+        console.log(`🔍 Getting workout for TODAY (${date}):`)
+        console.log('  - dailyWorkoutsByDate keys:', Object.keys(dailyWorkoutsByDate))
+        console.log('  - Daily workout entry for today:', dailyWorkoutsByDate[date])
+        console.log('  - All dailyWorkoutsByDate:', dailyWorkoutsByDate)
       }
-
-      // Check daily_workout_log for scheduled/missed workouts
-      if (dailyWorkoutsByDate[date]) {
-        const isCompleted = dailyWorkoutsByDate[date].status === 'completed' && exercisesByDate[date]
-        return {
-          workoutType: dailyWorkoutsByDate[date].workout_type as 'Push' | 'Pull' | 'Rest' | 'Missed',
-          week: dailyWorkoutsByDate[date].week_number,
-          isCompleted,
-          status: dailyWorkoutsByDate[date].status as 'complete' | 'partial' | 'missed' | 'scheduled'
-        }
-      }
-
-      // For dates without data, calculate based on your known schedule
-      if (date === '2025-08-09') {
-        // Today should be Pull 3 W10
-        return {
-          workoutType: 'Pull' as const,
-          week: 10,
-          isCompleted: false,
-          status: 'scheduled' as const
-        }
-      } else if (date === '2025-08-10') {
-        // Tomorrow should be Rest W10
-        return {
-          workoutType: 'Rest' as const,
-          week: 10,
-          isCompleted: false,
-          status: 'scheduled' as const
-        }
-      } else if (date === '2025-08-11') {
-        // Monday should be Push 1 W11
-        return {
-          workoutType: 'Push' as const,
-          week: 11,
-          isCompleted: false,
-          status: 'scheduled' as const
-        }
-      }
-
-      // For other future dates, use standard intensive schedule
-      const startDate = new Date('2025-08-11') // Week 11 starts
-      const targetDate = new Date(date)
       
-      if (targetDate >= startDate) {
-        const daysSinceWeek11 = Math.floor((targetDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-        const weekNum = 11 + Math.floor(daysSinceWeek11 / 7)
-        const dayInWeek = daysSinceWeek11 % 7
-        
-        const intensiveSchedule = ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest']
-        const scheduledWorkout = intensiveSchedule[dayInWeek] as 'Push' | 'Pull' | 'Rest'
-        
-        return {
-          workoutType: scheduledWorkout,
-          week: weekNum,
-          isCompleted: false,
-          status: date < today ? 'missed' as const : 'scheduled' as const
-        }
-      }
-
-      // Past dates without data are missed
-      if (date < today) {
-        return {
-          workoutType: 'Missed' as const,
-          week: 10,
-          isCompleted: false,
-          status: 'missed' as const
-        }
-      }
-
+      // Use dynamic calculation for all dates
+      const dynamicWorkout = await calculateWorkoutForDate(user.id, date)
+      
+      // For completed workouts, check if they actually have exercise data
+      const hasExerciseData = exercisesByDate[date] !== undefined
+      const isActuallyCompleted = dynamicWorkout.status === 'completed' && 
+                                 (dynamicWorkout.workoutType === 'Rest' || hasExerciseData)
+      
       return {
-        workoutType: 'Rest' as const,
-        week: 10,
-        isCompleted: false,
-        status: 'scheduled' as const
+        workoutType: dynamicWorkout.workoutType as 'Push' | 'Pull' | 'Rest' | 'Missed',
+        week: dynamicWorkout.week,
+        isCompleted: isActuallyCompleted,
+        status: isActuallyCompleted ? 'complete' as const : 
+                dynamicWorkout.status === 'completed' ? 'missed' as const :
+                dynamicWorkout.status as 'scheduled'
       }
     }
 
@@ -196,18 +157,33 @@ export default function CalendarPage() {
     const calendarDays: WorkoutDay[] = []
     const today = new Date().toLocaleDateString('en-CA')
     
+    // Generate all workout info async
+    const workoutPromises: Promise<any>[] = []
+    const dateInfos: { dateStr: string, isThisMonth: boolean, dayOfMonth: number }[] = []
+    
     for (let i = 0; i < 35; i++) {
       const currentCalendarDate = new Date(startDate)
       currentCalendarDate.setDate(startDate.getDate() + i)
       
       const dateStr = currentCalendarDate.toLocaleDateString('en-CA')
       const isThisMonth = currentCalendarDate.getMonth() === month
+      const dayOfMonth = currentCalendarDate.getDate()
       
-      const workoutInfo = getWorkoutForDate(dateStr)
+      dateInfos.push({ dateStr, isThisMonth, dayOfMonth })
+      workoutPromises.push(getWorkoutForDate(dateStr))
+    }
+    
+    // Wait for all workout calculations to complete
+    const workoutInfos = await Promise.all(workoutPromises)
+    
+    // Build calendar days with the results
+    for (let i = 0; i < dateInfos.length; i++) {
+      const { dateStr, isThisMonth, dayOfMonth } = dateInfos[i]
+      const workoutInfo = workoutInfos[i]
       
       calendarDays.push({
         date: dateStr,
-        dayOfMonth: currentCalendarDate.getDate(),
+        dayOfMonth,
         workoutType: workoutInfo.workoutType,
         originalWorkout: workoutInfo.workoutType,
         isCompleted: workoutInfo.isCompleted,

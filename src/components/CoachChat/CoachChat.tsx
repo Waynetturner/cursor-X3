@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { MessageCircle, Send, X, Volume2, VolumeX, Loader2, Bot, User, Minimize2, Maximize2, Brain } from 'lucide-react'
+import { MessageCircle, Send, X, Volume2, VolumeX, Loader2, Bot, User as UserIcon, Minimize2, Maximize2, Brain } from 'lucide-react'
 import { useX3TTS } from '@/hooks/useX3TTS'
 import { useSubscription } from '@/contexts/SubscriptionContext'
 import { testModeService } from '@/lib/test-mode'
@@ -469,7 +469,7 @@ export default function CoachChat({ currentExercise, workoutContext }: CoachChat
                           <Bot size={16} className="text-orange-600 mt-0.5 flex-shrink-0" />
                         )}
                         {message.role === 'user' && (
-                          <User size={16} className="text-white mt-0.5 flex-shrink-0" />
+                          <UserIcon size={16} className="text-white mt-0.5 flex-shrink-0" />
                         )}
                         <div className="flex-1">
                           <p className="text-sm">{message.content}</p>
