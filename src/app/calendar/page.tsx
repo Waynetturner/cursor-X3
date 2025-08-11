@@ -123,35 +123,37 @@ export default function CalendarPage() {
       })
     }
 
-    // Dynamic workout calculation based on daily_workout_log (single source of truth)
-    const getWorkoutForDate = async (date: string) => {
-      const today = new Date().toLocaleDateString('en-CA')
-      
-      // Debug logging for today's date
-      if (date === today) {
-        console.log(`🔍 Getting workout for TODAY (${date}):`)
-        console.log('  - dailyWorkoutsByDate keys:', Object.keys(dailyWorkoutsByDate))
-        console.log('  - Daily workout entry for today:', dailyWorkoutsByDate[date])
-        console.log('  - All dailyWorkoutsByDate:', dailyWorkoutsByDate)
-      }
-      
-      // Use dynamic calculation for all dates
-      const dynamicWorkout = await calculateWorkoutForDate(user.id, date)
-      
-      // For completed workouts, check if they actually have exercise data
-      const hasExerciseData = exercisesByDate[date] !== undefined
-      const isActuallyCompleted = dynamicWorkout.status === 'completed' && 
-                                 (dynamicWorkout.workoutType === 'Rest' || hasExerciseData)
-      
-      return {
-        workoutType: dynamicWorkout.workoutType as 'Push' | 'Pull' | 'Rest' | 'Missed',
-        week: dynamicWorkout.week,
-        isCompleted: isActuallyCompleted,
-        status: isActuallyCompleted ? 'complete' as const : 
-                dynamicWorkout.status === 'completed' ? 'missed' as const :
-                dynamicWorkout.status as 'scheduled'
-      }
-    }
+// Dynamic workout calculation based on daily_workout_log (single source of truth)
+const getWorkoutForDate = async (date: string) => {
+  const today = new Date().toLocaleDateString('en-CA')
+  
+  // Use dynamic calculation for all dates
+  const dynamicWorkout = await calculateWorkoutForDate(user.id, date)
+  
+  // Debug logging for today's date and a few others
+  if (date === today || date === '2025-08-12' || date === '2025-08-13') {
+    console.log(`🔍 Getting workout for ${date}:`)
+    console.log(`  - dynamicWorkout:`, dynamicWorkout)
+    console.log(`  - workoutType: ${dynamicWorkout.workoutType}`)
+    console.log(`  - week: ${dynamicWorkout.week}`)
+    console.log(`  - status: ${dynamicWorkout.status}`)
+    console.log(`  - dayInWeek: ${dynamicWorkout.dayInWeek}`)
+  }
+  
+  // For completed workouts, check if they actually have exercise data
+  const hasExerciseData = exercisesByDate[date] !== undefined
+  const isActuallyCompleted = dynamicWorkout.status === 'completed' && 
+                             (dynamicWorkout.workoutType === 'Rest' || hasExerciseData)
+  
+  return {
+    workoutType: dynamicWorkout.workoutType as 'Push' | 'Pull' | 'Rest' | 'Missed',
+    week: dynamicWorkout.week,
+    isCompleted: isActuallyCompleted,
+    status: isActuallyCompleted ? 'complete' as const : 
+            dynamicWorkout.status === 'completed' ? 'missed' as const :
+            dynamicWorkout.status as 'scheduled'
+  }
+}
 
     // Generate calendar days
     const calendarDays: WorkoutDay[] = []

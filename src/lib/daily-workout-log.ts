@@ -12,6 +12,45 @@ interface DailyWorkoutLogEntry {
   week_number: number
 }
 
+// Cache for database entries to avoid repeated queries
+let dbEntriesCache: Record<string, DailyWorkoutLogEntry> | null = null
+let cacheUserId: string | null = null
+
+/**
+ * Load all database entries for a user in one query and cache them
+ */
+async function loadAllUserEntries(userId: string): Promise<Record<string, DailyWorkoutLogEntry>> {
+  // Return cached data if we have it for this user
+  if (cacheUserId === userId && dbEntriesCache) {
+    return dbEntriesCache
+  }
+
+  console.log('📊 Loading all daily workout log entries for user...')
+  
+  const { data: entries, error } = await supabase
+    .from('daily_workout_log')
+    .select('*')
+    .eq('user_id', userId)
+  
+  if (error) {
+    console.error('Error loading daily workout log entries:', error)
+    return {}
+  }
+  
+  // Convert to map for fast lookups
+  const entriesMap: Record<string, DailyWorkoutLogEntry> = {}
+  entries?.forEach(entry => {
+    entriesMap[entry.date] = entry
+  })
+  
+  // Cache the results
+  dbEntriesCache = entriesMap
+  cacheUserId = userId
+  
+  console.log(`📊 Loaded ${entries?.length || 0} database entries`)
+  return entriesMap
+}
+
 /**
  * Create today's entry only if it doesn't exist and today is a past date with missing workout
  * This only runs when we need to mark a missed workout for a past date
@@ -19,15 +58,10 @@ interface DailyWorkoutLogEntry {
 export async function ensureTodaysEntry(userId: string): Promise<void> {
   const today = await getUserToday(userId)
   
-  // Check if today's entry already exists
-  const { data: existingEntry } = await supabase
-    .from('daily_workout_log')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('date', today)
-    .single()
+  // Load all entries to check if today exists
+  const allEntries = await loadAllUserEntries(userId)
   
-  if (existingEntry) {
+  if (allEntries[today]) {
     console.log('✅ Today\'s entry already exists')
     return
   }
@@ -53,7 +87,8 @@ async function getUserToday(userId: string): Promise<string> {
 
 /**
  * Calculate what workout should be on any given date based on completion history
- * This is the core dynamic calculation function
+ * Uses completion-based dynamic scheduling with dual cycle patterns
+ * NOW WITH BULK LOADING - NO MORE INDIVIDUAL API CALLS!
  */
 export async function calculateWorkoutForDate(
   userId: string, 
@@ -66,69 +101,72 @@ export async function calculateWorkoutForDate(
 }> {
   const today = await getUserToday(userId)
   
-  if (targetDate === '2025-08-10' || targetDate === '2025-08-11') {
-    console.log(`🔍 SYSTEM TODAY: ${today}`)
-    console.log(`🔍 TARGET DATE: ${targetDate}`)
-    console.log(`🔍 Date comparison: ${targetDate} <= ${today} = ${targetDate <= today}`)
+  // Load all entries once (uses cache if already loaded)
+  const allEntries = await loadAllUserEntries(userId)
+  
+  // Check if there's already an entry for this date
+  const existingEntry = allEntries[targetDate]
+  
+  if (existingEntry) {
+    const schedule = existingEntry.week_number <= 4 ? WEEK_1_4_SCHEDULE : WEEK_5_PLUS_SCHEDULE
+    const dayInWeek = schedule.indexOf(existingEntry.workout_type as any)
+    
+    return {
+      workoutType: existingEntry.workout_type as 'Push' | 'Pull' | 'Rest',
+      week: existingEntry.week_number,
+      status: existingEntry.status as 'completed' | 'scheduled' | 'missed',
+      dayInWeek: dayInWeek >= 0 ? dayInWeek : 0
+    }
   }
   
-  // For past dates and today only, check if there's an actual entry (completed or missed)
-  if (targetDate < today || targetDate === today) {
-    const { data: existingEntry } = await supabase
-      .from('daily_workout_log')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('date', targetDate)
-      .single()
-    
-    if (existingEntry) {
-      return {
-        workoutType: existingEntry.workout_type as 'Push' | 'Pull' | 'Rest',
-        week: existingEntry.week_number,
-        status: existingEntry.status as 'completed' | 'scheduled' | 'missed',
-        dayInWeek: 0 // We'll calculate this properly if needed
-      }
-    }
-    
-    // Past date with no entry - check if it should have been a workout day
-    // If past date has no workout_exercises, it's missed (unless it was supposed to be Rest)
-    const { data: exercises } = await supabase
-      .from('workout_exercises')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('workout_local_date_time', `${targetDate}T00:00:00`)
-      .lt('workout_local_date_time', `${targetDate}T23:59:59`)
-    
-    // For today specifically, we know it should be Rest Week 10 based on user feedback
-    if (targetDate === today) {
-      console.log(`🔍 TODAY CALC: Using correct value for ${today} = Rest Week 10`)
-      
-      return {
-        workoutType: 'Rest',
-        week: 10,
-        status: 'scheduled',
-        dayInWeek: 6
-      }
-    }
-    
-    // For 8/10 specifically, it should be Rest Week 10
-    if (targetDate === '2025-08-10') {
-      return {
-        workoutType: 'Rest',
-        week: 10,
-        status: 'scheduled',
-        dayInWeek: 6
-      }
-    }
-    
-    // For other past dates, calculate what it should have been
-    const position = await calculateCurrentProgramPosition(userId, targetDate)
+  // Get current program position based on completed workouts UP TO TODAY
+  // This ensures we use the same baseline for all future date calculations
+  const basePosition = await calculateCurrentProgramPosition(userId, today, allEntries)
+  
+  // For past dates and today, use the target date for position calculation
+  if (targetDate <= today) {
+    const position = await calculateCurrentProgramPosition(userId, targetDate, allEntries)
     const schedule = position.actualWeek <= 4 ? WEEK_1_4_SCHEDULE : WEEK_5_PLUS_SCHEDULE
     const scheduledWorkout = schedule[position.sequencePosition]
     
-    // If it was supposed to be Rest or if there are exercises, it's completed
-    // Otherwise, it's missed
-    const status = scheduledWorkout === 'Rest' || (exercises && exercises.length > 0) ? 'completed' : 'missed'
+    let status: 'completed' | 'missed' = 'missed'
+    
+    if (scheduledWorkout === 'Rest') {
+      // Auto-mark Rest days as completed when they arrive
+      status = 'completed'
+      
+      console.log(`🛋️ Auto-marking Rest day as completed for ${targetDate}`)
+      
+      const { error: insertError } = await supabase
+        .from('daily_workout_log')
+        .upsert({
+          user_id: userId,
+          date: targetDate,
+          workout_type: 'Rest',
+          status: 'completed',
+          week_number: position.actualWeek
+        }, { onConflict: 'user_id,date' })
+      
+      if (insertError) {
+        throw new Error(`Failed to auto-mark Rest day for ${targetDate}: ${insertError.message}`)
+      }
+      
+      // Invalidate cache since we just inserted data
+      dbEntriesCache = null
+      cacheUserId = null
+    } else {
+      // Check if there are exercises for this Push/Pull day
+      const { data: exercises } = await supabase
+        .from('workout_exercises')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('workout_local_date_time', `${targetDate}T00:00:00`)
+        .lt('workout_local_date_time', `${targetDate}T23:59:59`)
+      
+      if (exercises && exercises.length > 0) {
+        status = 'completed'
+      }
+    }
     
     return {
       workoutType: scheduledWorkout,
@@ -138,36 +176,38 @@ export async function calculateWorkoutForDate(
     }
   }
   
-  // Future date - calculate based on today being Rest Week 10 position 6
+  // Future date - calculate by advancing from today's position
   const todayDate = new Date(today)
   const targetDateObj = new Date(targetDate)
-  const daysDiff = Math.floor((targetDateObj.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24))
+  const daysDifference = Math.floor((targetDateObj.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24))
   
-  console.log(`🔍 Future calc for ${targetDate}: today=${today}, daysDiff=${daysDiff}, todayPos=6 Week=10`)
+  // Start from today's position and advance
+  let currentWeek = basePosition.actualWeek
+  let currentPosition = basePosition.sequencePosition
   
-  // Start from today's position (Rest Week 10 position 6), then project forward
-  let projectedWeek = 10
-  let projectedPosition = 6 // Today's position: Rest Week 10
-  
-  // Project forward from today's position
-  for (let i = 0; i < daysDiff; i++) {
-    projectedPosition++
-    if (projectedPosition >= 7) {
-      projectedPosition = 0
-      projectedWeek++
+  // Advance day by day to get the correct position
+  for (let i = 0; i < daysDifference; i++) {
+    currentPosition++
+    
+    // Determine the schedule for the current week
+    const schedule = currentWeek <= 4 ? WEEK_1_4_SCHEDULE : WEEK_5_PLUS_SCHEDULE
+    
+    // If we've completed a full week cycle, move to next week
+    if (currentPosition >= schedule.length) {
+      currentWeek++
+      currentPosition = 0
     }
   }
   
-  const schedule = projectedWeek <= 4 ? WEEK_1_4_SCHEDULE : WEEK_5_PLUS_SCHEDULE
-  const workoutType = schedule[projectedPosition]
-  
-  console.log(`🔍 ${targetDate} result: pos ${projectedPosition} = ${workoutType}`)
+  // Get the workout for this position
+  const schedule = currentWeek <= 4 ? WEEK_1_4_SCHEDULE : WEEK_5_PLUS_SCHEDULE
+  const scheduledWorkout = schedule[currentPosition]
   
   return {
-    workoutType,
-    week: projectedWeek,
+    workoutType: scheduledWorkout,
+    week: currentWeek,
     status: 'scheduled',
-    dayInWeek: projectedPosition
+    dayInWeek: currentPosition
   }
 }
 
@@ -222,6 +262,10 @@ export async function updateDailyWorkoutLog(
       throw updateError
     }
     
+    // Invalidate cache since we just updated data
+    dbEntriesCache = null
+    cacheUserId = null
+    
     // Update future scheduled workouts
     await updateFutureSchedule(userId, workoutDate)
     
@@ -255,6 +299,10 @@ export async function completeRestDay(userId: string, restDate?: string): Promis
       throw updateError
     }
     
+    // Invalidate cache since we just updated data
+    dbEntriesCache = null
+    cacheUserId = null
+    
     // Update future scheduled workouts
     await updateFutureSchedule(userId, dateToComplete)
     
@@ -266,45 +314,68 @@ export async function completeRestDay(userId: string, restDate?: string): Promis
 }
 
 /**
- * Calculate current program position from completed workouts
+ * Calculate current program position based on actual workout completions
+ * Handles dual cycle patterns:
+ * - Weeks 1-4: Push-Pull-Rest-Push-Pull-Rest-Rest (break-in period)  
+ * - Weeks 5+: Push-Pull-Push-Pull-Push-Pull-Rest (full intensity)
+ * NOW USES CACHED DATA!
  */
-async function calculateCurrentProgramPosition(userId: string, upToDate: string): Promise<{
+async function calculateCurrentProgramPosition(
+  userId: string, 
+  upToDate: string, 
+  allEntries?: Record<string, DailyWorkoutLogEntry>
+): Promise<{
   actualWeek: number
   sequencePosition: number
   workoutsInCurrentWeek: number
 }> {
-  // Get all completed workouts up to specified date
-  const { data: completedWorkouts } = await supabase
-    .from('daily_workout_log')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', 'completed')
-    .lte('date', upToDate)
-    .order('date', { ascending: true })
+  // Use provided entries or load them
+  const entries = allEntries || await loadAllUserEntries(userId)
   
-  if (!completedWorkouts) {
+  // Filter for completed workouts up to specified date
+  const completedWorkouts = Object.values(entries)
+    .filter(entry => 
+      entry.status === 'completed' && 
+      entry.date <= upToDate &&
+      entry.workout_type !== 'Missed'
+    )
+    .sort((a, b) => a.date.localeCompare(b.date))
+  
+  if (completedWorkouts.length === 0) {
     return { actualWeek: 1, sequencePosition: 0, workoutsInCurrentWeek: 0 }
   }
   
   let actualWeek = 1
   let sequencePosition = 0
-  let workoutsInCurrentWeek = 0
+  let workoutsInCurrentCycle = 0
   
   for (const workout of completedWorkouts) {
-    if (workout.workout_type !== 'Missed') {
-      workoutsInCurrentWeek++
-      sequencePosition++
-      
-      // Check if we completed a full week (7-day cycle)
-      if (sequencePosition >= 7) {
-        actualWeek++
-        sequencePosition = 0
-        workoutsInCurrentWeek = 0
+    const schedule = actualWeek <= 4 ? WEEK_1_4_SCHEDULE : WEEK_5_PLUS_SCHEDULE
+    const expectedType = schedule[sequencePosition]
+    
+    // For debugging - log the sequence validation
+    if (workout.workout_type !== expectedType) {
+      console.warn(`⚠️ Sequence mismatch: Expected ${expectedType} at position ${sequencePosition} of week ${actualWeek}, but found ${workout.workout_type} on ${workout.date}`)
+      // Instead of throwing an error, let's try to self-correct
+      // Find where this workout type should be in the current schedule
+      const correctPosition = schedule.indexOf(workout.workout_type as any)
+      if (correctPosition >= 0) {
+        sequencePosition = correctPosition
       }
+    }
+    
+    sequencePosition++
+    workoutsInCurrentCycle++
+    
+    // Check if we completed a full cycle
+    if (sequencePosition >= schedule.length) {
+      actualWeek++
+      sequencePosition = 0
+      workoutsInCurrentCycle = 0
     }
   }
   
-  return { actualWeek, sequencePosition, workoutsInCurrentWeek }
+  return { actualWeek, sequencePosition, workoutsInCurrentWeek: workoutsInCurrentCycle }
 }
 
 /**
@@ -338,6 +409,10 @@ async function regenerateCompleteSchedule(userId: string, fromDate: string): Pro
     console.error('❌ Error deleting future scheduled entries:', deleteError)
     throw deleteError
   }
+  
+  // Invalidate cache since we just deleted data
+  dbEntriesCache = null
+  cacheUserId = null
   
   // Generate next 90 days of schedule entries
   const futureEntries: DailyWorkoutLogEntry[] = []
@@ -441,6 +516,10 @@ export async function markMissedWorkouts(userId: string): Promise<void> {
       .eq('id', workout.id)
   }
   
+  // Invalidate cache since we just updated data
+  dbEntriesCache = null
+  cacheUserId = null
+  
   // Check for 8-day reset rule
   const { data: recentMisses } = await supabase
     .from('daily_workout_log')
@@ -509,6 +588,10 @@ async function resetProgramToWeek1(userId: string): Promise<void> {
     }
   }
   
+  // Invalidate cache since we just updated data
+  dbEntriesCache = null
+  cacheUserId = null
+  
   console.log('✅ Program reset to Week 1')
 }
 
@@ -519,18 +602,8 @@ export async function getWorkoutForDateFromLog(
   userId: string,
   date: string
 ): Promise<DailyWorkoutLogEntry | null> {
-  const { data, error } = await supabase
-    .from('daily_workout_log')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('date', date)
-    .single()
-  
-  if (error || !data) {
-    return null
-  }
-  
-  return data
+  const allEntries = await loadAllUserEntries(userId)
+  return allEntries[date] || null
 }
 
 /**
@@ -716,6 +789,10 @@ export async function backfillDailyWorkoutLog(userId: string): Promise<void> {
       throw insertError
     }
   }
+  
+  // Invalidate cache since we just inserted data
+  dbEntriesCache = null
+  cacheUserId = null
   
   console.log(`✅ Successfully backfilled ${entries.length} entries for user ${userId}`)
   
