@@ -3,7 +3,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import { supabase } from '@/lib/supabase'
-import { ensureTodaysEntry, markMissedWorkouts, calculateWorkoutForDate } from '@/lib/daily-workout-log'
+import { 
+  ensureTodaysEntry, 
+  markMissedWorkouts, 
+  calculateWorkoutForDate,
+  WEEK_1_4_SCHEDULE, 
+  WEEK_5_PLUS_SCHEDULE 
+} from '@/lib/daily-workout-log'
 import { ChevronLeft, ChevronRight, Flame, Dumbbell, Coffee, CheckCircle, AlertTriangle } from 'lucide-react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
@@ -49,10 +55,11 @@ export default function CalendarPage() {
     console.log('📅 Generating calendar data...')
     
     try {
-      // Ensure today's entry exists and mark any missed workouts
-      await ensureTodaysEntry(user.id)
-      await markMissedWorkouts(user.id)
+      // Get today's date in the correct format
+      const today = new Date().toLocaleDateString('en-CA')
+      console.log('Today is:', today)
       
+      // Calculate calendar range
       const year = currentDate.getFullYear()
       const month = currentDate.getMonth()
       
@@ -64,7 +71,17 @@ export default function CalendarPage() {
 
       const endDate = new Date(startDate)
       endDate.setDate(startDate.getDate() + 34)
+      
+      console.log('Calendar range:', {
+        start: startDate.toLocaleDateString('en-CA'),
+        end: endDate.toLocaleDateString('en-CA')
+      })
 
+      await Promise.all([
+        ensureTodaysEntry(user.id),
+        markMissedWorkouts(user.id)
+      ])
+      
       // Get workout data from both tables
       const [dailyWorkoutsResult, workoutExercisesResult] = await Promise.all([
         supabase
@@ -103,26 +120,36 @@ export default function CalendarPage() {
 
       // Generate calendar days
       const calendarDays: WorkoutDay[] = []
-      const today = new Date().toLocaleDateString('en-CA')
+      // Get the last completed workout
+      const { data: lastCompletedWorkout } = await supabase
+        .from('daily_workout_log')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'completed')
+        .order('date', { ascending: false })
+        .limit(1)
+
+      console.log('📅 Last completed workout:', lastCompletedWorkout?.[0])
       
-      // Generate all workout info async
-      const workoutPromises: Promise<any>[] = []
+      // Generate calendar days using the new dynamic calculation
       const dateInfos: { dateStr: string, isThisMonth: boolean, dayOfMonth: number }[] = []
+      const workoutInfos: any[] = []
       
       for (let i = 0; i < 35; i++) {
         const currentCalendarDate = new Date(startDate)
         currentCalendarDate.setDate(startDate.getDate() + i)
-        
         const dateStr = currentCalendarDate.toLocaleDateString('en-CA')
         const isThisMonth = currentCalendarDate.getMonth() === month
         const dayOfMonth = currentCalendarDate.getDate()
         
         dateInfos.push({ dateStr, isThisMonth, dayOfMonth })
-        workoutPromises.push(calculateWorkoutForDate(user.id, dateStr))
+        
+        // Always use calculateWorkoutForDate to ensure consistent progression
+        console.log(`Calculating workout for ${dateStr}...`)
+        const workoutInfo = await calculateWorkoutForDate(user.id, dateStr)
+        console.log(`Result for ${dateStr}:`, workoutInfo)
+        workoutInfos.push(workoutInfo)
       }
-      
-      // Wait for all workout calculations to complete
-      const workoutInfos = await Promise.all(workoutPromises)
       
       // Build calendar days with the results
       for (let i = 0; i < dateInfos.length; i++) {

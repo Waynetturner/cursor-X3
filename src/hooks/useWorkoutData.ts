@@ -347,10 +347,10 @@ export function useWorkoutData(): UseWorkoutDataReturn {
       console.log('✅ Exercise saved successfully!')
       announceToScreenReader(`${exercise.name} saved successfully!`, 'assertive')
       
-      // Update daily workout log if this is the last exercise
-      const isLastExercise = index + 1 >= exercises.length
-      if (isLastExercise) {
-        console.log('📊 Updating daily workout log for completed workout')
+      // FIXED: Check if ALL exercises are now saved (not just if this is the last index)
+      const allExercisesSaved = newExercises.every(ex => ex.saved)
+      if (allExercisesSaved) {
+        console.log('📊 All exercises completed - updating daily workout log')
         try {
           await updateDailyWorkoutLog(
             user.id,
@@ -362,6 +362,9 @@ export function useWorkoutData(): UseWorkoutDataReturn {
           console.error('❌ Error updating daily workout log:', logError)
           // Don't fail the exercise save if log update fails
         }
+      } else {
+        const savedCount = newExercises.filter(ex => ex.saved).length
+        console.log(`📊 Exercise ${savedCount}/${exercises.length} saved - waiting for all exercises to complete`)
       }
     } else {
       console.error('❌ Error saving exercise:', error)
