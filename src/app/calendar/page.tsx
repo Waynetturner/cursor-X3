@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
 import { supabase } from '@/lib/supabase'
-import { ensureTodaysEntry, markMissedWorkouts, getWorkoutForDateFromLog, calculateWorkoutForDate } from '@/lib/daily-workout-log'
+import { ensureTodaysEntry, markMissedWorkouts, calculateWorkoutForDate } from '@/lib/daily-workout-log'
 import { ChevronLeft, ChevronRight, Flame, Dumbbell, Coffee, CheckCircle, AlertTriangle } from 'lucide-react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 
@@ -48,156 +48,112 @@ export default function CalendarPage() {
 
     console.log('📅 Generating calendar data...')
     
-    let dailyWorkouts: any[] | null = null
-    let workoutExercises: any[] | null = null
-    let startDate: Date
-    let endDate: Date
-    let year: number
-    let month: number
-    
     try {
       // Ensure today's entry exists and mark any missed workouts
       await ensureTodaysEntry(user.id)
       await markMissedWorkouts(user.id)
       
-      year = currentDate.getFullYear()
-      month = currentDate.getMonth()
+      const year = currentDate.getFullYear()
+      const month = currentDate.getMonth()
       
       const firstDayOfMonth = new Date(year, month, 1)
       const startDayOfWeek = firstDayOfMonth.getDay()
       
-      startDate = new Date(firstDayOfMonth)
+      const startDate = new Date(firstDayOfMonth)
       startDate.setDate(startDate.getDate() - startDayOfWeek)
 
-      endDate = new Date(startDate)
+      const endDate = new Date(startDate)
       endDate.setDate(startDate.getDate() + 34)
 
       // Get workout data from both tables
-      const dailyWorkoutsResult = await supabase
-        .from('daily_workout_log')
-        .select('date, workout_type, week_number, status')
-        .eq('user_id', user.id)
-        .gte('date', startDate.toISOString().split('T')[0])
-        .lte('date', endDate.toISOString().split('T')[0])
-
-      const workoutExercisesResult = await supabase
-        .from('workout_exercises')
-        .select('workout_local_date_time, workout_type, week_number')
-        .eq('user_id', user.id)
-        .gte('workout_local_date_time', startDate.toISOString().split('T')[0] + 'T00:00:00')
-        .lte('workout_local_date_time', endDate.toISOString().split('T')[0] + 'T23:59:59')
+      const [dailyWorkoutsResult, workoutExercisesResult] = await Promise.all([
+        supabase
+          .from('daily_workout_log')
+          .select('date, workout_type, week_number, status')
+          .eq('user_id', user.id)
+          .gte('date', startDate.toISOString().split('T')[0])
+          .lte('date', endDate.toISOString().split('T')[0]),
+        
+        supabase
+          .from('workout_exercises')
+          .select('workout_local_date_time, workout_type, week_number')
+          .eq('user_id', user.id)
+          .gte('workout_local_date_time', startDate.toISOString().split('T')[0] + 'T00:00:00')
+          .lte('workout_local_date_time', endDate.toISOString().split('T')[0] + 'T23:59:59')
+      ])
       
-      dailyWorkouts = dailyWorkoutsResult.data
-      workoutExercises = workoutExercisesResult.data
+      const dailyWorkouts = dailyWorkoutsResult.data
+      const workoutExercises = workoutExercisesResult.data
         
       console.log(`📊 Loaded ${dailyWorkouts?.length || 0} daily log entries and ${workoutExercises?.length || 0} exercise entries`)
-      console.log('📅 Daily workouts data:', dailyWorkouts?.slice(0, 5)) // Show first 5 entries for debugging
+
+      // Create a map of actual workout dates from workout_exercises
+      const exercisesByDate: Record<string, { workout_type: string; week_number: number }> = {}
+      if (workoutExercises) {
+        workoutExercises.forEach(exercise => {
+          const date = new Date(exercise.workout_local_date_time).toLocaleDateString('en-CA')
+          if (!exercisesByDate[date]) {
+            exercisesByDate[date] = {
+              workout_type: exercise.workout_type,
+              week_number: exercise.week_number
+            }
+          }
+        })
+      }
+
+      // Generate calendar days
+      const calendarDays: WorkoutDay[] = []
+      const today = new Date().toLocaleDateString('en-CA')
+      
+      // Generate all workout info async
+      const workoutPromises: Promise<any>[] = []
+      const dateInfos: { dateStr: string, isThisMonth: boolean, dayOfMonth: number }[] = []
+      
+      for (let i = 0; i < 35; i++) {
+        const currentCalendarDate = new Date(startDate)
+        currentCalendarDate.setDate(startDate.getDate() + i)
+        
+        const dateStr = currentCalendarDate.toLocaleDateString('en-CA')
+        const isThisMonth = currentCalendarDate.getMonth() === month
+        const dayOfMonth = currentCalendarDate.getDate()
+        
+        dateInfos.push({ dateStr, isThisMonth, dayOfMonth })
+        workoutPromises.push(calculateWorkoutForDate(user.id, dateStr))
+      }
+      
+      // Wait for all workout calculations to complete
+      const workoutInfos = await Promise.all(workoutPromises)
+      
+      // Build calendar days with the results
+      for (let i = 0; i < dateInfos.length; i++) {
+        const { dateStr, isThisMonth, dayOfMonth } = dateInfos[i]
+        const workoutInfo = workoutInfos[i]
+        
+        // For completed workouts, check if they actually have exercise data
+        const hasExerciseData = exercisesByDate[dateStr] !== undefined
+        const isActuallyCompleted = workoutInfo.status === 'completed' && 
+                                   (workoutInfo.workoutType === 'Rest' || hasExerciseData)
+        
+        calendarDays.push({
+          date: dateStr,
+          dayOfMonth,
+          workoutType: workoutInfo.workoutType,
+          originalWorkout: workoutInfo.workoutType,
+          isCompleted: isActuallyCompleted,
+          isToday: dateStr === today,
+          isThisMonth: isThisMonth,
+          week: workoutInfo.week,
+          isShifted: false,
+          status: isActuallyCompleted ? 'complete' : 
+                  workoutInfo.status === 'completed' ? 'missed' :
+                  workoutInfo.status
+        })
+      }
+      
+      setWorkoutDays(calendarDays)
     } catch (error) {
       console.error('❌ Error in calendar data generation:', error)
-      return
     }
-
-    // Create a map of actual workout dates from workout_exercises
-    const exercisesByDate: Record<string, { workout_type: string; week_number: number }> = {}
-    if (workoutExercises) {
-      workoutExercises.forEach(exercise => {
-        const date = new Date(exercise.workout_local_date_time).toLocaleDateString('en-CA')
-        if (!exercisesByDate[date]) {
-          exercisesByDate[date] = {
-            workout_type: exercise.workout_type,
-            week_number: exercise.week_number
-          }
-        }
-      })
-    }
-
-    // Create a map from daily_workout_log
-    const dailyWorkoutsByDate: Record<string, { workout_type: string; week_number: number; status: string }> = {}
-    if (dailyWorkouts) {
-      dailyWorkouts.forEach(workout => {
-        dailyWorkoutsByDate[workout.date] = {
-          workout_type: workout.workout_type,
-          week_number: workout.week_number,
-          status: workout.status
-        }
-      })
-    }
-
-// Dynamic workout calculation based on daily_workout_log (single source of truth)
-const getWorkoutForDate = async (date: string) => {
-  const today = new Date().toLocaleDateString('en-CA')
-  
-  // Use dynamic calculation for all dates
-  const dynamicWorkout = await calculateWorkoutForDate(user.id, date)
-  
-  // Debug logging for today's date and a few others
-  if (date === today || date === '2025-08-12' || date === '2025-08-13') {
-    console.log(`🔍 Getting workout for ${date}:`)
-    console.log(`  - dynamicWorkout:`, dynamicWorkout)
-    console.log(`  - workoutType: ${dynamicWorkout.workoutType}`)
-    console.log(`  - week: ${dynamicWorkout.week}`)
-    console.log(`  - status: ${dynamicWorkout.status}`)
-    console.log(`  - dayInWeek: ${dynamicWorkout.dayInWeek}`)
-  }
-  
-  // For completed workouts, check if they actually have exercise data
-  const hasExerciseData = exercisesByDate[date] !== undefined
-  const isActuallyCompleted = dynamicWorkout.status === 'completed' && 
-                             (dynamicWorkout.workoutType === 'Rest' || hasExerciseData)
-  
-  return {
-    workoutType: dynamicWorkout.workoutType as 'Push' | 'Pull' | 'Rest' | 'Missed',
-    week: dynamicWorkout.week,
-    isCompleted: isActuallyCompleted,
-    status: isActuallyCompleted ? 'complete' as const : 
-            dynamicWorkout.status === 'completed' ? 'missed' as const :
-            dynamicWorkout.status as 'scheduled'
-  }
-}
-
-    // Generate calendar days
-    const calendarDays: WorkoutDay[] = []
-    const today = new Date().toLocaleDateString('en-CA')
-    
-    // Generate all workout info async
-    const workoutPromises: Promise<any>[] = []
-    const dateInfos: { dateStr: string, isThisMonth: boolean, dayOfMonth: number }[] = []
-    
-    for (let i = 0; i < 35; i++) {
-      const currentCalendarDate = new Date(startDate)
-      currentCalendarDate.setDate(startDate.getDate() + i)
-      
-      const dateStr = currentCalendarDate.toLocaleDateString('en-CA')
-      const isThisMonth = currentCalendarDate.getMonth() === month
-      const dayOfMonth = currentCalendarDate.getDate()
-      
-      dateInfos.push({ dateStr, isThisMonth, dayOfMonth })
-      workoutPromises.push(getWorkoutForDate(dateStr))
-    }
-    
-    // Wait for all workout calculations to complete
-    const workoutInfos = await Promise.all(workoutPromises)
-    
-    // Build calendar days with the results
-    for (let i = 0; i < dateInfos.length; i++) {
-      const { dateStr, isThisMonth, dayOfMonth } = dateInfos[i]
-      const workoutInfo = workoutInfos[i]
-      
-      calendarDays.push({
-        date: dateStr,
-        dayOfMonth,
-        workoutType: workoutInfo.workoutType,
-        originalWorkout: workoutInfo.workoutType,
-        isCompleted: workoutInfo.isCompleted,
-        isToday: dateStr === today,
-        isThisMonth: isThisMonth,
-        week: workoutInfo.week,
-        isShifted: false,
-        status: workoutInfo.status
-      })
-    }
-    
-    setWorkoutDays(calendarDays)
   }, [currentDate, userStartDate, user])
 
   useEffect(() => {
@@ -243,13 +199,46 @@ const getWorkoutForDate = async (date: string) => {
     }
   }
 
+  const getWorkoutTypeColor = (type: 'Push' | 'Pull' | 'Rest' | 'Missed', isCompleted: boolean) => {
+    const baseColors = {
+      'Push': 'border-orange-500 bg-orange-100 dark:bg-orange-900/30',
+      'Pull': 'border-red-500 bg-red-100 dark:bg-red-900/30', 
+      'Rest': 'border-blue-500 bg-blue-100 dark:bg-blue-900/30',
+      'Missed': 'border-gray-500 bg-gray-100 dark:bg-gray-900/30'
+    }
+    
+    let colorClass = baseColors[type]
+    
+    if (isCompleted && type !== 'Missed') {
+      colorClass += ' border-green-500'
+    }
+    
+    return colorClass
+  }
+
+  // Navigation handlers
+  const handleStartExercise = () => {}
+  const handleLogWorkout = () => {}
+  const handleAddGoal = () => {}
+  const handleScheduleWorkout = () => {}
+  const handleViewStats = () => {}
+
   if (loading) {
     return (
       <ProtectedRoute>
-        <AppLayout title="Calendar">
-          <div className="p-8">
-            <div className="brand-card text-gray-100 rounded-2xl p-8 text-center">
-              <h2 className="text-2xl font-bold brand-fire mb-4">
+        <AppLayout 
+          title="Calendar"
+          onStartExercise={handleStartExercise}
+          onLogWorkout={handleLogWorkout}
+          onAddGoal={handleAddGoal}
+          onScheduleWorkout={handleScheduleWorkout}
+          onViewStats={handleViewStats}
+          exerciseInProgress={false}
+          workoutCompleted={false}
+        >
+          <div className="container mx-auto px-6 py-12 max-w-7xl">
+            <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-gray-200">
+              <h2 className="text-2xl font-bold text-orange-600 mb-4">
                 Loading Calendar...
               </h2>
             </div>
@@ -262,11 +251,20 @@ const getWorkoutForDate = async (date: string) => {
   if (!userStartDate) {
     return (
       <ProtectedRoute>
-        <AppLayout title="Calendar">
-          <div className="p-8">
-            <div className="brand-card text-gray-100 rounded-2xl p-8 text-center">
-              <h2 className="text-2xl font-bold brand-fire mb-4">Set Your Start Date</h2>
-              <p className="text-gray-300">Complete your first workout to initialize your X3 calendar</p>
+        <AppLayout 
+          title="Calendar"
+          onStartExercise={handleStartExercise}
+          onLogWorkout={handleLogWorkout}
+          onAddGoal={handleAddGoal}
+          onScheduleWorkout={handleScheduleWorkout}
+          onViewStats={handleViewStats}
+          exerciseInProgress={false}
+          workoutCompleted={false}
+        >
+          <div className="container mx-auto px-6 py-12 max-w-7xl">
+            <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-gray-200">
+              <h2 className="text-2xl font-bold text-orange-600 mb-4">Set Your Start Date</h2>
+              <p className="text-gray-600">Complete your first workout to initialize your X3 calendar</p>
             </div>
           </div>
         </AppLayout>
@@ -279,95 +277,121 @@ const getWorkoutForDate = async (date: string) => {
 
   return (
     <ProtectedRoute>
-      <AppLayout title="Calendar">
-        <div className="p-8">
+      <AppLayout 
+        title="Calendar"
+        onStartExercise={handleStartExercise}
+        onLogWorkout={handleLogWorkout}
+        onAddGoal={handleAddGoal}
+        onScheduleWorkout={handleScheduleWorkout}
+        onViewStats={handleViewStats}
+        exerciseInProgress={false}
+        workoutCompleted={false}
+      >
+        <div className="container mx-auto px-6 py-12 max-w-7xl">
           <main>
+            {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold">
-                <span className="brand-fire">{monthName.split(' ')[0]}</span> <span className="brand-ember">{monthName.split(' ')[1]}</span>
+              <h1 className="text-4xl font-bold">
+                <span className="bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 bg-clip-text text-transparent">
+                  {monthName.split(' ')[0]}
+                </span>{' '}
+                <span className="text-gray-700">
+                  {monthName.split(' ')[1]}
+                </span>
               </h1>
             </div>
 
-            <div className="bg-gray-100 dark:bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-gray-300 dark:border-white/20">
-              <div className="grid grid-cols-7 gap-3 mb-4 max-w-4xl mx-auto">
+            {/* Calendar Container */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
+              
+              {/* Month Navigation */}
+              <div className="flex items-center justify-between mb-8">
+                <button
+                  onClick={() => navigateMonth('prev')}
+                  className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors border border-gray-300 flex items-center justify-center"
+                  aria-label="Previous month"
+                >
+                  <ChevronLeft className="w-6 h-6 text-gray-700" />
+                </button>
+
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {monthName}
+                </h2>
+
+                <button
+                  onClick={() => navigateMonth('next')}
+                  className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors border border-gray-300 flex items-center justify-center"
+                  aria-label="Next month"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-700" />
+                </button>
+              </div>
+
+              {/* Day Headers */}
+              <div className="grid grid-cols-7 gap-3 mb-4">
                 {dayNames.map(day => (
-                  <div key={day} className="text-center text-sm font-medium text-gray-700 dark:text-gray-300 py-2">
+                  <div key={day} className="text-center text-sm font-semibold text-gray-600 py-3">
                     {day}
                   </div>
                 ))}
               </div>
 
-              <div className="flex items-center justify-center gap-6">
-                <button
-                  onClick={() => navigateMonth('prev')}
-                  className="p-3 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-white/10 dark:hover:bg-white/20 transition-colors border border-gray-400 dark:border-white/20 flex-shrink-0"
-                  aria-label="Previous month"
-                >
-                  <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
-                </button>
-
-                <div className="grid grid-cols-7 gap-3 w-full max-w-4xl">
-                  {workoutDays.map((day) => (
-                    <div
-                      key={day.date}
-                      className={`
-                        relative min-h-[80px] p-3 rounded-lg border-2 transition-all duration-200
-                        ${day.isThisMonth ? '' : 'opacity-50'}
-                        ${day.isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-gray-100 dark:ring-offset-gray-900' : ''}
-                        ${day.workoutType === 'Push' ? 'border-orange-500 bg-orange-100 dark:bg-orange-900/30' : ''}
-                        ${day.workoutType === 'Pull' ? 'border-red-500 bg-red-100 dark:bg-red-900/30' : ''}
-                        ${day.workoutType === 'Rest' ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/30' : ''}
-                        ${day.workoutType === 'Missed' ? 'border-gray-500 bg-gray-100 dark:bg-gray-900/30' : ''}
-                        ${day.isCompleted && day.workoutType !== 'Missed' ? 'border-green-500' : ''}
-                        ${day.isShifted && day.isThisMonth ? 'ring-1 ring-yellow-400' : ''}
-                      `}
-                    >
-                      <div className="flex flex-col h-full">
-                        <span className="text-lg font-bold mb-1 text-gray-900 dark:text-gray-100">
-                          {day.dayOfMonth}
-                        </span>
-                        
-                        <div className="flex-1 flex flex-col items-center justify-center">
-                          <div className="flex items-center space-x-1 mb-1">
-                            {getWorkoutIcon(day.workoutType)}
-                            <span className={`text-xs font-medium ${
-                              day.workoutType === 'Rest' 
-                                ? 'text-blue-600 dark:text-blue-400' 
-                                : day.workoutType === 'Push' 
-                                ? 'text-orange-600 dark:text-orange-400' 
-                                : day.workoutType === 'Missed'
-                                ? 'text-gray-600 dark:text-gray-400'
-                                : 'text-red-600 dark:text-red-400'
-                            }`}>
-                              {day.workoutType}
-                            </span>
-                          </div>
-                          
-                          {day.isThisMonth && (
-                            <span className="text-xs opacity-80 text-gray-700 dark:text-gray-300">
-                              W{day.week}
-                            </span>
-                          )}
+              {/* Calendar Days */}
+              <div className="grid grid-cols-7 gap-3">
+                {workoutDays.map((day, index) => (
+                  <div
+                    key={`${day.date}-${index}`}
+                    className={`
+                      relative min-h-[80px] p-3 rounded-lg border-2 transition-all duration-200
+                      ${day.isThisMonth ? '' : 'opacity-50'}
+                      ${day.isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-white' : ''}
+                      ${getWorkoutTypeColor(day.workoutType, day.isCompleted)}
+                    `}
+                  >
+                    <div className="flex flex-col h-full">
+                      {/* Day Number */}
+                      <span className={`text-lg font-bold mb-1 ${
+                        day.isThisMonth ? 'text-gray-900' : 'text-gray-400'
+                      }`}>
+                        {day.dayOfMonth}
+                      </span>
+                      
+                      {/* Workout Type */}
+                      <div className="flex-1 flex flex-col items-center justify-center">
+                        <div className="flex items-center space-x-1 mb-1">
+                          {getWorkoutIcon(day.workoutType)}
+                          <span className={`text-xs font-medium ${
+                            day.workoutType === 'Rest' 
+                              ? 'text-blue-600' 
+                              : day.workoutType === 'Push' 
+                              ? 'text-orange-600' 
+                              : day.workoutType === 'Missed'
+                              ? 'text-gray-600'
+                              : 'text-red-600'
+                          }`}>
+                            {day.workoutType}
+                          </span>
                         </div>
                         
-                        {day.isCompleted && day.workoutType !== 'Missed' && (
-                          <div className="absolute top-1 right-1">
-                            <CheckCircle size={16} className="text-green-400" />
-                          </div>
+                        {/* Week indicator for current month */}
+                        {day.isThisMonth && (
+                          <span className="text-xs text-gray-500">
+                            W{day.week}
+                          </span>
                         )}
                       </div>
+                      
+                      {/* Completion Status */}
+                      {day.isCompleted && day.workoutType !== 'Missed' && (
+                        <div className="absolute top-1 right-1">
+                          <CheckCircle size={16} className="text-green-500" />
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => navigateMonth('next')}
-                  className="p-3 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-white/10 dark:hover:bg-white/20 transition-colors border border-gray-400 dark:border-white/20 flex-shrink-0"
-                  aria-label="Next month"
-                >
-                  <ChevronRight className="w-6 h-6 text-gray-900 dark:text-white" />
-                </button>
+                  </div>
+                ))}
               </div>
+
             </div>
           </main>
         </div>
