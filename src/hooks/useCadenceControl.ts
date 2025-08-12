@@ -1,69 +1,65 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { UseCadenceControlReturn } from '@/types/workout'
 
 // Audio beep function
 function playBeep() {
-  const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-  const ctx = new AudioCtx()
-  const oscillator = ctx.createOscillator()
-  const gain = ctx.createGain()
-  oscillator.type = 'sine'
-  oscillator.frequency.value = 880 // Hz
-  gain.gain.value = 0.1
-  oscillator.connect(gain)
-  gain.connect(ctx.destination)
-  oscillator.start()
-  oscillator.stop(ctx.currentTime + 0.1) // short beep
-  oscillator.onended = () => ctx.close()
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const ctx = new AudioCtx()
+    const oscillator = ctx.createOscillator()
+    const gain = ctx.createGain()
+    oscillator.type = 'sine'
+    oscillator.frequency.value = 880 // Hz
+    gain.gain.value = 0.1
+    oscillator.connect(gain)
+    gain.connect(ctx.destination)
+    oscillator.start()
+    oscillator.stop(ctx.currentTime + 0.1) // short beep
+    oscillator.onended = () => ctx.close()
+  } catch (error) {
+    console.warn('Audio context error:', error)
+  }
 }
 
 export function useCadenceControl(): UseCadenceControlReturn {
   const [cadenceActive, setCadenceActive] = useState(false)
-  const [cadenceInterval, setCadenceInterval] = useState<NodeJS.Timeout | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Metronome beep effect
   useEffect(() => {
-    console.log('🎵 Cadence useEffect triggered - cadenceActive:', cadenceActive)
-    
-    // Clear any existing interval first to prevent multiple instances
-    if (cadenceInterval) {
-      clearInterval(cadenceInterval)
-      setCadenceInterval(null)
-    }
-
     if (cadenceActive) {
-      playBeep() // play immediately
+      // Play immediately
+      playBeep()
       
-      // Use the state-managed interval for consistency
-      const interval = setInterval(() => {
+      // Set up interval
+      intervalRef.current = setInterval(() => {
         playBeep()
       }, 2000)
-      setCadenceInterval(interval)
-      console.log('🎵 Cadence interval started:', interval)
+      
+      console.log('🎵 Cadence started')
     } else {
+      // Clear interval
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
       console.log('🎵 Cadence stopped')
     }
 
+    // Cleanup function
     return () => {
-      // Cleanup happens in the next effect or when cadenceActive becomes false
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
     }
-  }, [cadenceActive, cadenceInterval])
-
-  // Separate effect to cleanup cadence interval when needed
-  useEffect(() => {
-    if (!cadenceActive && cadenceInterval) {
-      console.log('🎵 Cleaning up cadence interval:', cadenceInterval)
-      clearInterval(cadenceInterval)
-      setCadenceInterval(null)
-    }
-  }, [cadenceActive, cadenceInterval])
+  }, [cadenceActive])
 
   return {
     cadenceActive,
-    cadenceInterval,
+    cadenceInterval: intervalRef.current,
     setCadenceActive,
-    setCadenceInterval
+    setCadenceInterval: () => {} // Deprecated, kept for compatibility
   }
 }
