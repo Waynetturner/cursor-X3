@@ -19,40 +19,25 @@ export function useRestTimer(
   const { speak } = useX3TTS()
 
   // Rest timer countdown effect
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-    
-    if (restTimer?.isActive && restTimer.timeLeft > 0) {
-      interval = setInterval(() => {
-        setRestTimer(prev => {
-          if (!prev || prev.timeLeft <= 1) {
-            // Timer finished - DO NOT speak rest complete phrase here
-            // The next exercise will auto-start and speak exercise start phrase
-            console.log('⏰ Rest timer finished - transitioning to next exercise')
-            return null
-          }
-          
-          const newTimeLeft = prev.timeLeft - 1
-          
-          // Just decrement the timer - cadence logic is handled in separate effect
-          return { ...prev, timeLeft: newTimeLeft }
-        })
-      }, 1000)
-      setRestTimerInterval(interval)
-    } else {
-      if (restTimerInterval) {
-        clearInterval(restTimerInterval)
-        setRestTimerInterval(null)
-      }
-    }
+ useEffect(() => {
+  let interval: NodeJS.Timeout | null = null;
 
-    return () => {
-      if (interval) {
-        clearInterval(interval)
-        setRestTimerInterval(null)
-      }
-    }
-  }, [restTimer?.isActive, restTimerInterval])
+  if (restTimer?.isActive && restTimer.timeLeft > 0) {
+    interval = setInterval(() => {
+      setRestTimer(prev => {
+        if (!prev || prev.timeLeft <= 1) {
+          console.log('⏰ Rest timer finished - transitioning to next exercise');
+          return null;
+        }
+        return { ...prev, timeLeft: prev.timeLeft - 1 };
+      });
+    }, 1000);
+  }
+
+  return () => {
+    if (interval) clearInterval(interval);
+  };
+}, [restTimer?.isActive, restTimer?.timeLeft]);
   
   // Separate effect to handle precise countdown timing during rest timer
   useEffect(() => {
@@ -99,8 +84,8 @@ export function useRestTimer(
     if (restTimer === null && exercises.length > 0) {
       // Find the most recent completed exercise to determine the next one
       const completedExercises = Object.entries(exerciseStates)
-        .filter(([_, state]) => state === 'completed')
-        .map(([index, _]) => parseInt(index))
+        .filter(([, state]) => state === 'completed')
+        .map(([index]) => parseInt(index))
       
       if (completedExercises.length > 0) {
         const lastCompletedIndex = Math.max(...completedExercises)
