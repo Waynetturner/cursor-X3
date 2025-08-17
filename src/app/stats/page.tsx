@@ -127,6 +127,26 @@ export default function StatsPage() {
 
             {/* Workout History */}
             <WorkoutHistorySection timeRange={timeRange} />
+
+            {/* Manual Calendar Fix Button */}
+            <div className="mt-8 flex justify-center">
+              <button
+                className="btn-primary"
+                onClick={async () => {
+                  if (!user || !user.id) return alert('User not loaded');
+                  // Get today's date in user's timezone
+                  const { getUserToday, updateDailyWorkoutLog } = await import('@/lib/daily-workout-log');
+                  const today = await getUserToday(user.id);
+                  // Prompt for workout type
+                  const workoutType = prompt('Enter workout type for today (Push, Pull):', 'Pull');
+                  if (!workoutType || !['Push','Pull'].includes(workoutType)) return alert('Invalid workout type');
+                  await updateDailyWorkoutLog(user.id, today, workoutType as 'Push' | 'Pull');
+                  alert('Calendar updated for today! Please refresh the page.');
+                }}
+              >
+                Fix Today\'s Calendar Entry
+              </button>
+            </div>
           </main>
         </div>
       </AppLayout>

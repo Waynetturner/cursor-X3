@@ -19,25 +19,23 @@ export function useRestTimer(
   const { speak } = useX3TTS()
 
   // Rest timer countdown effect
- useEffect(() => {
-  let interval: NodeJS.Timeout | null = null;
-
-  if (restTimer?.isActive && restTimer.timeLeft > 0) {
-    interval = setInterval(() => {
-      setRestTimer(prev => {
-        if (!prev || prev.timeLeft <= 1) {
-          console.log('⏰ Rest timer finished - transitioning to next exercise');
-          return null;
-        }
-        return { ...prev, timeLeft: prev.timeLeft - 1 };
-      });
-    }, 1000);
-  }
-
-  return () => {
-    if (interval) clearInterval(interval);
-  };
-}, [restTimer?.isActive, restTimer?.timeLeft]);
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (restTimer?.isActive && restTimer.timeLeft > 0) {
+      interval = setInterval(() => {
+        setRestTimer(prev => {
+          if (!prev || prev.timeLeft <= 1) {
+            console.log('⏰ Rest timer finished - transitioning to next exercise');
+            return null;
+          }
+          return { ...prev, timeLeft: prev.timeLeft - 1 };
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [restTimer?.isActive, restTimer?.timeLeft]);
   
   // Separate effect to handle precise countdown timing during rest timer
   useEffect(() => {

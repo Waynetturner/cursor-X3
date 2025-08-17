@@ -382,7 +382,7 @@ export function useX3TTS() {
       ))
       currentAudioId.current = null
     }
-  }, [settings.volume, settings.speed, voicesLoaded])
+  }, [settings.volume, settings.speed, settings.voice, voicesLoaded])
 
   const stopAudio = useCallback(() => {
     // Stop HTML5 audio

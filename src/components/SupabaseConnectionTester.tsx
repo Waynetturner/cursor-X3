@@ -12,7 +12,6 @@ interface TestResult {
     error?: string;
     data?: Record<string, unknown>;
     count?: number;
-    [key: string]: unknown;
   }
 }
 
@@ -52,13 +51,15 @@ export default function SupabaseConnectionTester() {
 
       if (!supabaseUrl || !supabaseAnonKey) {
         updateTest('Environment Variables', 'error', 'Missing required environment variables', {
-          url: !!supabaseUrl,
-          anonKey: !!supabaseAnonKey
+          error: !supabaseUrl ? 'Missing Supabase URL' : undefined,
+          data: { anonKey: !!supabaseAnonKey }
         })
       } else {
         updateTest('Environment Variables', 'success', 'Environment variables found', {
-          url: supabaseUrl,
-          anonKeyPreview: `${supabaseAnonKey.substring(0, 20)}...`
+          data: {
+            url: supabaseUrl,
+            anonKeyPreview: `${supabaseAnonKey.substring(0, 20)}...`
+          }
         })
       }
     } catch (error) {
@@ -74,9 +75,11 @@ export default function SupabaseConnectionTester() {
       console.log('🔍 Client Creation:', testClient)
       
       updateTest('Client Creation', 'success', 'Supabase client created successfully', {
-        clientExists: !!testClient,
-        hasAuthMethods: typeof testClient.auth !== 'undefined',
-        hasFromMethod: typeof testClient.from !== 'undefined'
+        data: {
+          clientExists: !!testClient,
+          hasAuthMethods: typeof testClient.auth !== 'undefined',
+          hasFromMethod: typeof testClient.from !== 'undefined'
+        }
       })
     } catch (error) {
       console.error('❌ Client Creation Error:', error)
@@ -93,9 +96,11 @@ export default function SupabaseConnectionTester() {
       
       if (error) {
         updateTest('Basic Connection', 'error', `Connection failed: ${error.message}`, {
-          code: error.code,
-          details: error.details,
-          hint: error.hint
+          error: error.code ? `Error code: ${error.code}` : undefined,
+          data: {
+            details: error.details,
+            hint: error.hint
+          }
         })
       } else {
         updateTest('Basic Connection', 'success', 'Successfully connected to Supabase', { 
@@ -117,13 +122,14 @@ export default function SupabaseConnectionTester() {
       
       if (error) {
         updateTest('Authentication', 'error', `Auth error: ${error.message}`, { 
-          error: error.message,
-          code: error.code 
+          error: error.code ? `Error code: ${error.code}` : error.message
         })
       } else {
         updateTest('Authentication', 'success', session ? 'User authenticated' : 'No active session (normal for testing)', {
-          hasSession: !!session,
-          userId: session?.user?.id
+          data: {
+            hasSession: !!session,
+            userId: session?.user?.id
+          }
         })
       }
     } catch (error) {
@@ -189,13 +195,12 @@ export default function SupabaseConnectionTester() {
       
       if (error && error.code === '42501') {
         updateTest('Row Level Security', 'success', 'RLS is properly configured (insert blocked)', {
-          code: error.code,
-          message: error.message
+          error: error.code ? `Error code: ${error.code}` : undefined,
+          data: { message: error.message }
         })
       } else if (error) {
         updateTest('Row Level Security', 'error', `Unexpected RLS error: ${error.message}`, { 
-          error: error.message,
-          code: error.code 
+          error: error.code ? `Error code: ${error.code}` : error.message
         })
       } else {
         updateTest('Row Level Security', 'error', 'RLS may not be configured (insert succeeded)', { 

@@ -1,9 +1,11 @@
+
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, X3_EXERCISES } from '@/lib/supabase'
 import { getWorkoutHistoryData } from '@/lib/exercise-history'
+import { DataTransformer } from '@/utils/data-transformers'
 import { testModeService } from '@/lib/test-mode'
 import { announceToScreenReader } from '@/lib/accessibility'
 import { updateDailyWorkoutLog, getTodaysWorkoutFromLog, getUserToday, completeRestDay } from '@/lib/daily-workout-log'
@@ -35,20 +37,6 @@ async function getLocalISODateTime(userId: string) {
   const timestamp = now.toLocaleString('sv-SE', { timeZone: userTimezone }) + 'Z'
   console.log('🕒 Generated user timezone timestamp:', timestamp, 'for timezone:', userTimezone)
   return timestamp
-}
-
-// Helper to format workout dates correctly without timezone conversion
-function formatWorkoutDate(timestamp: string): string {
-  const dateStr = timestamp.split('T')[0]
-  const parts = dateStr.split('-')
-  if (parts.length === 3) {
-    const year = parseInt(parts[0])
-    const month = parseInt(parts[1])
-    const day = parseInt(parts[2])
-    return `${month}/${day}/${year}`
-  }
-  
-  return new Date(timestamp).toLocaleDateString()
 }
 
 export function useWorkoutData(): UseWorkoutDataReturn {
@@ -99,14 +87,14 @@ export function useWorkoutData(): UseWorkoutDataReturn {
         fullReps: history?.recentFullReps || 0,
         partialReps: history?.recentPartialReps || 0,
         lastWorkout: history?.recentWorkoutDate ? `${history.recentFullReps}+${history.recentPartialReps} reps with ${history.recentBand} band` : '',
-        lastWorkoutDate: history?.recentWorkoutDate ? formatWorkoutDate(history.recentWorkoutDate) : ''
+  lastWorkoutDate: history?.recentWorkoutDate ? DataTransformer.formatWorkoutDate(history.recentWorkoutDate) : ''
       }
     })
 
     setExercises(exerciseData)
 
     if (previousData && previousData.length > 0) {
-      const lastWorkoutDate = formatWorkoutDate(previousData[0].workout_local_date_time)
+  const lastWorkoutDate = DataTransformer.formatWorkoutDate(previousData[0].workout_local_date_time)
       announceToScreenReader(`Previous ${workoutType} workout data loaded from ${lastWorkoutDate}`)
     }
   }, [user?.id])
@@ -229,6 +217,46 @@ export function useWorkoutData(): UseWorkoutDataReturn {
     }
   }
 
+  // Success handler for exercise save
+  async function handleSuccessfulExerciseSave(
+    index: number,
+    exercise: Exercise,
+    exercises: Exercise[],
+    user: AuthenticatedUser,
+    todaysWorkout: WorkoutInfo,
+    setExercises: React.Dispatch<React.SetStateAction<Exercise[]>>,
+    setRefreshTrigger: React.Dispatch<React.SetStateAction<number>>
+  ) {
+    const newExercises = [...exercises];
+    newExercises[index].saved = true;
+    setExercises(newExercises);
+    setRefreshTrigger(prev => prev + 1); // Trigger workout history refresh
+    console.log('✅ Exercise saved successfully!');
+    announceToScreenReader(`${exercise.name} saved successfully!`, 'assertive');
+
+    // Check if ALL exercises are now saved
+    const allExercisesSaved = newExercises.every(ex => ex.saved);
+    if (allExercisesSaved) {
+      console.log('📊 All exercises completed - updating daily workout log immediately');
+      try {
+        const userToday = await getUserToday(user.id);
+        console.log('🕒 Using user local date for workout log:', userToday);
+        await updateDailyWorkoutLog(
+          user.id,
+          userToday,
+          todaysWorkout.workoutType as 'Push' | 'Pull'
+        );
+        console.log('✅ Daily workout log updated successfully (calendar will update now)');
+      } catch (logError) {
+        console.error('❌ Error updating daily workout log:', logError);
+        // Don't fail the exercise save if log update fails
+      }
+    } else {
+      const savedCount = newExercises.filter(ex => ex.saved).length;
+      console.log(`📊 Exercise ${savedCount}/${exercises.length} saved - waiting for all exercises to complete`);
+    }
+  }
+
   const saveExercise = async (index: number) => {
     console.log('💾 Starting save for exercise index:', index)
     
@@ -318,68 +346,46 @@ export function useWorkoutData(): UseWorkoutDataReturn {
     console.log('📤 Supabase response data:', data)
     console.log('❌ Supabase error:', error)
     
-  if (!error) {
-      const newExercises = [...exercises]
-      newExercises[index].saved = true
-      setExercises(newExercises)
-      setRefreshTrigger(prev => prev + 1) // Trigger workout history refresh
-      console.log('✅ Exercise saved successfully!')
-      announceToScreenReader(`${exercise.name} saved successfully!`, 'assertive')
-      
-      // FIXED: Check if ALL exercises are now saved (not just if this is the last index)
-      const allExercisesSaved = newExercises.every(ex => ex.saved)
-      if (allExercisesSaved) {
-        console.log('📊 All exercises completed - updating daily workout log')
-        try {
-          // FIXED: Use user's local date instead of UTC date from timestamp
-          const userToday = await getUserToday(user.id)
-          console.log('🕒 Using user local date for workout log:', userToday)
-          
-          await updateDailyWorkoutLog(
-            user.id,
-            userToday, // Use user's timezone-adjusted date
-            todaysWorkout.workoutType as 'Push' | 'Pull'
-          )
-          console.log('✅ Daily workout log updated successfully')
-        } catch (logError) {
-          console.error('❌ Error updating daily workout log:', logError)
-          // Don't fail the exercise save if log update fails
-        }
-      } else {
-        const savedCount = newExercises.filter(ex => ex.saved).length
-        console.log(`📊 Exercise ${savedCount}/${exercises.length} saved - waiting for all exercises to complete`)
-      }
-    } else {
-      console.error('❌ Error saving exercise:', error)
-      
-      let errorMessage = 'Unknown error occurred. Please try again.'
-      if (error) {
-        console.error('❌ Error details:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        })
-        
-        // Create user-friendly error message
-        if (error.code === 'PGRST116') {
-          errorMessage = 'No database connection. Please check your internet connection.'
-        } else if (error.message?.includes('duplicate')) {
-          errorMessage = 'This exercise has already been saved for today.'
-        } else if (error.message?.includes('permission')) {
-          errorMessage = 'Permission denied. Please sign out and back in.'
-        } else if (error.message) {
-          errorMessage = error.message
-        }
-        
-        announceToScreenReader(`Error saving exercise: ${errorMessage}`, 'assertive')
-      } else {
-        console.error('❌ Unknown error occurred')
-        announceToScreenReader('Unknown error saving exercise. Please try again.', 'assertive')
-      }
-      
-      throw new Error(errorMessage)
+    if (!error) {
+      await handleSuccessfulExerciseSave(
+        index,
+        exercise,
+        exercises,
+        user,
+        todaysWorkout,
+        setExercises,
+        setRefreshTrigger
+      );
+      return;
     }
+
+    let errorMessage = 'Unknown error occurred. Please try again.'
+    if (error) {
+      console.error('❌ Error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
+      
+      // Create user-friendly error message
+      if (error.code === 'PGRST116') {
+        errorMessage = 'No database connection. Please check your internet connection.'
+      } else if (error.message?.includes('duplicate')) {
+        errorMessage = 'This exercise has already been saved for today.'
+      } else if (error.message?.includes('permission')) {
+        errorMessage = 'Permission denied. Please sign out and back in.'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      announceToScreenReader(`Error saving exercise: ${errorMessage}`, 'assertive')
+    } else {
+      console.error('❌ Unknown error occurred')
+      announceToScreenReader('Unknown error saving exercise. Please try again.', 'assertive')
+    }
+    
+    throw new Error(errorMessage)
   }
 
   const retrySaveExercise = (index: number) => {
