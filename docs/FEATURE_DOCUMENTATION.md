@@ -1,7 +1,7 @@
 # X3 Momentum Pro - Feature Documentation
 
 **Version**: 2.1.0  
-**Date**: January 2025  
+**Date**: August 2025  
 **Target Audience**: Users, trainers, and stakeholders
 
 ---

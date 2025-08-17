@@ -14,7 +14,6 @@ export interface N8NCoachingRequest {
   }[];
   user_profile: {
     experience?: string;
-    goals?: string[];
     preferences?: Record<string, unknown>;
     [key: string]: unknown;
   };

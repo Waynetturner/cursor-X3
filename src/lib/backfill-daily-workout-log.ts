@@ -39,7 +39,7 @@ interface DailyWorkoutLogEntry {
 
 // X3 workout schedules
 const WEEK_1_4_SCHEDULE = ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
-const WEEK_5_PLUS_SCHEDULE = ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
+const WEEK_5_PLUS_SCHEDULE = ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest'] as const
 
 export async function backfillDailyWorkoutLog(userId?: string) {
   console.log('🚀 Starting daily_workout_log backfill...')

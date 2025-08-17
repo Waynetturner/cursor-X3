@@ -325,7 +325,7 @@ export const X3_KNOWLEDGE_BASE = {
       daily: "Train each exercise to complete failure, not to a rep count",
       weekly: "Assess band progression based on 15-40 rep performance",
       monthly: "Evaluate overall program adherence and band selections",
-      quarterly: "Reassess goals and program structure"
+  quarterly: "Reassess program structure"
     },
 
     restDays: {

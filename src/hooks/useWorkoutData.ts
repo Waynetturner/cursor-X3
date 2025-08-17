@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, X3_EXERCISES } from '@/lib/supabase'
 import { getWorkoutHistoryData } from '@/lib/exercise-history'
 import { testModeService } from '@/lib/test-mode'
-import { getCurrentCentralISOString } from '@/lib/timezone'
 import { announceToScreenReader } from '@/lib/accessibility'
-import { updateDailyWorkoutLog, getTodaysWorkoutFromLog, ensureTodaysEntry } from '@/lib/daily-workout-log'
+import { updateDailyWorkoutLog, getTodaysWorkoutFromLog, getUserToday, completeRestDay } from '@/lib/daily-workout-log'
 import { 
   AuthenticatedUser, 
   WorkoutInfo, 
@@ -18,9 +17,23 @@ import {
 } from '@/types/workout'
 
 // Helper to get local ISO string with timezone offset
-function getLocalISODateTime() {
-  const timestamp = getCurrentCentralISOString()
-  console.log('🕒 Generated Central timestamp:', timestamp)
+async function getLocalISODateTime(userId: string) {
+  // Get user's timezone from profile
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('timezone')
+    .eq('id', userId)
+  
+  if (!profiles || profiles.length === 0 || !profiles[0].timezone) {
+    throw new Error('User timezone not found in profile. Please set your timezone in settings.')
+  }
+  
+  const userTimezone = profiles[0].timezone
+  
+  // Create current time in user's timezone
+  const now = new Date()
+  const timestamp = now.toLocaleString('sv-SE', { timeZone: userTimezone }) + 'Z'
+  console.log('🕒 Generated user timezone timestamp:', timestamp, 'for timezone:', userTimezone)
   return timestamp
 }
 
@@ -45,130 +58,18 @@ export function useWorkoutData(): UseWorkoutDataReturn {
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
   const router = useRouter()
 
-  // Initialize user and workout data
-  useEffect(() => {
-    console.log('useWorkoutData: Initializing user and workout data')
-    
-    const getUser = async () => {
-      console.log('🔍 Starting getUser function...')
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError) {
-        console.error('❌ Auth error details:', authError)
-        // Try to get session instead
-        console.log('🔄 Trying to get session instead...')
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        if (sessionError || !session?.user) {
-          console.log('👤 No user found - redirecting to sign in')
-          router.push('/auth/signin')
-          return
-        }
-        console.log('✅ Found user via session:', session.user.id)
-        setUser(session.user as AuthenticatedUser)
-      }
-      
-      console.log('👤 User data:', user)
-      
-      if (user) {
-        setUser(user as AuthenticatedUser)
-        announceToScreenReader('Welcome to X3 Tracker. Loading your workout data.')
-        
-        // Get user's start date
-        console.log('📊 Fetching user profile for ID:', user.id)
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('x3_start_date')
-          .eq('id', user.id)
-          .single()
-        
-        console.log('📊 Profile data:', profile)
-        console.log('❌ Profile error:', profileError)
-        
-        if (profileError) {
-          console.error('❌ Error fetching profile:', profileError)
-          // If profile doesn't exist, create one with today's date
-          if (profileError.code === 'PGRST116') {
-            console.log('🆕 Creating new profile with today as start date...')
-            const today = (() => {
-              const now = new Date()
-              return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-            })()
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert({
-                id: user.id,
-                x3_start_date: today
-              })
-            
-            if (insertError) {
-              console.error('❌ Error creating profile:', insertError)
-            } else {
-              console.log('✅ Profile created successfully')
-              // Ensure today's entry exists in daily_workout_log
-              await ensureTodaysEntry(user.id)
-              const workout = await getTodaysWorkoutFromLog(user.id)
-              if (workout) {
-                setTodaysWorkout({
-                  ...workout,
-                  status: workout.status === 'completed' ? 'current' : 'scheduled',
-                  missedWorkouts: 0 // Add the missing property - we can get this from daily log later if needed
-                })
-              }
-            }
-          }
-        } else if (profile?.x3_start_date) {
-          console.log('✅ Found start date:', profile.x3_start_date)
-          // Ensure today's entry exists in daily_workout_log
-          await ensureTodaysEntry(user.id)
-          const workout = await getTodaysWorkoutFromLog(user.id)
-          if (workout) {
-            setTodaysWorkout({
-              ...workout,
-              status: workout.status === 'completed' ? 'current' : 'scheduled',
-              missedWorkouts: 0 // Add the missing property - we can get this from daily log later if needed
-            })
-          }
-        } else {
-          console.log('⚠️ No start date found in profile')
-        }
-      } else {
-        console.log('👤 No user found')
-        router.push('/auth/signin')
-        return
-      }
-    }
-    
-    getUser()
-  }, [router])
-
-  // Setup exercises when workout is loaded
-  useEffect(() => {
-    if (user && todaysWorkout && todaysWorkout.workoutType !== 'Rest') {
-      console.log('🏋️ Setting up exercises for workout type:', todaysWorkout.workoutType)
-      setupExercises(todaysWorkout.workoutType as 'Push' | 'Pull')
-      announceToScreenReader(`Today's ${todaysWorkout.workoutType} workout is ready. Week ${todaysWorkout.week}.`)
-    } else if (user && todaysWorkout && todaysWorkout.workoutType === 'Rest') {
-      announceToScreenReader(`Today is a rest day. Week ${todaysWorkout.week}.`)
-    }
-  }, [user, todaysWorkout])
-
-  const setupExercises = async (workoutType: 'Push' | 'Pull') => {
+  // Build exercise list for the given workout type using history + recent data
+  const setupExercises = useCallback(async (workoutType: 'Push' | 'Pull') => {
     if (!user?.id) {
       console.log('No user ID available yet')
       return
     }
-    
+
     console.log('🏋️ Setting up exercises with band hierarchy logic for:', workoutType, 'User ID:', user.id)
-    
+
     const exerciseNames = X3_EXERCISES[workoutType]
-    console.log('📋 Exercise names:', exerciseNames)
-    
-    // Get exercise history data for ALL exercises using our band hierarchy logic
-    console.log('📊 Getting workout history data for all exercises...')
     const historyData = await getWorkoutHistoryData(exerciseNames, workoutType)
-    console.log('📈 History data received:', historyData)
-    
-    // Get recent workout data for other fields (notes, dates, etc.)
+
     const { data: previousData, error } = await supabase
       .from('workout_exercises')
       .select('*')
@@ -176,17 +77,12 @@ export function useWorkoutData(): UseWorkoutDataReturn {
       .eq('workout_type', workoutType)
       .order('created_at_utc', { ascending: false })
       .limit(16)
-    
+
     console.log('📋 Previous workout data for context:', previousData)
     console.log('❌ Query error:', error)
-    
-    // Create exercise data using recent workout data for input fields and historical best for display
+
     const exerciseData: Exercise[] = exerciseNames.map(name => {
       const history = historyData[name]
-      
-      console.log(`🎯 Processing ${name}:`)
-      console.log(`  - History data:`, history)
-      
       return {
         id: '',
         exercise_name: name,
@@ -198,47 +94,130 @@ export function useWorkoutData(): UseWorkoutDataReturn {
         previousData: undefined,
         workout_local_date_time: history?.recentWorkoutDate || '',
         // UI fields - name shows historical PR, input fields use recent data
-        name: history?.displayText || name.toUpperCase(), // "CHEST PRESS (PR: 16)" or "CHEST PRESS"
-        band: (history?.recentBand || 'White') as BandColor, // Pre-fill with recent band
-        fullReps: history?.recentFullReps || 0, // Pre-fill with recent full reps
-        partialReps: history?.recentPartialReps || 0, // Pre-fill with recent partial reps
+        name: history?.displayText || name.toUpperCase(),
+        band: (history?.recentBand || 'White') as BandColor,
+        fullReps: history?.recentFullReps || 0,
+        partialReps: history?.recentPartialReps || 0,
         lastWorkout: history?.recentWorkoutDate ? `${history.recentFullReps}+${history.recentPartialReps} reps with ${history.recentBand} band` : '',
         lastWorkoutDate: history?.recentWorkoutDate ? formatWorkoutDate(history.recentWorkoutDate) : ''
       }
     })
-    
-    console.log('✅ Final exercise data with band hierarchy:', exerciseData)
-    
-    // Debug: Log what will be passed to ExerciseCard for each exercise
-    exerciseData.forEach((exercise, index) => {
-      console.log(`🔍 Exercise ${index} (${exercise.name}) will show in card:`)
-      console.log(`  - Band: ${exercise.band} (from recent: ${historyData[exercise.exercise_name]?.recentBand})`)
-      console.log(`  - Full Reps: ${exercise.fullReps} (from recent: ${historyData[exercise.exercise_name]?.recentFullReps})`)
-      console.log(`  - Partial Reps: ${exercise.partialReps} (from recent: ${historyData[exercise.exercise_name]?.recentPartialReps})`)
-    })
-    
+
     setExercises(exerciseData)
-    
+
     if (previousData && previousData.length > 0) {
       const lastWorkoutDate = formatWorkoutDate(previousData[0].workout_local_date_time)
       announceToScreenReader(`Previous ${workoutType} workout data loaded from ${lastWorkoutDate}`)
     }
-    
-    // Log success for each exercise
-    exerciseData.forEach(exercise => {
-      if (exercise.name.includes('PR:')) {
-        console.log(`✨ ${exercise.exercise_name}: Display "${exercise.name}", Recent data - Band: ${exercise.band}, Reps: ${exercise.fullReps}+${exercise.partialReps}`)
-      } else {
-        console.log(`📝 ${exercise.exercise_name}: No history - Display "${exercise.name}", Default values`)
-      }
-    })
-  }
+  }, [user?.id])
 
-  const updateExercise = (index: number, field: string, value: string | number | boolean) => {
+  // Initialize user once
+  useEffect(() => {
+    let didCancel = false
+
+    const initUser = async () => {
+      console.log('🚀 Initializing user...')
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError) {
+          console.error('❌ Auth error details:', authError)
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+          if (sessionError || !session?.user) {
+            console.log('👤 No user found - redirecting to sign in')
+            if (!didCancel) router.push('/auth/signin')
+            return
+          }
+          console.log('✅ Found user via session:', session.user.id)
+          if (!didCancel) setUser(session.user as AuthenticatedUser)
+          return
+        }
+
+        console.log('👤 User data:', user)
+        if (user && !didCancel) {
+          setUser(user as AuthenticatedUser)
+          announceToScreenReader('Welcome to X3 Tracker. Loading your workout data.')
+        }
+      } catch (e) {
+        console.error('❌ Error during user init:', e)
+      }
+    }
+
+    initUser()
+
+    return () => {
+      didCancel = true
+    }
+  }, [router])
+
+  // Load today's workout when user or refreshTrigger changes
+  useEffect(() => {
+    let didCancel = false
+    const loadToday = async () => {
+      if (!user?.id) return
+      try {
+        const workout = await getTodaysWorkoutFromLog(user.id)
+        if (!didCancel) {
+          if (workout) {
+            const mapped: WorkoutInfo = {
+              week: workout.week,
+              workoutType: workout.workoutType,
+              dayInWeek: workout.dayInWeek,
+              status: workout.status === 'scheduled' ? 'scheduled' : 'current',
+              missedWorkouts: 0,
+            }
+            setTodaysWorkout(mapped)
+          } else {
+            setTodaysWorkout(null)
+          }
+        }
+      } catch (e) {
+        console.error('❌ Error loading today\'s workout:', e)
+      }
+    }
+
+    loadToday()
+
+    return () => {
+      didCancel = true
+    }
+  }, [user?.id, refreshTrigger])
+
+  // Setup exercises when we have a non-Rest workout
+  useEffect(() => {
+    if (!user || !todaysWorkout) return
+    if (todaysWorkout.workoutType !== 'Rest') {
+      console.log('🏋️ Setting up exercises for workout type:', todaysWorkout.workoutType)
+      setupExercises(todaysWorkout.workoutType as 'Push' | 'Pull')
+      if (typeof announceToScreenReader === 'function') {
+        announceToScreenReader(`Today's ${todaysWorkout.workoutType} workout is ready. Week ${todaysWorkout.week}.`)
+      }
+    } else {
+      if (typeof announceToScreenReader === 'function') {
+        announceToScreenReader(`Today is a rest day. Week ${todaysWorkout.week}.`, 'polite')
+      }
+      // Log rest day in daily_workout_log if not already present
+      (async () => {
+        const userToday = await getUserToday(user.id)
+        const { data: existingEntry } = await supabase
+          .from('daily_workout_log')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('date', userToday)
+          .eq('workout_type', 'Rest')
+          .eq('status', 'completed')
+          .single()
+        if (!existingEntry) {
+          await completeRestDay(user.id, userToday)
+          console.log('✅ Rest day logged in daily_workout_log:', userToday)
+        }
+      })()
+    }
+  }, [user, todaysWorkout, setupExercises])
+  const updateExercise = async (index: number, field: string, value: string | number | boolean) => {
     const newExercises = [...exercises]
     newExercises[index] = { ...newExercises[index], [field]: value, saved: false }
-    if (!newExercises[index].workout_local_date_time) {
-      newExercises[index].workout_local_date_time = getLocalISODateTime()
+    if (!newExercises[index].workout_local_date_time && user?.id) {
+      newExercises[index].workout_local_date_time = await getLocalISODateTime(user.id)
     }
     setExercises(newExercises)
 
@@ -262,7 +241,7 @@ export function useWorkoutData(): UseWorkoutDataReturn {
     console.log('🔍 Exercise object:', exercise)
     
     // Always use current timestamp to avoid duplicates
-    const workoutLocalDateTime = getLocalISODateTime()
+    const workoutLocalDateTime = await getLocalISODateTime(user.id)
     console.log('🕒 Using fresh timestamp:', workoutLocalDateTime)
     
     console.log('📊 Exercise data to save:', exercise)
@@ -339,7 +318,7 @@ export function useWorkoutData(): UseWorkoutDataReturn {
     console.log('📤 Supabase response data:', data)
     console.log('❌ Supabase error:', error)
     
-    if (!error) {
+  if (!error) {
       const newExercises = [...exercises]
       newExercises[index].saved = true
       setExercises(newExercises)
@@ -352,9 +331,13 @@ export function useWorkoutData(): UseWorkoutDataReturn {
       if (allExercisesSaved) {
         console.log('📊 All exercises completed - updating daily workout log')
         try {
+          // FIXED: Use user's local date instead of UTC date from timestamp
+          const userToday = await getUserToday(user.id)
+          console.log('🕒 Using user local date for workout log:', userToday)
+          
           await updateDailyWorkoutLog(
             user.id,
-            workoutLocalDateTime.split('T')[0], // Just the date part
+            userToday, // Use user's timezone-adjusted date
             todaysWorkout.workoutType as 'Push' | 'Pull'
           )
           console.log('✅ Daily workout log updated successfully')

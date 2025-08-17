@@ -38,12 +38,6 @@ const navItems: NavItem[] = [
     color: 'green'
   },
   {
-    icon: Target,
-    label: 'Goals',
-    path: '/goals',
-    color: 'purple'
-  },
-  {
     icon: Settings,
     label: 'Settings',
     path: '/settings',

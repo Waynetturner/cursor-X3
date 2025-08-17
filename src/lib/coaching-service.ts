@@ -77,7 +77,7 @@ export class CoachingService {
         tts_message: "I hear you - X3 is challenging! Remember, pushing through difficulty is what builds real strength.",
         tone: 'supportive',
         confidence: 0.8,
-        suggestions: ["Focus on breathing", "Take extra rest if needed", "Remember your goals"],
+  suggestions: ["Focus on breathing", "Take extra rest if needed"],
         success: true
       }
     }

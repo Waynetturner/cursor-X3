@@ -225,7 +225,7 @@ async function calculateLongestStreakFromHistory(startDate: string, userId: stri
       const checkDateStr = checkDate.toISOString().split('T')[0]
       
       // Use the same working logic as the calendar
-      const workout = getWorkoutForDate(startDate, checkDateStr)
+      const workout = getWorkoutForDate(userId, checkDateStr)
       const scheduledWorkout = workout.workoutType
       
       let dayCompleted = false

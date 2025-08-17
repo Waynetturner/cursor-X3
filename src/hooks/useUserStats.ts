@@ -20,117 +20,159 @@ export function useUserStats(userId: string | null, timeRange: TimeRange): UseUs
     setError(null);
 
     try {
-      console.log('📊 Loading stats using unified service for time range:', timeRange);
+      console.log('📊 Loading stats for time range:', timeRange);
       
-      // Get unified stats from single source of truth
-      const userStats = await getUserStats(userId);
+      // FIXED: Get timezone once at the start instead of multiple calls
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('timezone')
+        .eq('id', userId)
+        .single();
       
-      if (!userStats) {
-        throw new Error('Failed to get user stats');
+      if (!profile) {
+        throw new Error('User profile not found');
       }
       
-      // For time-range filtered data, we need to query exercises
-      let filteredTotalWorkouts = userStats.totalWorkouts;
-      let filteredTotalExercises = userStats.totalExercises;
-      let recentWorkouts: RecentWorkout[] = [];
+      // Calculate today in user's timezone
+      const userTimezone = profile.timezone || 'UTC';
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: userTimezone });
       
-      // Apply time range filter for specific stats
+      // SIMPLIFIED: Query workout_exercises directly instead of using getUserStats
+      let query = supabase
+        .from('workout_exercises')
+        .select('*')
+        .eq('user_id', userId)
+        .order('workout_local_date_time', { ascending: false });
+      
+      // Apply time range filter if needed
       if (timeRange !== 'alltime') {
         const { startDate } = getTimeRangeDates(timeRange);
         const startDateStr = formatDateForQuery(startDate);
-        
-        // Get filtered exercises
-        const { data: filteredExercises, error: exerciseError } = await supabase
-          .from('workout_exercises')
-          .select('*')
-          .eq('user_id', userId)
-          .gte('workout_local_date_time', startDateStr + 'T00:00:00')
-          .order('workout_local_date_time', { ascending: false });
-        
-        if (exerciseError) {
-          throw new Error(`Failed to fetch filtered exercises: ${exerciseError.message}`);
-        }
-        
-        if (filteredExercises) {
-          const filteredWorkoutDates = [...new Set(filteredExercises.map(e => e.workout_local_date_time.split('T')[0]))];
-          filteredTotalWorkouts = filteredWorkoutDates.length;
-          filteredTotalExercises = filteredExercises.length;
-          
-          // Build recent workouts from filtered data
-          const sortedDates = filteredWorkoutDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-          recentWorkouts = sortedDates.slice(0, 5).map(date => {
-            const dayExercises = filteredExercises.filter(e => e.workout_local_date_time.startsWith(date));
-            return {
-              date,
-              type: dayExercises[0]?.workout_type || 'Mixed',
-              exercises: [...new Set(dayExercises.map(e => e.exercise_name))].length,
-              exerciseDetails: dayExercises.map(ex => ({
-                name: ex.exercise_name,
-                fullReps: ex.full_reps || 0,
-                partialReps: ex.partial_reps || 0,
-                bandColor: ex.band_color || 'White'
-              }))
-            };
-          });
-        }
-      } else {
-        // For 'alltime', build recent workouts from all data
-        const { data: allExercises, error: allExerciseError } = await supabase
-          .from('workout_exercises')
-          .select('*')
-          .eq('user_id', userId)
-          .order('workout_local_date_time', { ascending: false })
-          .limit(50); // Limit for performance
-        
-        if (allExerciseError) {
-          throw new Error(`Failed to fetch all exercises: ${allExerciseError.message}`);
-        }
-        
-        if (allExercises) {
-          const allWorkoutDates = [...new Set(allExercises.map(e => e.workout_local_date_time.split('T')[0]))];
-          const sortedDates = allWorkoutDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-          recentWorkouts = sortedDates.slice(0, 5).map(date => {
-            const dayExercises = allExercises.filter(e => e.workout_local_date_time.startsWith(date));
-            return {
-              date,
-              type: dayExercises[0]?.workout_type || 'Mixed',
-              exercises: [...new Set(dayExercises.map(e => e.exercise_name))].length,
-              exerciseDetails: dayExercises.map(ex => ({
-                name: ex.exercise_name,
-                fullReps: ex.full_reps || 0,
-                partialReps: ex.partial_reps || 0,
-                bandColor: ex.band_color || 'White'
-              }))
-            };
-          });
-        }
+        query = query.gte('workout_local_date_time', startDateStr + 'T00:00:00');
       }
       
-      // Use unified stats with time-range adjustments
+      const { data: exercises, error: exerciseError } = await query;
+      
+      if (exerciseError) {
+        throw new Error(`Failed to fetch exercises: ${exerciseError.message}`);
+      }
+      
+      if (!exercises || exercises.length === 0) {
+        // No exercises found - return empty stats
+        setStats({
+          totalWorkouts: 0,
+          currentWeek: 1,
+          currentStreak: 0,
+          longestStreak: 0,
+          totalExercises: 0,
+          averageRepsPerExercise: 0,
+          mostUsedBand: 'White',
+          workoutsByType: { Push: 0, Pull: 0 },
+          recentWorkouts: []
+        });
+        return;
+      }
+      
+      // Calculate stats from exercises
+      const workoutDates = [...new Set(exercises.map(e => e.workout_local_date_time.split('T')[0]))];
+      const totalWorkouts = workoutDates.length;
+      const totalExercises = exercises.length;
+      
+      // Calculate average reps
+      const totalReps = exercises.reduce((sum, ex) => sum + (ex.full_reps || 0) + (ex.partial_reps || 0), 0);
+      const averageRepsPerExercise = totalExercises > 0 ? Math.round(totalReps / totalExercises) : 0;
+      
+      // Calculate most used band
+      const bandCounts = exercises.reduce((acc: Record<string, number>, ex) => {
+        const band = ex.band_color || 'White';
+        acc[band] = (acc[band] || 0) + 1;
+        return acc;
+      }, {});
+      const mostUsedBand = Object.entries(bandCounts).sort(([,a], [,b]) => b - a)[0]?.[0] || 'White';
+      
+      // Calculate workouts by type
+      const workoutsByType = exercises.reduce((acc: {Push: number, Pull: number}, ex) => {
+        if (ex.workout_type === 'Push') acc.Push++;
+        else if (ex.workout_type === 'Pull') acc.Pull++;
+        return acc;
+      }, { Push: 0, Pull: 0 });
+      
+      // Build recent workouts
+      const sortedDates = workoutDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+      const recentWorkouts: RecentWorkout[] = sortedDates.slice(0, 5).map(date => {
+        const dayExercises = exercises.filter(e => e.workout_local_date_time.startsWith(date));
+        return {
+          date,
+          type: dayExercises[0]?.workout_type || 'Mixed',
+          exercises: [...new Set(dayExercises.map(e => e.exercise_name))].length,
+          exerciseDetails: dayExercises.map(ex => ({
+            name: ex.exercise_name,
+            fullReps: ex.full_reps || 0,
+            partialReps: ex.partial_reps || 0,
+            bandColor: ex.band_color || 'White'
+          }))
+        };
+      });
+      
+      // Calculate current week (simplified)
+      const { data: startProfile } = await supabase
+        .from('profiles')
+        .select('x3_start_date')
+        .eq('id', userId)
+        .single();
+      
+      let currentWeek = 1;
+      if (startProfile?.x3_start_date) {
+        const startDate = new Date(startProfile.x3_start_date);
+        const todayDate = new Date(today);
+        const daysDiff = Math.floor((todayDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        currentWeek = Math.max(1, Math.floor(daysDiff / 7) + 1);
+      }
+      
+      // Simple streak calculation (consecutive days with workouts)
+      let currentStreak = 0;
+      let longestStreak = 0;
+      let tempStreak = 0;
+      
+      // Sort dates and calculate streaks
+      const sortedWorkoutDates = workoutDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+      let currentDate = new Date(today);
+      
+      for (let i = 0; i < 30; i++) { // Check last 30 days
+        const dateStr = currentDate.toLocaleDateString('en-CA');
+        if (sortedWorkoutDates.includes(dateStr)) {
+          tempStreak++;
+          if (i === 0 || sortedWorkoutDates.includes(new Date(currentDate.getTime() + 86400000).toLocaleDateString('en-CA'))) {
+            currentStreak = tempStreak;
+          }
+        } else {
+          if (tempStreak > longestStreak) longestStreak = tempStreak;
+          if (i === 0) currentStreak = 0; // No workout today breaks current streak
+          tempStreak = 0;
+        }
+        currentDate.setDate(currentDate.getDate() - 1);
+      }
+      
+      if (tempStreak > longestStreak) longestStreak = tempStreak;
+      
       const finalStats: WorkoutStats = {
-        totalWorkouts: filteredTotalWorkouts,
-        currentWeek: userStats.currentWeek,
-        currentStreak: userStats.currentStreak, // Always from unified source
-        longestStreak: userStats.longestStreak, // Always from unified source
-        totalExercises: filteredTotalExercises,
-        averageRepsPerExercise: userStats.averageRepsPerExercise,
-        mostUsedBand: userStats.mostUsedBand,
-        workoutsByType: userStats.workoutsByType,
+        totalWorkouts,
+        currentWeek,
+        currentStreak,
+        longestStreak,
+        totalExercises,
+        averageRepsPerExercise,
+        mostUsedBand,
+        workoutsByType,
         recentWorkouts
       };
       
       setStats(finalStats);
-      
-      console.log('✅ Stats loaded with unified service:', {
-        currentStreak: userStats.currentStreak,
-        longestStreak: userStats.longestStreak,
-        currentWeek: userStats.currentWeek,
-        totalWorkouts: filteredTotalWorkouts
-      });
+      console.log('✅ Stats loaded successfully:', finalStats);
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      console.error('❌ Error loading stats with unified service:', err);
+      console.error('❌ Error loading stats:', err);
       
       setError({
         message: errorMessage,
@@ -140,7 +182,6 @@ export function useUserStats(userId: string | null, timeRange: TimeRange): UseUs
         }
       });
       
-      // Set default stats on error to prevent UI breaking
       setStats({
         totalWorkouts: 0,
         currentWeek: 1,

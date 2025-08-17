@@ -32,7 +32,6 @@ export default function Settings() {
     displayName: '',
     startDate: '',
     fitnessExperience: '',
-    primaryGoal: '',
     birthYear: '',
     biologicalSex: '',
     heightInches: '',
@@ -83,7 +82,6 @@ export default function Settings() {
           displayName,
           startDate: profile?.x3_start_date || '',
           fitnessExperience: demographics?.fitness_level || '',
-          primaryGoal: demographics?.goals || '',
           birthYear: demographics?.age ? (new Date().getFullYear() - demographics.age).toString() : '',
           biologicalSex: demographics?.gender === 'male' ? 'male' : 
                          demographics?.gender === 'female' ? 'female' : '',
@@ -139,7 +137,6 @@ export default function Settings() {
           gender: profileData.biologicalSex === 'male' ? 'male' : 
                  profileData.biologicalSex === 'female' ? 'female' : null,
           fitness_level: profileData.fitnessExperience || null,
-          goals: profileData.primaryGoal || null,
           available_equipment: profileData.x3EquipmentAvailable.length > 0 ? profileData.x3EquipmentAvailable.join(',') : null,
           session_length: profileData.programTimelineGoal || null,
           coach_tone: profileData.coachingStylePreference || 'balanced',

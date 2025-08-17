@@ -154,7 +154,6 @@ export default function WorkoutPage() {
   // Navigation handlers
   const handleStartExercise = () => router.push('/workout')
   const handleLogWorkout = () => router.push('/workout')
-  const handleAddGoal = () => router.push('/goals')
   const handleScheduleWorkout = () => router.push('/calendar')
   const handleViewStats = () => router.push('/stats')
 
@@ -351,7 +350,6 @@ export default function WorkoutPage() {
   if (todaysWorkout.workoutType === 'Rest') {
     const handleStartExercise = () => router.push('/workout')
     const handleLogWorkout = () => router.push('/workout')
-    const handleAddGoal = () => router.push('/goals')
     const handleScheduleWorkout = () => router.push('/calendar')
     const handleViewStats = () => router.push('/stats')
 
@@ -359,7 +357,6 @@ export default function WorkoutPage() {
       <AppLayout 
         onStartExercise={handleStartExercise}
         onLogWorkout={handleLogWorkout}
-        onAddGoal={handleAddGoal}
         onScheduleWorkout={handleScheduleWorkout}
         onViewStats={handleViewStats}
         exerciseInProgress={false}
@@ -421,7 +418,6 @@ export default function WorkoutPage() {
     <AppLayout 
       onStartExercise={handleStartExercise}
       onLogWorkout={handleLogWorkout}
-      onAddGoal={handleAddGoal}
       onScheduleWorkout={handleScheduleWorkout}
       onViewStats={handleViewStats}
       exerciseInProgress={exerciseInProgress}

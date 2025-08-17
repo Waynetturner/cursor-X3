@@ -66,7 +66,6 @@ export interface ChatMessage {
 export interface CoachingContext {
   userProfile?: {
     experience?: string;
-    goals?: string[];
     preferences?: Record<string, unknown>;
   };
   currentWorkout?: {

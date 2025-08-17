@@ -16,11 +16,12 @@ export async function getTodaysWorkout(startDate: string) {
   return getTodaysWorkoutFromLog(startDate)
 }
 
+
 // Get workout for a specific date from the daily workout log system
-export async function getWorkoutForDate(startDate: string, targetDate: string) {
-  // This function is deprecated - use calculateWorkoutForDate from daily-workout-log.ts instead
+export async function getWorkoutForDate(userId: string, targetDate: string) {
+  // Fixed: Now passes userId as first parameter, targetDate as second
   const { calculateWorkoutForDate } = await import('./daily-workout-log')
-  return calculateWorkoutForDate(startDate, targetDate)
+  return calculateWorkoutForDate(userId, targetDate)
 }
 
 // Calculate streak including rest days (following Dr. Jaquish methodology)
@@ -247,7 +248,7 @@ export async function getWorkoutCompletionHistory(
       const dayOfWeek = day % 7
       const schedule = week <= 4 
         ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
-        : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
+        : ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest'] as const
       
       const scheduledWorkout = schedule[dayOfWeek]
       
@@ -440,7 +441,7 @@ export async function getWorkoutForDateWithCompletion(
       const originalTargetWeek = workoutDetails.week
       const schedule = originalTargetWeek <= 4 
         ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
-        : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
+        : ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest'] as const
       
       // Get the workout type for this projected day
       const projectedWorkout = schedule[projectedDay]

@@ -22,26 +22,26 @@ export default function StatsPage() {
   // Memoized navigation handlers
   const handleStartExercise = useCallback(() => router.push('/workout'), [router])
   const handleLogWorkout = useCallback(() => router.push('/workout'), [router])
-  const handleAddGoal = useCallback(() => router.push('/goals'), [router])
   const handleScheduleWorkout = useCallback(() => router.push('/calendar'), [router])
   const handleViewStats = useCallback(() => router.push('/stats'), [router])
 
-  // Get user stats using the custom hook
-  const { stats, loading: statsLoading, error } = useUserStats(user?.id || null, timeRange)
+  // Only run stats hook when user is loaded and user.id is valid
+  const shouldRunStats = !!user && !!user.id && !userLoading;
+  const { stats, loading: statsLoading, error } = useUserStats(shouldRunStats ? user.id : null, timeRange);
 
   // Combined loading state
-  const loading = userLoading || statsLoading
+  const loading = userLoading || statsLoading;
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        setUser(user)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && user.id) {
+        setUser(user);
       }
-      setUserLoading(false)
-    }
-    getUser()
-  }, [])
+      setUserLoading(false);
+    };
+    getUser();
+  }, []);
 
   // Memoized time range change handler
   const handleTimeRangeChange = useCallback((newTimeRange: TimeRange) => {
@@ -54,7 +54,6 @@ export default function StatsPage() {
         <AppLayout 
           onStartExercise={handleStartExercise}
           onLogWorkout={handleLogWorkout}
-          onAddGoal={handleAddGoal}
           onScheduleWorkout={handleScheduleWorkout}
           onViewStats={handleViewStats}
           exerciseInProgress={false}
@@ -77,7 +76,6 @@ export default function StatsPage() {
         <AppLayout 
           onStartExercise={handleStartExercise}
           onLogWorkout={handleLogWorkout}
-          onAddGoal={handleAddGoal}
           onScheduleWorkout={handleScheduleWorkout}
           onViewStats={handleViewStats}
           exerciseInProgress={false}
@@ -105,7 +103,6 @@ export default function StatsPage() {
       <AppLayout 
         onStartExercise={handleStartExercise}
         onLogWorkout={handleLogWorkout}
-        onAddGoal={handleAddGoal}
         onScheduleWorkout={handleScheduleWorkout}
         onViewStats={handleViewStats}
         exerciseInProgress={false}

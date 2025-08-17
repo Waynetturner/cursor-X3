@@ -1,3 +1,5 @@
+// Add this debug version to your WorkoutHistory.tsx temporarily to see what's happening
+
 import React, { useState, useEffect } from 'react';
 import { WorkoutHistoryProps, TimeRange, TIME_RANGE_LABELS } from './types';
 import { useWorkoutHistory } from './useWorkoutHistory';
@@ -12,24 +14,44 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
   showTitle = true,
   compact = false
 }) => {
+  console.log('🔍 WorkoutHistory component mounting with props:', {
+    defaultRange,
+    maxDisplay,
+    showAllControls,
+    showTitle,
+    compact
+  });
+
   const [selectedRange, setSelectedRange] = useState<TimeRange>(defaultRange);
   const [showDropdown, setShowDropdown] = useState(false);
   
+  console.log('🔍 About to call useWorkoutHistory with:', selectedRange, maxDisplay);
   const { workouts, isLoading, error, refetch } = useWorkoutHistory(selectedRange, maxDisplay);
+  
+  console.log('🔍 useWorkoutHistory returned:', {
+    workoutsLength: workouts?.length,
+    isLoading,
+    error,
+    workouts: workouts
+  });
 
   // Refetch when refreshTrigger changes
   useEffect(() => {
+    console.log('🔍 WorkoutHistory useEffect triggered with refreshTrigger:', refreshTrigger);
     if (refreshTrigger !== undefined && refreshTrigger > 0) {
+      console.log('🔍 Calling refetch...');
       refetch();
     }
   }, [refreshTrigger]);
 
   const handleRangeChange = (range: TimeRange) => {
+    console.log('🔍 Range changed to:', range);
     setSelectedRange(range);
     setShowDropdown(false);
   };
 
   if (isLoading) {
+    console.log('🔍 Rendering loading state');
     return (
       <div className={`${compact ? 'p-4' : 'p-6'}`}>
         {showTitle && (
@@ -46,6 +68,7 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
   }
 
   if (error) {
+    console.log('🔍 Rendering error state:', error);
     return (
       <div className={`${compact ? 'p-4' : 'p-6'}`}>
         {showTitle && (
@@ -66,6 +89,8 @@ export const WorkoutHistory: React.FC<WorkoutHistoryProps> = ({
       </div>
     );
   }
+
+  console.log('🔍 Rendering normal state with', workouts?.length, 'workouts');
 
   return (
     <div className={`brand-card ${compact ? 'p-4' : 'p-6'}`}>

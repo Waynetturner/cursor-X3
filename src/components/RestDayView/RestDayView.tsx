@@ -19,7 +19,6 @@ export function RestDayView({ todaysWorkout }: RestDayViewProps) {
 
   const handleStartExercise = () => router.push('/workout')
   const handleLogWorkout = () => router.push('/workout')
-  const handleAddGoal = () => router.push('/goals')
   const handleScheduleWorkout = () => router.push('/calendar')
   const handleViewStats = () => router.push('/stats')
 
@@ -27,7 +26,6 @@ export function RestDayView({ todaysWorkout }: RestDayViewProps) {
     <AppLayout 
       onStartExercise={handleStartExercise}
       onLogWorkout={handleLogWorkout}
-      onAddGoal={handleAddGoal}
       onScheduleWorkout={handleScheduleWorkout}
       onViewStats={handleViewStats}
       exerciseInProgress={false}

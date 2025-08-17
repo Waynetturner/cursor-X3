@@ -39,8 +39,7 @@ export default function AppLayout({
     { icon: <Flame size={20} />, label: 'Workout', tooltip: 'Workout', route: '/workout' },
     { icon: <BarChart3 size={20} />, label: 'Stats', tooltip: 'Stats', route: '/stats' },
     { icon: <Calendar size={20} />, label: 'Calendar', tooltip: 'Calendar', route: '/calendar' },
-    { icon: <Target size={20} />, label: 'Goals', tooltip: 'Goals', route: '/goals' },
-    { icon: <Settings size={20} />, label: 'Settings', tooltip: 'Settings', route: '/settings' },
+        { icon: <Settings size={20} />, label: 'Settings', tooltip: 'Settings', route: '/settings' },
     { icon: <LogOut size={20} />, label: 'Sign Out', tooltip: 'Sign Out', route: '/auth/signin' },
   ]
 
@@ -128,8 +127,7 @@ export default function AppLayout({
         <ContextualFAB
           onStartExercise={onStartExercise}
           onLogWorkout={onLogWorkout}
-          onAddGoal={onAddGoal}
-          onScheduleWorkout={onScheduleWorkout}
+                    onScheduleWorkout={onScheduleWorkout}
           onViewStats={onViewStats}
           exerciseInProgress={exerciseInProgress}
           workoutCompleted={workoutCompleted}

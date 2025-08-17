@@ -1,7 +1,7 @@
 import React from 'react';
 import { TimeRange } from '@/types/stats';
 import { getTimeRangeLabel } from '@/utils/time-range';
-import { WorkoutHistory } from '@/components/WorkoutHistory';
+import { WorkoutHistory } from '@/components/WorkoutHistory'; // Fixed import path
 
 interface WorkoutHistorySectionProps {
   timeRange: TimeRange;
