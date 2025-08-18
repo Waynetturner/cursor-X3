@@ -256,20 +256,31 @@ export default function CalendarPage() {
     }
   }
 
-  const getWorkoutTypeColor = (type: string, isCompleted: boolean) => {
-    const baseColors = {
-      'Push': 'border-orange-500 bg-orange-100 dark:bg-orange-900/30',
-      'Pull': 'border-red-500 bg-red-100 dark:bg-red-900/30', 
-      'Rest': 'border-blue-500 bg-blue-100 dark:bg-blue-900/30',
-      'Missed': 'border-gray-500 bg-gray-100 dark:bg-gray-900/30'
-    }
-    
-    let colorClass = baseColors[type] || baseColors['Rest']
-    if (isCompleted && type !== 'Missed') {
-      colorClass += ' border-green-500'
-    }
-    return colorClass
+  type WorkoutType = 'Push' | 'Pull' | 'Rest' | 'Missed'
+
+const getWorkoutTypeColor = (type: WorkoutType, isCompleted: boolean) => {
+  const borderMap: Record<WorkoutType, string> = {
+    Push: 'border-orange-500',
+    Pull: 'border-red-500',
+    Rest: 'border-blue-500',
+    Missed: 'border-gray-500',
   }
+
+  const bgMap: Record<WorkoutType, string> = {
+    Push: 'bg-orange-100 dark:bg-orange-900/30',
+    Pull: 'bg-red-100 dark:bg-red-900/30',
+    Rest: 'bg-blue-100 dark:bg-blue-900/30',
+    Missed: 'bg-gray-100 dark:bg-gray-900/30',
+  }
+
+  // If you want completed days to show green border only for workouts (not Rest),
+  // change the condition below accordingly.
+  const completedMakesGreen = isCompleted && type !== 'Missed' // current behavior
+  const borderClass = completedMakesGreen ? 'border-green-500' : borderMap[type]
+
+  return `${borderClass} ${bgMap[type]}`
+}
+
 
   // Navigation handlers (empty for now)
   const handleStartExercise = () => {}
