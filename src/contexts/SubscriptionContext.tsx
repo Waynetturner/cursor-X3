@@ -10,7 +10,6 @@ interface SubscriptionFeatures {
   maxWorkoutHistory: number
   aiCoachAccess: boolean
   advancedAnalytics: boolean
-  customGoals: boolean
   exportData: boolean
   prioritySupport: boolean
   measurementTracking: boolean
@@ -34,7 +33,6 @@ const TIER_FEATURES: Record<SubscriptionTier, SubscriptionFeatures> = {
     maxWorkoutHistory: 30,
     aiCoachAccess: false,
     advancedAnalytics: false,
-    customGoals: false,
     exportData: false,
     prioritySupport: false,
     measurementTracking: false,
@@ -48,7 +46,6 @@ const TIER_FEATURES: Record<SubscriptionTier, SubscriptionFeatures> = {
     maxWorkoutHistory: 365,
     aiCoachAccess: true,
     advancedAnalytics: true,
-    customGoals: true,
     exportData: true,
     prioritySupport: false,
     measurementTracking: true,
@@ -62,7 +59,6 @@ const TIER_FEATURES: Record<SubscriptionTier, SubscriptionFeatures> = {
     maxWorkoutHistory: -1, // unlimited
     aiCoachAccess: true,
     advancedAnalytics: true,
-    customGoals: true,
     exportData: true,
     prioritySupport: true,
     measurementTracking: true,

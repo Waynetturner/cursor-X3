@@ -1,0 +1,1 @@
+export { RestDayView, type RestDayViewProps } from './RestDayView'

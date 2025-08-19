@@ -1,5 +1,14 @@
 import { supabase } from './supabase'
 
+interface ExerciseRecord {
+  band_color: string;
+  full_reps: number;
+  partial_reps: number;
+  workout_type: string;
+  workout_local_date_time: string;
+  [key: string]: unknown;
+}
+
 // Band hierarchy from X3 documentation: Ultra Light < White < Light Gray < Dark Gray < Black < Elite
 // DO NOT DELETE: This hierarchy is essential for calculating true personal bests
 // A PR with Dark Gray band is better than a higher rep count with White band

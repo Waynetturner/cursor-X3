@@ -8,14 +8,18 @@ interface TestResult {
   name: string
   status: 'pending' | 'success' | 'error'
   message: string
-  details?: any
+  details?: {
+    error?: string;
+    data?: Record<string, unknown>;
+    count?: number;
+  }
 }
 
 export default function SupabaseConnectionTester() {
   const [tests, setTests] = useState<TestResult[]>([])
   const [isRunning, setIsRunning] = useState(false)
 
-  const updateTest = (name: string, status: TestResult['status'], message: string, details?: any) => {
+  const updateTest = (name: string, status: TestResult['status'], message: string, details?: TestResult['details']) => {
     setTests(prev => {
       const existing = prev.find(t => t.name === name)
       const newTest = { name, status, message, details }
@@ -47,17 +51,21 @@ export default function SupabaseConnectionTester() {
 
       if (!supabaseUrl || !supabaseAnonKey) {
         updateTest('Environment Variables', 'error', 'Missing required environment variables', {
-          url: !!supabaseUrl,
-          anonKey: !!supabaseAnonKey
+          error: !supabaseUrl ? 'Missing Supabase URL' : undefined,
+          data: { anonKey: !!supabaseAnonKey }
         })
       } else {
         updateTest('Environment Variables', 'success', 'Environment variables found', {
-          url: supabaseUrl,
-          anonKeyPreview: `${supabaseAnonKey.substring(0, 20)}...`
+          data: {
+            url: supabaseUrl,
+            anonKeyPreview: `${supabaseAnonKey.substring(0, 20)}...`
+          }
         })
       }
     } catch (error) {
-      updateTest('Environment Variables', 'error', 'Error checking environment variables', error)
+      updateTest('Environment Variables', 'error', 'Error checking environment variables', { 
+        error: error instanceof Error ? error.message : String(error) 
+      })
     }
 
     // Test 2: Client Creation
@@ -67,13 +75,17 @@ export default function SupabaseConnectionTester() {
       console.log('🔍 Client Creation:', testClient)
       
       updateTest('Client Creation', 'success', 'Supabase client created successfully', {
-        clientExists: !!testClient,
-        hasAuthMethods: typeof testClient.auth !== 'undefined',
-        hasFromMethod: typeof testClient.from !== 'undefined'
+        data: {
+          clientExists: !!testClient,
+          hasAuthMethods: typeof testClient.auth !== 'undefined',
+          hasFromMethod: typeof testClient.from !== 'undefined'
+        }
       })
     } catch (error) {
       console.error('❌ Client Creation Error:', error)
-      updateTest('Client Creation', 'error', 'Failed to create Supabase client', error)
+      updateTest('Client Creation', 'error', 'Failed to create Supabase client', { 
+        error: error instanceof Error ? error.message : String(error) 
+      })
     }
 
     // Test 3: Basic Connection
@@ -84,16 +96,22 @@ export default function SupabaseConnectionTester() {
       
       if (error) {
         updateTest('Basic Connection', 'error', `Connection failed: ${error.message}`, {
-          code: error.code,
-          details: error.details,
-          hint: error.hint
+          error: error.code ? `Error code: ${error.code}` : undefined,
+          data: {
+            details: error.details,
+            hint: error.hint
+          }
         })
       } else {
-        updateTest('Basic Connection', 'success', 'Successfully connected to Supabase', data)
+        updateTest('Basic Connection', 'success', 'Successfully connected to Supabase', { 
+          data: { result: data } 
+        })
       }
     } catch (error) {
       console.error('❌ Basic Connection Error:', error)
-      updateTest('Basic Connection', 'error', 'Network or connection error', error)
+      updateTest('Basic Connection', 'error', 'Network or connection error', { 
+        error: error instanceof Error ? error.message : String(error) 
+      })
     }
 
     // Test 4: Authentication Status
@@ -103,16 +121,22 @@ export default function SupabaseConnectionTester() {
       console.log('🔍 Auth Check:', { session: !!session, error })
       
       if (error) {
-        updateTest('Authentication', 'error', `Auth error: ${error.message}`, error)
+        updateTest('Authentication', 'error', `Auth error: ${error.message}`, { 
+          error: error.code ? `Error code: ${error.code}` : error.message
+        })
       } else {
         updateTest('Authentication', 'success', session ? 'User authenticated' : 'No active session (normal for testing)', {
-          hasSession: !!session,
-          userId: session?.user?.id
+          data: {
+            hasSession: !!session,
+            userId: session?.user?.id
+          }
         })
       }
     } catch (error) {
       console.error('❌ Auth Error:', error)
-      updateTest('Authentication', 'error', 'Authentication check failed', error)
+      updateTest('Authentication', 'error', 'Authentication check failed', { 
+        error: error instanceof Error ? error.message : String(error) 
+      })
     }
 
     // Test 5: Database Schema Check
@@ -144,13 +168,19 @@ export default function SupabaseConnectionTester() {
       
       const existingTables = tableResults.filter(t => t.exists)
       if (existingTables.length > 0) {
-        updateTest('Database Schema', 'success', `Found ${existingTables.length} accessible tables`, tableResults)
+        updateTest('Database Schema', 'success', `Found ${existingTables.length} accessible tables`, { 
+          data: { tables: tableResults } 
+        })
       } else {
-        updateTest('Database Schema', 'error', 'No accessible tables found', tableResults)
+        updateTest('Database Schema', 'error', 'No accessible tables found', { 
+          data: { tables: tableResults } 
+        })
       }
     } catch (error) {
       console.error('❌ Schema Error:', error)
-      updateTest('Database Schema', 'error', 'Schema check failed', error)
+      updateTest('Database Schema', 'error', 'Schema check failed', { 
+        error: error instanceof Error ? error.message : String(error) 
+      })
     }
 
     // Test 6: RLS Policy Check
@@ -165,17 +195,23 @@ export default function SupabaseConnectionTester() {
       
       if (error && error.code === '42501') {
         updateTest('Row Level Security', 'success', 'RLS is properly configured (insert blocked)', {
-          code: error.code,
-          message: error.message
+          error: error.code ? `Error code: ${error.code}` : undefined,
+          data: { message: error.message }
         })
       } else if (error) {
-        updateTest('Row Level Security', 'error', `Unexpected RLS error: ${error.message}`, error)
+        updateTest('Row Level Security', 'error', `Unexpected RLS error: ${error.message}`, { 
+          error: error.code ? `Error code: ${error.code}` : error.message
+        })
       } else {
-        updateTest('Row Level Security', 'error', 'RLS may not be configured (insert succeeded)', data)
+        updateTest('Row Level Security', 'error', 'RLS may not be configured (insert succeeded)', { 
+          data: { result: data } 
+        })
       }
     } catch (error) {
       console.error('❌ RLS Error:', error)
-      updateTest('Row Level Security', 'error', 'RLS check failed', error)
+      updateTest('Row Level Security', 'error', 'RLS check failed', { 
+        error: error instanceof Error ? error.message : String(error) 
+      })
     }
 
     setIsRunning(false)

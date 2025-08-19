@@ -1,10 +1,10 @@
 import { supabase } from './supabase'
 import { 
-  getTodaysWorkoutWithCompletion, 
   calculateStreakWithCompletion,
   getCompletedWorkoutDates,
   getWorkoutForDate
 } from './supabase'
+import { getTodaysWorkoutFromLog, ensureTodaysEntry } from './daily-workout-log'
 
 export interface UserStats {
   // Core workout data
@@ -73,7 +73,17 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
     
     if (!exercises || exercises.length === 0) {
       // No workouts yet - return default stats
-      const workoutStatus = await getTodaysWorkoutWithCompletion(startDate, userId)
+      await ensureTodaysEntry(userId)
+      const todaysWorkout = await getTodaysWorkoutFromLog(userId)
+      
+      // Convert to expected workoutStatus format
+      const workoutStatus = {
+        week: todaysWorkout?.week || 1,
+        workoutType: todaysWorkout?.workoutType || 'Push' as 'Push' | 'Pull' | 'Rest',
+        dayInWeek: todaysWorkout?.dayInWeek || 0,
+        status: 'scheduled' as 'current' | 'catch_up' | 'scheduled',
+        missedWorkouts: 0
+      }
       
       return {
         totalWorkouts: 0,
@@ -92,7 +102,17 @@ export async function getUserStats(userId: string): Promise<UserStats | null> {
     }
     
     // Calculate completion-based statistics
-    const workoutStatus = await getTodaysWorkoutWithCompletion(startDate, userId)
+    await ensureTodaysEntry(userId)
+    const todaysWorkout = await getTodaysWorkoutFromLog(userId)
+    
+    // Convert to expected workoutStatus format
+    const workoutStatus = {
+      week: todaysWorkout?.week || 1,
+      workoutType: todaysWorkout?.workoutType || 'Push' as 'Push' | 'Pull' | 'Rest',
+      dayInWeek: todaysWorkout?.dayInWeek || 0,
+      status: 'scheduled' as 'current' | 'catch_up' | 'scheduled',
+      missedWorkouts: 0
+    }
     
     // Get unique workout dates (total workouts)
     const workoutDates = [...new Set(exercises.map(e => e.workout_local_date_time.split('T')[0]))]
@@ -205,7 +225,7 @@ async function calculateLongestStreakFromHistory(startDate: string, userId: stri
       const checkDateStr = checkDate.toISOString().split('T')[0]
       
       // Use the same working logic as the calendar
-      const workout = getWorkoutForDate(startDate, checkDateStr)
+      const workout = getWorkoutForDate(userId, checkDateStr)
       const scheduledWorkout = workout.workoutType
       
       let dayCompleted = false

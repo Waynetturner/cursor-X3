@@ -21,7 +21,7 @@ export default function SignInPage() {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
@@ -207,7 +207,7 @@ export default function SignInPage() {
 
             {/* Sign Up Link */}
             <p className="text-center text-sm text-gray-600 mt-6">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <button
                 onClick={() => router.push('/auth/signup')}
                 className="text-orange-600 hover:text-orange-700 font-medium"

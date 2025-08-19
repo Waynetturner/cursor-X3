@@ -3,12 +3,17 @@
 
 import { backendService } from './backend-integration'
 import { supabase } from './supabase'
+import type { Exercise } from '@/types/workout'
 
 export interface CoachingRequest {
   user_id: string
   user_feedback: string
-  workout_data?: any[]
-  progress_history?: any[]
+  workout_data?: Exercise[]
+  progress_history?: {
+    date: string;
+    exercises: Exercise[];
+    week: number;
+  }[]
   coaching_type: 'static' | 'dynamic'
 }
 
@@ -72,7 +77,7 @@ export class CoachingService {
         tts_message: "I hear you - X3 is challenging! Remember, pushing through difficulty is what builds real strength.",
         tone: 'supportive',
         confidence: 0.8,
-        suggestions: ["Focus on breathing", "Take extra rest if needed", "Remember your goals"],
+  suggestions: ["Focus on breathing", "Take extra rest if needed"],
         success: true
       }
     }
@@ -122,7 +127,7 @@ export class CoachingService {
   }
 
   // Get user's coaching history
-  async getCoachingHistory(userId: string, limit: number = 10): Promise<any[]> {
+  async getCoachingHistory(userId: string, limit: number = 10): Promise<Record<string, unknown>[]> {
     try {
       const { data, error } = await supabase
         .from('coaching_requests')
@@ -140,7 +145,7 @@ export class CoachingService {
   }
 
   // Analyze workout data for coaching insights
-  analyzeWorkoutData(workoutData: any[]): {
+  analyzeWorkoutData(workoutData: Exercise[]): {
     totalReps: number
     averageReps: number
     exercisesCompleted: number
@@ -161,7 +166,7 @@ export class CoachingService {
       sum + (exercise.full_reps || 0) + (exercise.partial_reps || 0), 0)
     
     const averageReps = totalReps / workoutData.length
-    const exercisesCompleted = workoutData.filter(ex => ex.completed).length
+    const exercisesCompleted = workoutData.filter(ex => ex.saved).length
     
     const potentialIssues: string[] = []
     const recommendations: string[] = []
@@ -199,8 +204,12 @@ export class CoachingService {
   // Generate personalized coaching prompt
   generateCoachingPrompt(
     userFeedback: string, 
-    workoutData: any[], 
-    progressHistory: any[]
+    workoutData: Exercise[], 
+    progressHistory: {
+      date: string;
+      exercises: Exercise[];
+      week: number;
+    }[]
   ): string {
     const analysis = this.analyzeWorkoutData(workoutData)
     

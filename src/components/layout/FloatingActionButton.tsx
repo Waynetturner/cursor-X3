@@ -154,53 +154,10 @@ export function ContextualFAB({
   const pathname = usePathname()
 
   // Determine contextual action based on current page and state
-  const getContextualAction = (): { action: FABProps['action'], onPress: () => void } => {
-    // Workout page logic
-    if (pathname === '/' || pathname === '/workout') {
-      if (workoutCompleted && onLogWorkout) {
-        return { action: 'logWorkout', onPress: onLogWorkout }
-      }
-      if (!exerciseInProgress && onStartExercise) {
-        return { action: 'startExercise', onPress: onStartExercise }
-      }
-      if (onViewStats) {
-        return { action: 'viewStats', onPress: onViewStats }
-      }
-    }
 
-    // Stats page
-    if (pathname === '/stats' && onLogWorkout) {
-      return { action: 'logWorkout', onPress: onLogWorkout }
-    }
 
-    // Calendar page
-    if (pathname === '/calendar' && onScheduleWorkout) {
-      return { action: 'scheduleWorkout', onPress: onScheduleWorkout }
-    }
-
-    // Goals page
-    if (pathname === '/goals' && onAddGoal) {
-      return { action: 'addGoal', onPress: onAddGoal }
-    }
-
-    // Default fallback
-    if (onStartExercise) {
-      return { action: 'startExercise', onPress: onStartExercise }
-    }
-
-    // Final fallback
-    return { action: 'viewStats', onPress: onViewStats || (() => {}) }
-  }
-
-  const { action, onPress } = getContextualAction()
-
-  return (
-    <FloatingActionButton
-      action={action}
-      onPress={onPress}
-      disabled={exerciseInProgress && action === 'startExercise'}
-    />
-  )
+  // ContextualFAB is now a placeholder. No FAB rendered.
+  return null;
 }
 
 export default ContextualFAB

@@ -28,7 +28,7 @@ export default function AuthCallbackPage() {
           setMessage('Authentication successful! Redirecting...')
           
           // Create user profile if it doesn't exist
-          const { data: profile, error: profileError } = await supabase
+          const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('id')
             .eq('id', data.session.user.id)

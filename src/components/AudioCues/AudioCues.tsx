@@ -22,7 +22,8 @@ interface AudioCuesProps {
 }
 
 export default function AudioCues({ event, onEventProcessed }: AudioCuesProps) {
-  const { tier, hasFeature } = useSubscription()
+  const { tier } = useSubscription()
+  // Removed unused hasFeature
   const { speak, isTTSAvailable, settings } = useX3TTS()
 
   const generateCueMessage = useCallback((event: AudioCueEvent): string => {
@@ -139,7 +140,8 @@ export default function AudioCues({ event, onEventProcessed }: AudioCuesProps) {
 
 // Hook for easy audio cue triggering
 export function useAudioCues() {
-  const { tier, hasFeature } = useSubscription()
+  const { tier } = useSubscription()
+  // Removed unused hasFeature
   const { speak, isTTSAvailable, settings } = useX3TTS()
 
   const triggerCue = useCallback(async (event: AudioCueEvent) => {

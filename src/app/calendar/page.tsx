@@ -1,31 +1,273 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import AppLayout from '@/components/layout/AppLayout'
-import { supabase, getWorkoutForDate, getWorkoutForDateWithCompletion } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import { 
+  ensureTodaysEntry, 
+  markMissedWorkouts, 
+  getUserToday,
+  updateDailyWorkoutLog
+} from '@/lib/daily-workout-log'
 import { ChevronLeft, ChevronRight, Flame, Dumbbell, Coffee, CheckCircle, AlertTriangle } from 'lucide-react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
+import ManualLogButton from '@/components/ManualLogButton'
 
 interface WorkoutDay {
   date: string
   dayOfMonth: number
   workoutType: 'Push' | 'Pull' | 'Rest' | 'Missed'
-  originalWorkout: 'Push' | 'Pull' | 'Rest'
+  originalWorkout: 'Push' | 'Pull' | 'Rest' | 'Missed'
   isCompleted: boolean
   isToday: boolean
   isThisMonth: boolean
   week: number
   isShifted: boolean
-  status: 'complete' | 'partial' | 'missed' | 'scheduled'
+  status: 'completed' | 'partial' | 'missed' | 'scheduled'
 }
 
 export default function CalendarPage() {
   const [user, setUser] = useState<{ id: string } | null>(null)
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const [currentDate, setCurrentDate] = useState<Date | null>(null)
   const [workoutDays, setWorkoutDays] = useState<WorkoutDay[]>([])
-  const [completedWorkouts, setCompletedWorkouts] = useState<Set<string>>(new Set())
   const [userStartDate, setUserStartDate] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function setUserDate() {
+      if (user?.id) {
+        const today = await getUserToday(user.id)
+        const [year, month, day] = today.split('-').map(Number)
+        setCurrentDate(new Date(year, month - 1, day))
+      }
+    }
+    setUserDate()
+  }, [user?.id])
+
+  const loadUserData = async (userId: string) => {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('x3_start_date')
+        .eq('id', userId)
+        .single()
+
+      if (profile?.x3_start_date) {
+        setUserStartDate(profile.x3_start_date)
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error)
+    }
+  }
+
+  // Generate calendar data
+  const generateCalendarData = useCallback(async () => {
+    if (!userStartDate || !user || !currentDate) return
+    
+    try {
+      const today = await getUserToday(user.id)
+      
+      // Calculate calendar display range (5 weeks for calendar view)
+      const year = currentDate.getFullYear()
+      const month = currentDate.getMonth()
+      const firstDayOfMonth = new Date(year, month, 1)
+      const startDayOfWeek = firstDayOfMonth.getDay()
+      
+      const calendarStart = new Date(firstDayOfMonth)
+      calendarStart.setDate(calendarStart.getDate() - startDayOfWeek)
+      
+      const startDateStr = calendarStart.toLocaleDateString('en-CA')
+      const endDate = new Date(calendarStart)
+      endDate.setDate(calendarStart.getDate() + 34)
+      const endDateStr = endDate.toLocaleDateString('en-CA')
+      
+      // Run maintenance functions
+      await Promise.all([
+        ensureTodaysEntry(),
+        markMissedWorkouts()
+      ])
+
+      // Get all workouts for display range
+      const { data: existingWorkouts } = await supabase
+        .from('daily_workout_log')
+        .select('date, workout_type, week_number, status')
+        .eq('user_id', user.id)
+        .gte('date', startDateStr)
+        .lte('date', endDateStr)
+        .order('date')
+      
+      // Create lookup map
+      const workoutMap: Record<string, any> = {}
+      existingWorkouts?.forEach(workout => {
+        workoutMap[workout.date] = workout
+      })
+
+      // Get last completed workout (Push/Pull/Rest)
+      const { data: lastCompleted } = await supabase
+        .from('daily_workout_log')
+        .select('date, workout_type, week_number')
+        .eq('user_id', user.id)
+        .eq('status', 'completed')
+        .order('date', { ascending: false })
+        .limit(1)
+
+      const lastWorkout = lastCompleted?.[0]
+
+      // Also try to find the most recent Rest boundary (completed or missed)
+      const { data: lastRestRows } = await supabase
+        .from('daily_workout_log')
+        .select('date, week_number, status')
+        .eq('user_id', user.id)
+        .eq('workout_type', 'Rest')
+        .order('date', { ascending: false })
+        .limit(1)
+
+      const lastRest = lastRestRows?.[0]
+      
+  // Week 5+ pattern (used for weeks 5-12 and beyond)
+      const PATTERN = ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
+      
+      // Generate calendar days
+      const calendarDays: WorkoutDay[] = []
+      
+      for (let i = 0; i < 35; i++) {
+        const currentDay = new Date(calendarStart)
+        currentDay.setDate(calendarStart.getDate() + i)
+        const dateStr = currentDay.toLocaleDateString('en-CA')
+        const isThisMonth = currentDay.getMonth() === month
+        const dayOfMonth = currentDay.getDate()
+        
+        let workoutInfo: {
+          workoutType: 'Push' | 'Pull' | 'Rest' | 'Missed'
+          week: number
+          status: 'completed' | 'partial' | 'missed' | 'scheduled'
+        }
+        
+        // First check if we have data in database
+        if (workoutMap[dateStr]) {
+          // Never show a Rest day as missed in the UI
+          const mappedStatus = (workoutMap[dateStr].workout_type === 'Rest' && workoutMap[dateStr].status === 'missed')
+            ? 'completed'
+            : workoutMap[dateStr].status
+          workoutInfo = {
+            workoutType: workoutMap[dateStr].workout_type,
+            week: workoutMap[dateStr].week_number,
+            status: mappedStatus
+          }
+        } 
+        // If no data and it's within/after the user's start, calculate purely from the last Rest boundary
+        else if (dateStr >= userStartDate) {
+          // Establish the most recent Rest boundary and the base week number
+          let restBoundaryDate: Date | null = null
+          let baseWeekAfterRest: number | null = null
+
+          if (lastRest) {
+            restBoundaryDate = new Date(lastRest.date)
+            baseWeekAfterRest = lastRest.week_number + 1
+          } else if (lastWorkout) {
+            // Derive last Rest from the last completed workout's position in the cycle
+            const lastType = lastWorkout.workout_type as 'Push' | 'Pull' | 'Rest'
+            const idx = PATTERN.indexOf(lastType as any)
+            const lastDate = new Date(lastWorkout.date)
+            if (idx === 6) {
+              // Last workout itself was Rest
+              restBoundaryDate = lastDate
+              baseWeekAfterRest = lastWorkout.week_number + 1
+            } else {
+              // Rest day was (idx + 1) days before the last completed workout
+              const inferredRest = new Date(lastDate)
+              inferredRest.setDate(inferredRest.getDate() - (idx + 1))
+              restBoundaryDate = inferredRest
+              // The last completed Push/Pull belongs to the week that starts the day after Rest
+              baseWeekAfterRest = lastWorkout.week_number
+            }
+          } else {
+            // Fallback: treat the day before the user's start date as a rest boundary
+            const start = new Date(userStartDate)
+            start.setDate(start.getDate() - 1)
+            restBoundaryDate = start
+            baseWeekAfterRest = 1
+          }
+
+          // With a rest boundary identified, compute cycle position for target date
+          const boundary = new Date(restBoundaryDate!)
+          boundary.setHours(0,0,0,0)
+          const target = new Date(dateStr)
+          target.setHours(0,0,0,0)
+
+          const daysSinceRest = Math.max(0, Math.floor((target.getTime() - boundary.getTime()) / (1000 * 60 * 60 * 24)))
+          const mod = daysSinceRest % 7
+          let type: 'Push' | 'Pull' | 'Rest'
+          if (mod === 0) {
+            type = 'Rest'
+          } else {
+            type = PATTERN[mod - 1] as 'Push' | 'Pull'
+          }
+
+          // Week math:
+          // - If daysSinceRest === 0, it's the boundary Rest and belongs to previous week
+          // - Otherwise, weeks increment every 7 days starting the day after Rest
+          let weekNum: number
+          if (daysSinceRest === 0) {
+            weekNum = (baseWeekAfterRest as number) - 1
+          } else {
+            weekNum = (baseWeekAfterRest as number) + Math.floor((daysSinceRest - 1) / 7)
+          }
+
+          // Never mark Rest as missed
+          const status: 'completed' | 'partial' | 'missed' | 'scheduled' =
+            dateStr < today ? (type === 'Rest' ? 'completed' : 'missed') : 'scheduled'
+          workoutInfo = {
+            workoutType: type,
+            week: weekNum,
+            status
+          }
+        }
+        // Default for dates before start or if no last workout
+        else {
+          workoutInfo = {
+            workoutType: dateStr >= userStartDate ? 'Push' : 'Rest',
+            week: dateStr >= userStartDate ? 1 : 0,
+            status: dateStr < today && dateStr >= userStartDate ? 'missed' : 'scheduled'
+          }
+        }
+        
+        calendarDays.push({
+          date: dateStr,
+          dayOfMonth: dayOfMonth,
+          workoutType: workoutInfo.workoutType,
+          originalWorkout: workoutInfo.workoutType,
+          isCompleted: workoutInfo.status === 'completed',
+          isToday: dateStr === today,
+          isThisMonth: isThisMonth,
+          week: workoutInfo.week,
+          isShifted: false,
+          status: workoutInfo.status
+        })
+      }
+      
+      setWorkoutDays(calendarDays)
+      
+    } catch (error) {
+      console.error('Error generating calendar:', error)
+    }
+  }, [currentDate, userStartDate, user])
+
+  const refreshCalendarData = () => {
+    generateCalendarData()
+  }
+
+  // Quick repair for today's entry when not completed and it's a Push/Pull day
+  const fixTodaysEntry = async () => {
+    if (!user?.id) return
+    const today = await getUserToday(user.id)
+    const todayDay = workoutDays.find(d => d.isToday)
+    if (!todayDay) return
+    if ((todayDay.workoutType === 'Push' || todayDay.workoutType === 'Pull') && todayDay.status !== 'completed') {
+      await updateDailyWorkoutLog(user.id, today, todayDay.workoutType)
+      refreshCalendarData()
+    }
+  }
 
   useEffect(() => {
     const getUser = async () => {
@@ -40,149 +282,77 @@ export default function CalendarPage() {
   }, [])
 
   useEffect(() => {
-    if (userStartDate) {
+    if (userStartDate && user) {
       generateCalendarData()
     }
-  }, [currentDate, userStartDate, completedWorkouts])
-
-  const loadUserData = async (userId: string) => {
-    try {
-      // Get user profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('x3_start_date')
-        .eq('id', userId)
-        .single()
-
-      if (profile?.x3_start_date) {
-        setUserStartDate(profile.x3_start_date)
-      }
-
-      // Get completed workouts
-      const { data: exercises } = await supabase
-        .from('workout_exercises')
-        .select('workout_local_date_time')
-        .eq('user_id', userId)
-
-      if (exercises) {
-        const completed = new Set(
-          exercises.map(e => {
-            // Extract date portion directly from stored timestamp to avoid timezone conversion
-            return e.workout_local_date_time.split('T')[0];
-          })
-        )
-        setCompletedWorkouts(completed)
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error)
-    }
-  }
-
-  const generateCalendarData = async () => {
-    if (!userStartDate || !user) return
-
-    const year = currentDate.getFullYear()
-    const month = currentDate.getMonth()
-    
-    
-    // Get first day of month and determine starting date for calendar
-    const firstDayOfMonth = new Date(year, month, 1)
-    const startDayOfWeek = firstDayOfMonth.getDay() // 0 = Sunday, 1 = Monday, etc.
-    
-    // Calculate the first date to show (might be from previous month)
-    const startDate = new Date(firstDayOfMonth)
-    startDate.setDate(startDate.getDate() - startDayOfWeek)
-
-
-    // Generate 35 days (5 weeks × 7 days) instead of 42
-    const calendarDays: WorkoutDay[] = []
-    const today = (() => {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1; // getMonth() returns 0-11, so add 1
-      const day = now.getDate();
-      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    })()
-    
-    for (let i = 0; i < 35; i++) {
-      const currentCalendarDate = new Date(startDate)
-      currentCalendarDate.setDate(startDate.getDate() + i)
-      
-      const dateStr = `${currentCalendarDate.getFullYear()}-${String(currentCalendarDate.getMonth() + 1).padStart(2, '0')}-${String(currentCalendarDate.getDate()).padStart(2, '0')}`
-      const isThisMonth = currentCalendarDate.getMonth() === month
-      
-      try {
-        
-        // Use completion-based logic for calendar display
-        const workoutInfo = await getWorkoutForDateWithCompletion(dateStr, user.id, userStartDate)
-        
-        calendarDays.push({
-          date: dateStr,
-          dayOfMonth: currentCalendarDate.getDate(),
-          workoutType: workoutInfo.actualWorkout,
-          originalWorkout: workoutInfo.originalWorkout,
-          isCompleted: workoutInfo.status === 'complete',
-          isToday: dateStr === today,
-          isThisMonth: isThisMonth,
-          week: workoutInfo.week,
-          isShifted: workoutInfo.isShifted,
-          status: workoutInfo.status
-        })
-      } catch (error) {
-        console.error('Error getting workout for date:', dateStr, error)
-        // Fallback to original logic
-        const workout = getWorkoutForDate(userStartDate, dateStr)
-        calendarDays.push({
-          date: dateStr,
-          dayOfMonth: currentCalendarDate.getDate(),
-          workoutType: workout.workoutType,
-          originalWorkout: workout.workoutType,
-          isCompleted: completedWorkouts.has(dateStr),
-          isToday: dateStr === today,
-          isThisMonth: isThisMonth,
-          week: workout.week,
-          isShifted: false,
-          status: completedWorkouts.has(dateStr) ? 'complete' : 'scheduled'
-        })
-      }
-    }
-
-    setWorkoutDays(calendarDays)
-  }
+  }, [generateCalendarData, userStartDate, user])
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => {
+      if (!prev) return prev
       const newDate = new Date(prev)
-      if (direction === 'prev') {
-        newDate.setMonth(newDate.getMonth() - 1)
-      } else {
-        newDate.setMonth(newDate.getMonth() + 1)
-      }
+      newDate.setMonth(newDate.getMonth() + (direction === 'prev' ? -1 : 1))
       return newDate
     })
   }
 
-  const getWorkoutIcon = (type: 'Push' | 'Pull' | 'Rest' | 'Missed') => {
+  const getWorkoutIcon = (type: string) => {
     switch (type) {
-      case 'Push':
-        return <Dumbbell size={16} className="text-orange-400" />
-      case 'Pull':
-        return <Flame size={16} className="text-red-400" />
-      case 'Rest':
-        return <Coffee size={16} className="text-blue-400" />
-      case 'Missed':
-        return <AlertTriangle size={16} className="text-gray-400" />
+      case 'Push': return <Dumbbell size={16} className="text-orange-400" />
+      case 'Pull': return <Flame size={16} className="text-red-400" />
+      case 'Rest': return <Coffee size={16} className="text-blue-400" />
+      case 'Missed': return <AlertTriangle size={16} className="text-gray-400" />
+      default: return null
     }
   }
 
+  type WorkoutType = 'Push' | 'Pull' | 'Rest' | 'Missed'
+
+const getWorkoutTypeColor = (type: WorkoutType, isCompleted: boolean) => {
+  const borderMap: Record<WorkoutType, string> = {
+    Push: 'border-orange-500',
+    Pull: 'border-red-500',
+    Rest: 'border-blue-500',
+    Missed: 'border-gray-500',
+  }
+
+  const bgMap: Record<WorkoutType, string> = {
+    Push: 'bg-orange-100 dark:bg-orange-900/30',
+    Pull: 'bg-red-100 dark:bg-red-900/30',
+    Rest: 'bg-blue-100 dark:bg-blue-900/30',
+    Missed: 'bg-gray-100 dark:bg-gray-900/30',
+  }
+
+  // If you want completed days to show green border only for workouts (not Rest),
+  // change the condition below accordingly.
+  const completedMakesGreen = isCompleted && type !== 'Missed' // current behavior
+  const borderClass = completedMakesGreen ? 'border-green-500' : borderMap[type]
+
+  return `${borderClass} ${bgMap[type]}`
+}
+
+
+  // Navigation handlers (empty for now)
+  const handleStartExercise = () => {}
+  const handleLogWorkout = () => {}
+  const handleScheduleWorkout = () => {}
+  const handleViewStats = () => {}
 
   if (loading) {
     return (
       <ProtectedRoute>
-        <AppLayout title="Calendar">
-          <div className="p-8">
-            <div className="brand-card text-gray-100 rounded-2xl p-8 text-center">
-              <h2 className="text-2xl font-bold brand-fire mb-4">Loading Calendar...</h2>
+        <AppLayout 
+          title="Calendar"
+          onStartExercise={handleStartExercise}
+          onLogWorkout={handleLogWorkout}
+          onScheduleWorkout={handleScheduleWorkout}
+          onViewStats={handleViewStats}
+          exerciseInProgress={false}
+          workoutCompleted={false}
+        >
+          <div className="container mx-auto px-6 py-12 max-w-7xl">
+            <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-gray-200">
+              <h2 className="text-2xl font-bold text-orange-600 mb-4">Loading Calendar...</h2>
             </div>
           </div>
         </AppLayout>
@@ -193,11 +363,19 @@ export default function CalendarPage() {
   if (!userStartDate) {
     return (
       <ProtectedRoute>
-        <AppLayout title="Calendar">
-          <div className="p-8">
-            <div className="brand-card text-gray-100 rounded-2xl p-8 text-center">
-              <h2 className="text-2xl font-bold brand-fire mb-4">Set Your Start Date</h2>
-              <p className="text-gray-300">Complete your first workout to initialize your X3 calendar</p>
+        <AppLayout 
+          title="Calendar"
+          onStartExercise={handleStartExercise}
+          onLogWorkout={handleLogWorkout}
+          onScheduleWorkout={handleScheduleWorkout}
+          onViewStats={handleViewStats}
+          exerciseInProgress={false}
+          workoutCompleted={false}
+        >
+          <div className="container mx-auto px-6 py-12 max-w-7xl">
+            <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-gray-200">
+              <h2 className="text-2xl font-bold text-orange-600 mb-4">Set Your Start Date</h2>
+              <p className="text-gray-600">Complete your first workout to initialize your X3 calendar</p>
             </div>
           </div>
         </AppLayout>
@@ -205,110 +383,130 @@ export default function CalendarPage() {
     )
   }
 
-  const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const monthName = currentDate?.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) || ''
 
   return (
     <ProtectedRoute>
-      <AppLayout title="Calendar">
-        <div className="p-8">
-       
-
+      <AppLayout 
+        title="Calendar"
+        onStartExercise={handleStartExercise}
+        onLogWorkout={handleLogWorkout}
+        onScheduleWorkout={handleScheduleWorkout}
+        onViewStats={handleViewStats}
+        exerciseInProgress={false}
+        workoutCompleted={false}
+      >
+        <div className="container mx-auto px-6 py-12 max-w-7xl">
           <main>
-            {/* Month Name - Centered and Large */}
+            {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold">
-                <span className="brand-fire">{monthName.split(' ')[0]}</span> <span className="brand-ember">{monthName.split(' ')[1]}</span>
+              <h1 className="text-4xl font-bold">
+                <span className="bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 bg-clip-text text-transparent">
+                  {monthName.split(' ')[0]}
+                </span>{' '}
+                <span className="text-gray-700">{monthName.split(' ')[1]}</span>
               </h1>
             </div>
 
-            {/* Calendar Grid */}
-            <div className="bg-gray-100 dark:bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-gray-300 dark:border-white/20">
+            {/* Calendar */}
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
+              
+              {/* Month Navigation */}
+              <div className="flex items-center justify-between mb-8">
+                <button
+                  onClick={() => navigateMonth('prev')}
+                  className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors border border-gray-300"
+                >
+                  <ChevronLeft className="w-6 h-6 text-gray-700" />
+                </button>
+
+                <h2 className="text-2xl font-bold text-gray-800">{monthName}</h2>
+
+                <button
+                  onClick={() => navigateMonth('next')}
+                  className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors border border-gray-300"
+                >
+                  <ChevronRight className="w-6 h-6 text-gray-700" />
+                </button>
+              </div>
+
+              {/* Manual Log Button (hidden by default; enable with NEXT_PUBLIC_SHOW_MANUAL_LOG_BUTTON=true) */}
+              {process.env.NEXT_PUBLIC_SHOW_MANUAL_LOG_BUTTON === 'true' && (
+                <div className="mb-6 flex justify-center">
+                  <ManualLogButton user={user} onLogUpdated={refreshCalendarData} />
+                </div>
+              )}
+
+              {/* Contextual Fix for Today's Entry */}
+              {(() => {
+                const t = workoutDays.find(d => d.isToday)
+                const showFix = !!t && (t.workoutType === 'Push' || t.workoutType === 'Pull') && t.status !== 'completed'
+                return showFix ? (
+                  <div className="mb-6 flex justify-center">
+                    <button
+                      onClick={fixTodaysEntry}
+                      className="px-3 py-2 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-800"
+                    >
+                      Fix Today's Entry
+                    </button>
+                  </div>
+                ) : null
+              })()}
+
               {/* Day Headers */}
-              <div className="grid grid-cols-7 gap-3 mb-4 max-w-4xl mx-auto">
+              <div className="grid grid-cols-7 gap-3 mb-4">
                 {dayNames.map(day => (
-                  <div key={day} className="text-center text-sm font-medium text-gray-700 dark:text-gray-300 py-2">
+                  <div key={day} className="text-center text-sm font-semibold text-gray-600 py-3">
                     {day}
                   </div>
                 ))}
               </div>
 
-              {/* Calendar with Navigation - Fixed Sizing */}
-              <div className="flex items-center justify-center gap-6">
-                {/* Left Chevron */}
-                <button
-                  onClick={() => navigateMonth('prev')}
-                  className="p-3 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-white/10 dark:hover:bg-white/20 transition-colors border border-gray-400 dark:border-white/20 flex-shrink-0"
-                  aria-label="Previous month"
-                >
-                  <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-white" />
-                </button>
-
-                {/* Calendar Days - Full Width */}
-                <div className="grid grid-cols-7 gap-3 w-full max-w-4xl">
-                  {workoutDays.map((day) => (
-                    <div
-                      key={day.date}
-                      className={`
-                        relative min-h-[80px] p-3 rounded-lg border-2 transition-all duration-200
-                        ${day.isThisMonth ? '' : 'opacity-50'}
-                        ${day.isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-gray-100 dark:ring-offset-gray-900' : ''}
-                        ${day.workoutType === 'Push' ? 'border-orange-500 bg-orange-100 dark:bg-orange-900/30' : ''}
-                        ${day.workoutType === 'Pull' ? 'border-red-500 bg-red-100 dark:bg-red-900/30' : ''}
-                        ${day.workoutType === 'Rest' ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/30' : ''}
-                        ${day.workoutType === 'Missed' ? 'border-gray-500 bg-gray-100 dark:bg-gray-900/30' : ''}
-                        ${day.isCompleted ? 'border-green-500' : ''}
-                        ${day.isShifted && day.isThisMonth ? 'ring-1 ring-yellow-400' : ''}
-                      `}
-                    >
-                      <div className="flex flex-col h-full">
-                        {/* Day Number */}
-                        <span className="text-lg font-bold mb-1 text-gray-900 dark:text-gray-100">
-                          {day.dayOfMonth}
-                        </span>
-                        
-                        {/* Workout Type */}
-                        <div className="flex-1 flex flex-col items-center justify-center">
-                          <div className="flex items-center space-x-1 mb-1">
-                            {getWorkoutIcon(day.workoutType)}
-                            <span className={`text-xs font-medium ${
-                              day.workoutType === 'Rest' 
-                                ? 'text-blue-600 dark:text-blue-400' 
-                                : day.workoutType === 'Push' 
-                                ? 'text-orange-600 dark:text-orange-400' 
-                                : 'text-red-600 dark:text-red-400'
-                            }`}>
-                              {day.workoutType}
-                            </span>
-                          </div>
-                          
-                          {/* Week indicator for current month */}
-                          {day.isThisMonth && (
-                            <span className="text-xs opacity-80 text-gray-700 dark:text-gray-300">
-                              W{day.week}
-                            </span>
-                          )}
+              {/* Calendar Days */}
+              <div className="grid grid-cols-7 gap-3">
+                {workoutDays.map((day, index) => (
+                  <div
+                    key={`${day.date}-${index}`}
+                    className={`
+                      relative min-h-[80px] p-3 rounded-lg border-2 transition-all duration-200
+                      ${day.isThisMonth ? '' : 'opacity-50'}
+                      ${day.isToday ? 'ring-2 ring-orange-400 ring-offset-2 ring-offset-white' : ''}
+                      ${getWorkoutTypeColor(day.workoutType, day.isCompleted)}
+                    `}
+                  >
+                    <div className="flex flex-col h-full">
+                      <span className={`text-lg font-bold mb-1 ${
+                        day.isThisMonth ? 'text-gray-900' : 'text-gray-400'
+                      }`}>
+                        {day.dayOfMonth}
+                      </span>
+                      
+                      <div className="flex-1 flex flex-col items-center justify-center">
+                        <div className="flex items-center space-x-1 mb-1">
+                          {getWorkoutIcon(day.workoutType)}
+                          <span className={`text-xs font-medium ${
+                            day.workoutType === 'Rest' ? 'text-blue-600' : 
+                            day.workoutType === 'Push' ? 'text-orange-600' : 
+                            day.workoutType === 'Missed' ? 'text-gray-600' : 'text-red-600'
+                          }`}>
+                            {day.workoutType}
+                          </span>
                         </div>
                         
-                        {/* Completion Status */}
-                        {day.isCompleted && (
-                          <div className="absolute top-1 right-1">
-                            <CheckCircle size={16} className="text-green-400" />
-                          </div>
+                        {day.isThisMonth && day.week > 0 && (
+                          <span className="text-xs text-gray-500">W{day.week}</span>
                         )}
                       </div>
+                      
+                      {day.isCompleted && day.workoutType !== 'Missed' && (
+                        <div className="absolute top-1 right-1">
+                          <CheckCircle size={16} className="text-green-500" />
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-
-                {/* Right Chevron */}
-                <button
-                  onClick={() => navigateMonth('next')}
-                  className="p-3 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-white/10 dark:hover:bg-white/20 transition-colors border border-gray-400 dark:border-white/20 flex-shrink-0"
-                  aria-label="Next month"
-                >
-                  <ChevronRight className="w-6 h-6 text-gray-900 dark:text-white" />
-                </button>
+                  </div>
+                ))}
               </div>
             </div>
           </main>

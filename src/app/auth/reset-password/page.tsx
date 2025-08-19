@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
               <CheckCircle className="w-12 h-12 mx-auto text-green-600" />
               <h2 className="text-xl font-semibold text-gray-900">Password Updated!</h2>
               <p className="text-gray-600">
-                Your password has been successfully updated. You'll be redirected to the app in a moment.
+                Your password has been successfully updated. You&apos;ll be redirected to the app in a moment.
               </p>
             </div>
           </div>

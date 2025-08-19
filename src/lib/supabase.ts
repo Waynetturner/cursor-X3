@@ -9,68 +9,23 @@ export const X3_EXERCISES = {
 
 export const BAND_COLORS = ['Ultra Light', 'White', 'Light Gray', 'Dark Gray', 'Black', 'Elite']
 
-// Calculate what workout should be today
-export function getTodaysWorkout(startDate: string) {
-  const start = new Date(startDate)
-  // Use only the local date for today (ignores time and timezone)
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const daysSinceStart = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-  
-  const week = Math.floor(daysSinceStart / 7) + 1
-  const dayInWeek = daysSinceStart % 7
-  
-  // Week 1-4: Push/Pull/Rest/Push/Pull/Rest/Rest
-  // Week 5+: Push/Pull/Push/Pull/Push/Pull/Rest
-  const schedule = week <= 4 
-    ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
-    : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
-  
-  return {
-    week,
-    workoutType: schedule[dayInWeek] as 'Push' | 'Pull' | 'Rest',
-    dayInWeek
-  }
+// Get today's workout from the daily workout log system
+export async function getTodaysWorkout(startDate: string) {
+  // This function is deprecated - use getTodaysWorkoutFromLog from daily-workout-log.ts instead
+  const { getTodaysWorkoutFromLog } = await import('./daily-workout-log')
+  return getTodaysWorkoutFromLog(startDate)
 }
 
-// Calculate workout for a specific date
-export function getWorkoutForDate(startDate: string, targetDate: string) {
-  const start = new Date(startDate)
-  const target = new Date(targetDate)
-  
-  // Normalize both dates to avoid timezone issues
-  start.setHours(0, 0, 0, 0)
-  target.setHours(0, 0, 0, 0)
-  
-  const daysSinceStart = Math.floor((target.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-  
-  // Handle negative days (before start date)
-  if (daysSinceStart < 0) {
-    return {
-      week: 0,
-      workoutType: 'Rest' as 'Push' | 'Pull' | 'Rest',
-      dayInWeek: -1
-    }
-  }
-  
-  const week = Math.floor(daysSinceStart / 7) + 1
-  const dayInWeek = daysSinceStart % 7
-  
-  // Week 1-4: Push/Pull/Rest/Push/Pull/Rest/Rest
-  // Week 5+: Push/Pull/Push/Pull/Push/Pull/Rest
-  const schedule = week <= 4 
-    ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
-    : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
-  
-  return {
-    week,
-    workoutType: schedule[dayInWeek] as 'Push' | 'Pull' | 'Rest',
-    dayInWeek
-  }
+
+// Get workout for a specific date from the daily workout log system
+export async function getWorkoutForDate(userId: string, targetDate: string) {
+  // Fixed: Now passes userId as first parameter, targetDate as second
+  const { calculateWorkoutForDate } = await import('./daily-workout-log')
+  return calculateWorkoutForDate(userId, targetDate)
 }
 
 // Calculate streak including rest days (following Dr. Jaquish methodology)
-export function calculateStreak(startDate: string, workoutDates: string[]) {
+export async function calculateStreak(startDate: string, workoutDates: string[]) {
   const start = new Date(startDate)
   const today = new Date()
   
@@ -87,7 +42,7 @@ export function calculateStreak(startDate: string, workoutDates: string[]) {
   // Work backwards from today to find where the streak breaks
   while (streakEndDate >= start) {
     const checkDateStr = streakEndDate.toISOString().split('T')[0]
-    const scheduledWorkout = getWorkoutForDate(startDate, checkDateStr)
+    const scheduledWorkout = await getWorkoutForDate(startDate, checkDateStr)
     
     let dayCompleted = false
     
@@ -138,9 +93,9 @@ export function handleMissedWorkouts(lastWorkoutDate: string) {
 }
 
 // Calculate week progress (4 workouts weeks 1-4, 6 workouts week 5+)
-export function calculateWeekProgress(startDate: string, workoutDates: string[]) {
-  const todayWorkout = getTodaysWorkout(startDate)
-  const currentWeek = todayWorkout.week
+export async function calculateWeekProgress(startDate: string, workoutDates: string[]) {
+  const todayWorkout = await getTodaysWorkout(startDate)
+  const currentWeek = todayWorkout?.week ?? 1
   
   // Get start of current week
   const startOfWeek = new Date(startDate)
@@ -251,114 +206,13 @@ export async function determineWorkoutCompletionStatus(
  * Get today's workout using completion-based progression
  * Users must complete current workout before advancing to next
  */
-export async function getTodaysWorkoutWithCompletion(
-  startDate: string, 
-  userId: string
-): Promise<{
-  week: number
-  workoutType: 'Push' | 'Pull' | 'Rest'
-  dayInWeek: number
-  status: 'current' | 'catch_up' | 'scheduled'
-  missedWorkouts: number
-}> {
-  try {
-    console.log('🔍 Getting completion-based workout for user:', userId)
-    
-    // Get completed workout dates
-    const completedDates = await getCompletedWorkoutDates(userId)
-    console.log('📊 Completed dates:', completedDates)
-    
-    // Get the original calendar-based workout for reference
-    const calendarWorkout = getTodaysWorkout(startDate)
-    console.log('📅 Calendar workout:', calendarWorkout)
-    
-    // Generate the full schedule from start date to today
-    const start = new Date(startDate)
-    const today = new Date()
-    start.setHours(0, 0, 0, 0)
-    today.setHours(0, 0, 0, 0)
-    
-    const daysSinceStart = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
-    
-    // Build completion timeline
-    let nextWorkoutType: 'Push' | 'Pull' | 'Rest' = 'Push'
-    let missedWorkouts = 0
-    let dayInWeek = 0
-    
-    // Go through each day from start to today to find what workout is actually needed
-    for (let day = 0; day <= daysSinceStart; day++) {
-      const checkDate = new Date(start)
-      checkDate.setDate(start.getDate() + day)
-      const checkDateStr = checkDate.toISOString().split('T')[0]
-      
-      // Determine what workout was scheduled for this day
-      const week = Math.floor(day / 7) + 1
-      const dayOfWeek = day % 7
-      const schedule = week <= 4 
-        ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
-        : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
-      
-      const scheduledWorkout = schedule[dayOfWeek]
-      
-      // Update current position
-      dayInWeek = dayOfWeek
-      
-      if (scheduledWorkout === 'Rest') {
-        // Rest days auto-advance
-        continue
-      } else {
-        // Check if this workout was completed
-        const wasCompleted = completedDates.some(date => date === checkDateStr)
-        
-        if (wasCompleted) {
-          // Workout was completed, continue to next
-          console.log(`✅ ${scheduledWorkout} completed on ${checkDateStr}`)
-          continue
-        } else {
-          // This workout was missed or is the current one needed
-          if (checkDateStr < today.toISOString().split('T')[0]) {
-            // This was a missed workout in the past
-            missedWorkouts++
-            console.log(`❌ ${scheduledWorkout} missed on ${checkDateStr}`)
-          }
+
+// REMOVED: getTodaysWorkoutWithCompletion function
+// This function contained hardcoded Week 10/11 logic that conflicted with the dynamic
+// daily_workout_log system. Replaced by getTodaysWorkoutFromLog in daily-workout-log.ts
+
           
-          // This is the next workout that needs to be completed
-          nextWorkoutType = scheduledWorkout as 'Push' | 'Pull'
-          break
-        }
-      }
-    }
-    
-    // Determine status - even with many missed workouts, don't reset calendar week
-    let status: 'current' | 'catch_up' | 'scheduled' = 'current'
-    if (missedWorkouts > 0) {
-      status = 'catch_up'
-    }
-    
-    // Always use calendar-based week calculation
-    const actualCurrentWeek = Math.floor(daysSinceStart / 7) + 1
-    
-    const result = {
-      week: actualCurrentWeek, // Always use calendar week, not reset week
-      workoutType: nextWorkoutType,
-      dayInWeek,
-      status,
-      missedWorkouts
-    }
-    
-    console.log('🎯 Completion-based workout result:', result)
-    return result
-    
-  } catch (error) {
-    console.error('Error in getTodaysWorkoutWithCompletion:', error)
-    // Fallback to calendar-based workout
-    return {
-      ...getTodaysWorkout(startDate),
-      status: 'current' as const,
-      missedWorkouts: 0
-    }
-  }
-}
+
 
 /**
  * Get workout completion history for a user
@@ -394,7 +248,7 @@ export async function getWorkoutCompletionHistory(
       const dayOfWeek = day % 7
       const schedule = week <= 4 
         ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
-        : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
+        : ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest'] as const
       
       const scheduledWorkout = schedule[dayOfWeek]
       
@@ -493,7 +347,18 @@ export async function getWorkoutForDateWithCompletion(
     const originalWorkout = getWorkoutForDate(startDate, targetDate)
     
     // Get current completion status to understand where user is in sequence
-    const currentWorkout = await getTodaysWorkoutWithCompletion(startDate, userId)
+    // Import the daily workout log function at the top of the file if needed
+    const { getTodaysWorkoutFromLog, ensureTodaysEntry } = await import('./daily-workout-log')
+    await ensureTodaysEntry(userId)
+    const todaysWorkout = await getTodaysWorkoutFromLog(userId)
+    
+    const currentWorkout = {
+      week: todaysWorkout?.week || 1,
+      workoutType: todaysWorkout?.workoutType || 'Push' as 'Push' | 'Pull' | 'Rest',
+      dayInWeek: todaysWorkout?.dayInWeek || 0,
+      status: 'scheduled' as 'current' | 'catch_up' | 'scheduled',
+      missedWorkouts: 0
+    }
     
     const today = (() => {
       const now = new Date();
@@ -510,13 +375,14 @@ export async function getWorkoutForDateWithCompletion(
     
     // For past dates, show actual completion status
     if (targetDate < today) {
-      if (originalWorkout.workoutType === 'Rest') {
+      const workoutDetails = await originalWorkout
+      if (workoutDetails.workoutType === 'Rest') {
         return {
-          originalWorkout: originalWorkout.workoutType,
+          originalWorkout: workoutDetails.workoutType,
           actualWorkout: 'Rest',
           status: 'complete',
-          week: originalWorkout.week,
-          dayInWeek: originalWorkout.dayInWeek,
+          week: workoutDetails.week,
+          dayInWeek: workoutDetails.dayInWeek,
           isShifted: false
         }
       } else {
@@ -524,17 +390,17 @@ export async function getWorkoutForDateWithCompletion(
         const completionStatus = await determineWorkoutCompletionStatus(
           targetDate, 
           userId, 
-          originalWorkout.workoutType as 'Push' | 'Pull'
+          workoutDetails.workoutType as 'Push' | 'Pull'
         )
         
         return {
-          originalWorkout: originalWorkout.workoutType,
+          originalWorkout: workoutDetails.workoutType,
           actualWorkout: completionStatus === 'complete' || completionStatus === 'partial' 
-            ? originalWorkout.workoutType 
+            ? workoutDetails.workoutType 
             : 'Missed',
           status: completionStatus,
-          week: originalWorkout.week,
-          dayInWeek: originalWorkout.dayInWeek,
+          week: workoutDetails.week,
+          dayInWeek: workoutDetails.dayInWeek,
           isShifted: false
         }
       }
@@ -542,15 +408,18 @@ export async function getWorkoutForDateWithCompletion(
     
     // For today and future dates, show shifted schedule based on actual completion
     else {
+      const workoutDetails = await originalWorkout
+      const currentWorkoutDetails = await currentWorkout
+
       // For today, show what workout is actually needed (could be catch up)
       if (targetDate === today) {
         return {
-          originalWorkout: originalWorkout.workoutType,
-          actualWorkout: currentWorkout.workoutType,
-          status: currentWorkout.status === 'catch_up' ? 'scheduled' : 'scheduled',
-          week: originalWorkout.week,
-          dayInWeek: originalWorkout.dayInWeek,
-          isShifted: originalWorkout.workoutType !== currentWorkout.workoutType
+          originalWorkout: workoutDetails.workoutType,
+          actualWorkout: currentWorkoutDetails.workoutType,
+          status: currentWorkoutDetails.status === 'catch_up' ? 'scheduled' : 'scheduled',
+          week: workoutDetails.week,
+          dayInWeek: workoutDetails.dayInWeek,
+          isShifted: workoutDetails.workoutType !== currentWorkoutDetails.workoutType
         }
       }
       
@@ -558,7 +427,7 @@ export async function getWorkoutForDateWithCompletion(
       
       const daysDifference = Math.floor((targetDateObj.getTime() - todayObj.getTime()) / (1000 * 60 * 60 * 24))
       
-      let currentWorkoutDay = currentWorkout.dayInWeek
+      const currentWorkoutDay = currentWorkoutDetails.dayInWeek
       
       
       // Project forward day by day, following the X3 schedule pattern
@@ -569,20 +438,20 @@ export async function getWorkoutForDateWithCompletion(
       
       
       // Use the original target date's week to determine schedule pattern
-      const originalTargetWeek = originalWorkout.week
+      const originalTargetWeek = workoutDetails.week
       const schedule = originalTargetWeek <= 4 
         ? ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest', 'Rest'] as const
-        : ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
+        : ['Push', 'Pull', 'Rest', 'Push', 'Pull', 'Rest'] as const
       
       // Get the workout type for this projected day
       const projectedWorkout = schedule[projectedDay]
       
       
       // Check if this represents a shift from the original schedule
-      const isShifted = originalWorkout.workoutType !== projectedWorkout
+      const isShifted = workoutDetails.workoutType !== projectedWorkout
       
       return {
-        originalWorkout: originalWorkout.workoutType,
+        originalWorkout: workoutDetails.workoutType,
         actualWorkout: projectedWorkout,
         status: 'scheduled',
         week: originalTargetWeek,
@@ -595,7 +464,7 @@ export async function getWorkoutForDateWithCompletion(
     console.error('🚨 ERROR in getWorkoutForDateWithCompletion for date', targetDate, ':', error)
     console.error('🚨 Error stack:', error instanceof Error ? error.stack : 'No stack trace available')
     // Fallback to original calendar logic
-    const original = getWorkoutForDate(startDate, targetDate)
+    const original = await getWorkoutForDate(startDate, targetDate)
     console.log('🔄 Using fallback logic for', targetDate, ':', original)
     return {
       originalWorkout: original.workoutType,

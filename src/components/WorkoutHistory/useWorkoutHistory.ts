@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, X3_EXERCISES } from '@/lib/supabase';
 import { TimeRange, Workout, UseWorkoutHistoryReturn } from './types';
-import { timezoneUtils } from '@/lib/timezone';
 import { testModeService } from '@/lib/test-mode';
 
 export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): UseWorkoutHistoryReturn => {
@@ -9,26 +8,7 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Use the timezone utility for proper Central time handling
-  const getLocalDateFromStoredTime = timezoneUtils.getLocalDateFromTimestamp;
-
-  const getDateFilter = (range: TimeRange): string | null => {
-    switch (range) {
-      case 'last-two':
-        // For last-two, we'll handle this with LIMIT in the query
-        return null;
-      case 'week':
-      case 'month':
-      case '6months':
-        const dateRange = timezoneUtils.getDateRange(range);
-        console.log(`📅 Date filter for ${range}:`, dateRange);
-        return dateRange.start;
-      case 'all':
-        return null;
-      default:
-        return null;
-    }
-  };
+  const getLocalDateFromStoredTime = useCallback((timestamp: string) => timestamp.split('T')[0], []);
 
   const fetchWorkouts = useCallback(async () => {
     if (isLoading) return; // Prevent multiple simultaneous fetches
@@ -42,18 +22,8 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
         console.log('🧪 Test Mode: Using mock workout data');
         const mockWorkouts = testModeService.getMockWorkouts();
         
-        // Filter mock workouts by date range
-        const dateFilter = getDateFilter(timeRange);
-        let filteredMockWorkouts = mockWorkouts;
-        
-        if (dateFilter && timeRange !== 'last-two') {
-          filteredMockWorkouts = mockWorkouts.filter(workout => 
-            workout.date >= dateFilter
-          );
-        }
-        
-        // Convert mock data to Workout format
-        const convertedWorkouts: Workout[] = filteredMockWorkouts.map(mockWorkout => ({
+        // Simple mock filtering - just return recent data
+        const convertedWorkouts: Workout[] = mockWorkouts.map(mockWorkout => ({
           id: mockWorkout.id,
           date: mockWorkout.date,
           workout_type: mockWorkout.workout_type,
@@ -65,10 +35,8 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
           }))
         }));
         
-        // Sort by date (newest first)
         convertedWorkouts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
-        // Apply maxDisplay limit
         let finalWorkouts = convertedWorkouts;
         if (timeRange === 'last-two') {
           finalWorkouts = convertedWorkouts.slice(0, 2);
@@ -84,35 +52,89 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
       // Get current user for real data
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError || !user) {
-        setIsLoading(false);
         throw new Error('User not authenticated');
       }
 
-      const dateFilter = getDateFilter(timeRange);
+      // Calculate date filter inline to avoid dependency cycle
+      let dateFilter: string | null = null;
       
-      // Build query - fetch all exercises and filter client-side for accurate timezone handling
-      const { data: exercises, error: fetchError } = await supabase
+      if (timeRange !== 'last-two' && timeRange !== 'all') {
+        try {
+          // Get user's timezone
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('timezone')
+            .eq('id', user.id)
+            .single();
+
+          const userTimezone = profile?.timezone || 'UTC';
+          
+          // Calculate dates in user's timezone
+          const now = new Date();
+          const todayInUserTz = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+          
+          let daysBack: number;
+          switch (timeRange) {
+            case 'week':
+              daysBack = 7;
+              break;
+            case 'month':
+              daysBack = 30;
+              break;
+            case '6months':
+              daysBack = 180;
+              break;
+            default:
+              daysBack = 7;
+          }
+
+          const startDate = new Date(todayInUserTz);
+          startDate.setDate(startDate.getDate() - daysBack);
+          startDate.setHours(0, 0, 0, 0);
+          
+          dateFilter = startDate.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+          console.log(`📅 Date filter for ${timeRange}: ${dateFilter} (${daysBack} days back)`);
+          
+        } catch (timezoneError) {
+          console.error('Error calculating date filter:', timezoneError);
+          // Continue without date filtering
+        }
+      }
+      
+      // Build query
+      let query = supabase
         .from('workout_exercises')
         .select('*')
         .eq('user_id', user.id)
         .order('workout_local_date_time', { ascending: false });
+
+      // Apply server-side filtering when possible
+      if (dateFilter) {
+        query = query.gte('workout_local_date_time', dateFilter + 'T00:00:00');
+      }
+
+      const { data: exercises, error: fetchError } = await query;
 
       if (fetchError) {
         throw fetchError;
       }
 
       if (!exercises || exercises.length === 0) {
+        console.log(`📋 No exercises found for ${timeRange}`);
         setWorkouts([]);
         return;
       }
 
-      // Filter exercises by date range using local date conversion
+      console.log(`📊 Found ${exercises.length} exercises for ${timeRange}`);
+
+      // Additional client-side filtering for precision
       let filteredExercises = exercises;
-      if (dateFilter && timeRange !== 'last-two') {
+      if (dateFilter) {
         filteredExercises = exercises.filter(exercise => {
           const localDate = getLocalDateFromStoredTime(exercise.workout_local_date_time);
           return localDate >= dateFilter;
         });
+        console.log(`📋 After client-side filtering: ${filteredExercises.length} exercises`);
       }
 
       // Group exercises by date and workout type
@@ -145,7 +167,6 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
         workout.exercises.sort((a, b) => {
           const indexA = exerciseOrder.indexOf(a.exercise_name);
           const indexB = exerciseOrder.indexOf(b.exercise_name);
-          // If exercise not found in order, put it at the end
           const orderA = indexA === -1 ? 999 : indexA;
           const orderB = indexB === -1 ? 999 : indexB;
           return orderA - orderB;
@@ -164,16 +185,17 @@ export const useWorkoutHistory = (timeRange: TimeRange, maxDisplay?: number): Us
         workoutsArray = workoutsArray.slice(0, maxDisplay);
       }
 
+      console.log(`✅ Loaded ${workoutsArray.length} workouts for ${timeRange}`);
       setWorkouts(workoutsArray);
       
     } catch (err) {
-      console.error('Error fetching workout history:', err);
+      console.error('❌ Error fetching workout history:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch workout history');
       setWorkouts([]);
     } finally {
       setIsLoading(false);
     }
-  }, [timeRange, maxDisplay]);
+  }, [timeRange, maxDisplay, getLocalDateFromStoredTime]); // Removed getDateFilter dependency
 
   useEffect(() => {
     fetchWorkouts();

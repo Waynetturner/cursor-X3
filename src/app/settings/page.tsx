@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
+import type { User } from '@supabase/auth-helpers-nextjs';
 import AppLayout from '@/components/layout/AppLayout';
 import { supabase } from '@/lib/supabase';
 import { useSubscription, TIER_NAMES, TIER_DESCRIPTIONS, TIER_PRICING, TIER_PRICING_ANNUAL } from '@/contexts/SubscriptionContext';
@@ -23,15 +24,14 @@ export default function Settings() {
   const { tier, features, hasFeature, upgradeTo } = useSubscription();
   const { isDark, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState(tabs[0].value);
-  const [user, setUser] = useState<any>(null);
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
+  const [user, setUser] = useState<User | null>(null);
+  // Removed unused billingPeriod state
   
   // Profile form state
   const [profileData, setProfileData] = useState({
     displayName: '',
     startDate: '',
     fitnessExperience: '',
-    primaryGoal: '',
     birthYear: '',
     biologicalSex: '',
     heightInches: '',
@@ -82,7 +82,6 @@ export default function Settings() {
           displayName,
           startDate: profile?.x3_start_date || '',
           fitnessExperience: demographics?.fitness_level || '',
-          primaryGoal: demographics?.goals || '',
           birthYear: demographics?.age ? (new Date().getFullYear() - demographics.age).toString() : '',
           biologicalSex: demographics?.gender === 'male' ? 'male' : 
                          demographics?.gender === 'female' ? 'female' : '',
@@ -138,7 +137,6 @@ export default function Settings() {
           gender: profileData.biologicalSex === 'male' ? 'male' : 
                  profileData.biologicalSex === 'female' ? 'female' : null,
           fitness_level: profileData.fitnessExperience || null,
-          goals: profileData.primaryGoal || null,
           available_equipment: profileData.x3EquipmentAvailable.length > 0 ? profileData.x3EquipmentAvailable.join(',') : null,
           session_length: profileData.programTimelineGoal || null,
           coach_tone: profileData.coachingStylePreference || 'balanced',
@@ -167,14 +165,7 @@ export default function Settings() {
     setProfileData(prev => ({ ...prev, [field]: value }));
   };
 
-  const toggleEquipment = (equipment: string) => {
-    setProfileData(prev => ({
-      ...prev,
-      x3EquipmentAvailable: prev.x3EquipmentAvailable.includes(equipment)
-        ? prev.x3EquipmentAvailable.filter(e => e !== equipment)
-        : [...prev.x3EquipmentAvailable, equipment]
-    }));
-  };
+  // Removed unused toggleEquipment function
 
   return (
     <ProtectedRoute>
