@@ -6,7 +6,8 @@ import { supabase } from '@/lib/supabase'
 import { 
   ensureTodaysEntry, 
   markMissedWorkouts, 
-  getUserToday
+  getUserToday,
+  updateDailyWorkoutLog
 } from '@/lib/daily-workout-log'
 import { ChevronLeft, ChevronRight, Flame, Dumbbell, Coffee, CheckCircle, AlertTriangle } from 'lucide-react'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
@@ -101,7 +102,7 @@ export default function CalendarPage() {
         workoutMap[workout.date] = workout
       })
 
-      // Get last completed workout to know where we are in the sequence
+      // Get last completed workout (Push/Pull/Rest)
       const { data: lastCompleted } = await supabase
         .from('daily_workout_log')
         .select('date, workout_type, week_number')
@@ -111,8 +112,19 @@ export default function CalendarPage() {
         .limit(1)
 
       const lastWorkout = lastCompleted?.[0]
+
+      // Also try to find the most recent Rest boundary (completed or missed)
+      const { data: lastRestRows } = await supabase
+        .from('daily_workout_log')
+        .select('date, week_number, status')
+        .eq('user_id', user.id)
+        .eq('workout_type', 'Rest')
+        .order('date', { ascending: false })
+        .limit(1)
+
+      const lastRest = lastRestRows?.[0]
       
-      // Week 5+ pattern (used for weeks 5-12 and beyond)
+  // Week 5+ pattern (used for weeks 5-12 and beyond)
       const PATTERN = ['Push', 'Pull', 'Push', 'Pull', 'Push', 'Pull', 'Rest'] as const
       
       // Generate calendar days
@@ -133,56 +145,82 @@ export default function CalendarPage() {
         
         // First check if we have data in database
         if (workoutMap[dateStr]) {
+          // Never show a Rest day as missed in the UI
+          const mappedStatus = (workoutMap[dateStr].workout_type === 'Rest' && workoutMap[dateStr].status === 'missed')
+            ? 'completed'
+            : workoutMap[dateStr].status
           workoutInfo = {
             workoutType: workoutMap[dateStr].workout_type,
             week: workoutMap[dateStr].week_number,
-            status: workoutMap[dateStr].status
+            status: mappedStatus
           }
         } 
-        // If no data and it's a future date, calculate what it should be
-        else if (dateStr >= userStartDate && lastWorkout) {
-          // Calculate days since last workout
-          const lastDate = new Date(lastWorkout.date)
-          const targetDate = new Date(dateStr)
-          const daysDiff = Math.floor((targetDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
-          
-          if (daysDiff > 0) {
-            // Find where the last workout was in the pattern
-            let lastIndex = -1
-            // Search backwards to find the most recent matching position
-            for (let j = PATTERN.length - 1; j >= 0; j--) {
-              if (PATTERN[j] === lastWorkout.workout_type) {
-                lastIndex = j
-                break
-              }
-            }
-            
-            // If we can't find it in pattern (shouldn't happen), start at 0
-            if (lastIndex === -1) lastIndex = 0
-            
-            // Calculate new position and week
-            let newIndex = (lastIndex + daysDiff) % PATTERN.length
-            let weeksToAdd = Math.floor((lastIndex + daysDiff) / PATTERN.length)
-            let newWeek = lastWorkout.week_number + weeksToAdd
-            
-            // After week 12, continue with "Week 12+" indefinitely (perpetuity)
-            // This follows the X3 program guidance to continue forever
-            if (newWeek > 12) {
-              newWeek = 12 // Display as "W12" but it continues forever
-            }
-            
-            workoutInfo = {
-              workoutType: PATTERN[newIndex] as 'Push' | 'Pull' | 'Rest',
-              week: newWeek,
-              status: dateStr < today ? 'missed' : 'scheduled'
+        // If no data and it's within/after the user's start, calculate purely from the last Rest boundary
+        else if (dateStr >= userStartDate) {
+          // Establish the most recent Rest boundary and the base week number
+          let restBoundaryDate: Date | null = null
+          let baseWeekAfterRest: number | null = null
+
+          if (lastRest) {
+            restBoundaryDate = new Date(lastRest.date)
+            baseWeekAfterRest = lastRest.week_number + 1
+          } else if (lastWorkout) {
+            // Derive last Rest from the last completed workout's position in the cycle
+            const lastType = lastWorkout.workout_type as 'Push' | 'Pull' | 'Rest'
+            const idx = PATTERN.indexOf(lastType as any)
+            const lastDate = new Date(lastWorkout.date)
+            if (idx === 6) {
+              // Last workout itself was Rest
+              restBoundaryDate = lastDate
+              baseWeekAfterRest = lastWorkout.week_number + 1
+            } else {
+              // Rest day was (idx + 1) days before the last completed workout
+              const inferredRest = new Date(lastDate)
+              inferredRest.setDate(inferredRest.getDate() - (idx + 1))
+              restBoundaryDate = inferredRest
+              // The last completed Push/Pull belongs to the week that starts the day after Rest
+              baseWeekAfterRest = lastWorkout.week_number
             }
           } else {
-            // Same day as last workout
-            workoutInfo = {
-              workoutType: lastWorkout.workout_type,
-              week: lastWorkout.week_number,
-              status: 'completed'
-            }
+            // Fallback: treat the day before the user's start date as a rest boundary
+            const start = new Date(userStartDate)
+            start.setDate(start.getDate() - 1)
+            restBoundaryDate = start
+            baseWeekAfterRest = 1
+          }
+
+          // With a rest boundary identified, compute cycle position for target date
+          const boundary = new Date(restBoundaryDate!)
+          boundary.setHours(0,0,0,0)
+          const target = new Date(dateStr)
+          target.setHours(0,0,0,0)
+
+          const daysSinceRest = Math.max(0, Math.floor((target.getTime() - boundary.getTime()) / (1000 * 60 * 60 * 24)))
+          const mod = daysSinceRest % 7
+          let type: 'Push' | 'Pull' | 'Rest'
+          if (mod === 0) {
+            type = 'Rest'
+          } else {
+            type = PATTERN[mod - 1] as 'Push' | 'Pull'
+          }
+
+          // Week math:
+          // - If daysSinceRest === 0, it's the boundary Rest and belongs to previous week
+          // - Otherwise, weeks increment every 7 days starting the day after Rest
+          let weekNum: number
+          if (daysSinceRest === 0) {
+            weekNum = (baseWeekAfterRest as number) - 1
+          } else {
+            weekNum = (baseWeekAfterRest as number) + Math.floor((daysSinceRest - 1) / 7)
+          }
+
+          // Never mark Rest as missed
+          const status: 'completed' | 'partial' | 'missed' | 'scheduled' =
+            dateStr < today ? (type === 'Rest' ? 'completed' : 'missed') : 'scheduled'
+          workoutInfo = {
+            workoutType: type,
+            week: weekNum,
+            status
           }
         }
         // Default for dates before start or if no last workout
@@ -217,6 +255,18 @@ export default function CalendarPage() {
 
   const refreshCalendarData = () => {
     generateCalendarData()
+  }
+
+  // Quick repair for today's entry when not completed and it's a Push/Pull day
+  const fixTodaysEntry = async () => {
+    if (!user?.id) return
+    const today = await getUserToday(user.id)
+    const todayDay = workoutDays.find(d => d.isToday)
+    if (!todayDay) return
+    if ((todayDay.workoutType === 'Push' || todayDay.workoutType === 'Pull') && todayDay.status !== 'completed') {
+      await updateDailyWorkoutLog(user.id, today, todayDay.workoutType)
+      refreshCalendarData()
+    }
   }
 
   useEffect(() => {
@@ -381,10 +431,28 @@ const getWorkoutTypeColor = (type: WorkoutType, isCompleted: boolean) => {
                 </button>
               </div>
 
-              {/* Manual Log Button */}
-              <div className="mb-6 flex justify-center">
-                <ManualLogButton user={user} onLogUpdated={refreshCalendarData} />
-              </div>
+              {/* Manual Log Button (hidden by default; enable with NEXT_PUBLIC_SHOW_MANUAL_LOG_BUTTON=true) */}
+              {process.env.NEXT_PUBLIC_SHOW_MANUAL_LOG_BUTTON === 'true' && (
+                <div className="mb-6 flex justify-center">
+                  <ManualLogButton user={user} onLogUpdated={refreshCalendarData} />
+                </div>
+              )}
+
+              {/* Contextual Fix for Today's Entry */}
+              {(() => {
+                const t = workoutDays.find(d => d.isToday)
+                const showFix = !!t && (t.workoutType === 'Push' || t.workoutType === 'Pull') && t.status !== 'completed'
+                return showFix ? (
+                  <div className="mb-6 flex justify-center">
+                    <button
+                      onClick={fixTodaysEntry}
+                      className="px-3 py-2 text-sm rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-800"
+                    >
+                      Fix Today's Entry
+                    </button>
+                  </div>
+                ) : null
+              })()}
 
               {/* Day Headers */}
               <div className="grid grid-cols-7 gap-3 mb-4">

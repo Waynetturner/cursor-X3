@@ -254,6 +254,12 @@ export async function markWorkoutAsMissed(userId: string, missedDate: string): P
     // Calculate what workout was supposed to happen on this date
     const workoutInfo = await calculateWorkoutForDate(userId, missedDate)
     
+    // Do not mark Rest days as missed — Rest cannot be 'missed' in this app's logic
+    if (workoutInfo.workoutType === 'Rest') {
+      if (process.env.NEXT_PUBLIC_DEBUG_LOGS === 'true') console.log(`⏭️ Skipping missed mark for Rest day: ${missedDate}`)
+      return
+    }
+    
     // Only mark as missed if it's not already logged
     const { data: existingEntry } = await supabase
       .from('daily_workout_log')
@@ -323,8 +329,8 @@ export async function ensureTodaysEntry(): Promise<void> {
     // Calculate what today should be
     const workoutInfo = await calculateWorkoutForDate(user.id, today);
     
-    // Only create an entry if it's supposed to be a workout day and it's not completed yet
-    if (workoutInfo.workoutType !== 'Rest') {
+  // Only create an entry if it's supposed to be a workout day (Push/Pull)
+  if (workoutInfo.workoutType !== 'Rest') {
       await supabase
         .from('daily_workout_log')
         .insert({
@@ -375,8 +381,11 @@ export async function markMissedWorkouts(): Promise<void> {
     const dateStr = d.toLocaleDateString('en-CA');
     
     if (!existingDates.has(dateStr)) {
-      // This date has no entry - mark as missed
-      await markWorkoutAsMissed(user.id, dateStr);
+      // This date has no entry - mark as missed if it was Push/Pull; skip Rest
+      const info = await calculateWorkoutForDate(user.id, dateStr)
+      if (info.workoutType !== 'Rest') {
+        await markWorkoutAsMissed(user.id, dateStr);
+      }
     }
   }
 }

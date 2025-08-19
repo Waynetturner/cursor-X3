@@ -19,6 +19,7 @@ import { useWorkoutData } from '@/hooks/useWorkoutData'
 import { useExerciseState } from '@/hooks/useExerciseState'
 import { useCadenceControl } from '@/hooks/useCadenceControl'
 import { useRestTimer } from '@/hooks/useRestTimer'
+import { getUserToday, updateDailyWorkoutLog } from '@/lib/daily-workout-log'
 
 export default function WorkoutPage() {
   const router = useRouter()
@@ -120,6 +121,17 @@ export default function WorkoutPage() {
           timeLeft: 90,
           exerciseIndex: index
         })
+      }
+
+      // Auto-log workout completion when the final exercise is saved
+      if (isLastExercise && user?.id && todaysWorkout?.workoutType && todaysWorkout.workoutType !== 'Rest') {
+        try {
+          const userToday = await getUserToday(user.id)
+          await updateDailyWorkoutLog(user.id, userToday, todaysWorkout.workoutType as 'Push' | 'Pull')
+          console.log('✅ Auto-logged daily workout on final exercise save')
+        } catch (logErr) {
+          console.error('❌ Failed to auto-log daily workout:', logErr)
+        }
       }
     } catch (error) {
       console.error('❌ Error saving exercise:', error)
@@ -462,9 +474,9 @@ export default function WorkoutPage() {
           </div>
         </div>
 
-        {/* TTS Status Indicator */}
-        {hasFeature('ttsAudioCues') && (
-          <div className="card-elevation-1 bg-apple-card spacing-apple-comfortable text-center mb-8 visual-depth-1 animate-on-load animate-apple-fade-in-up animate-delay-100">
+        {/* TTS Status Indicator (hidden when audio source is None and not speaking or error) */}
+        {hasFeature('ttsAudioCues') && (ttsLoading || ttsError || getSourceIndicator() !== '🔇 No Audio') && (
+          <div className="card-elevation-1 bg-apple-card spacing-apple-comfortable text-center mb-6 visual-depth-1 animate-on-load animate-apple-fade-in-up animate-delay-100">
             <div className="flex items-center justify-center space-x-2">
               {ttsLoading && (
                 <div className="flex items-center space-x-2">
@@ -485,35 +497,24 @@ export default function WorkoutPage() {
                 ⚠️ {ttsError}
               </p>
             )}
-            {!ttsError && !ttsLoading && (
-              <p className="text-body-small text-gray-600 mt-1">
-                Audio guidance ready for exercises
-              </p>
-            )}
           </div>
         )}
 
         {/* Cadence Control */}
-        <div className="card-elevation-1 bg-apple-card spacing-apple-comfortable text-center mb-12 visual-depth-1 animate-on-load animate-apple-fade-in-up animate-delay-200">
+        <div className="card-elevation-1 bg-apple-card spacing-apple-comfortable text-center mb-10 visual-depth-1 animate-on-load animate-apple-fade-in-up animate-delay-200">
           <h3 className="text-title-large mb-4 text-gradient-fire">🎵 Workout Cadence</h3>
-          <div className="w-full flex justify-center">
+          <div className="w-full flex flex-col md:flex-row items-center justify-center gap-4">
             <AnimatedCadenceButton cadenceActive={cadenceActive} setCadenceActive={setCadenceActive} />
-          </div>
-          <p id="cadence-description" className="text-body-small text-secondary mt-2">
-            Audio metronome to help maintain proper exercise timing
-          </p>
-          
-          {/* Start Exercise Button */}
-          {exercises.length > 0 && !Object.values(exerciseStates).some(state => state !== 'idle' && state !== 'completed') && (
-            <div className="mt-6">
+            {exercises.length > 0 && !Object.values(exerciseStates).some(state => state !== 'idle' && state !== 'completed') && (
               <button
                 onClick={() => startExercise(0)}
                 disabled={exerciseLoadingStates[0] || exerciseStates[0] === 'started'}
-                className={`btn-apple-style py-3 px-8 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
+                className={`py-3 px-6 rounded-xl font-bold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 ${
                   exerciseLoadingStates[0] || exerciseStates[0] === 'started'
-                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                    ? 'bg-gray-200 text-gray-600 cursor-not-allowed border border-gray-300' 
                     : 'bg-green-500 text-white hover:bg-green-600'
                 }`}
+                aria-describedby="cadence-description"
               >
                 {exerciseLoadingStates[0] || exerciseStates[0] === 'started' ? (
                   <>
@@ -527,11 +528,11 @@ export default function WorkoutPage() {
                   </>
                 )}
               </button>
-              <p className="text-body-small text-secondary mt-2">
-                Begin the full {todaysWorkout.workoutType} workout sequence
-              </p>
-            </div>
-          )}
+            )}
+          </div>
+          <p id="cadence-description" className="text-body-small text-secondary mt-2">
+            Audio metronome to help maintain proper exercise timing
+          </p>
         </div>
 
         {/* Rest Timer Display */}
